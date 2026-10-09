@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import select
@@ -32,15 +32,21 @@ from app.models.users import User
 
 @dataclass(frozen=True)
 class ModelFixture:
-    """Related records shared by the database integrity assertions."""
+    """Persisted values shared by the database integrity assertions."""
 
-    user: User
-    segment: TrainingSegment
-    equipment: Equipment
-    training_type: TrainingType
-    exercise: Exercise
-    trainer_exercise: TrainerExercise
-    group: TrainingGroup
+    trainer_id: UUID
+    segment_id: int
+    segment_code: str
+    segment_name: str
+    equipment_id: UUID
+    training_type_id: UUID
+    exercise_id: UUID
+    trainer_exercise_id: UUID
+    group_id: UUID
+    group_name: str
+    group_min_age: int
+    group_max_age: int
+    group_duration_minutes: int
 
 
 def test_database_models_relationships_and_constraints() -> None:
@@ -145,13 +151,19 @@ async def _assert_relationships(session: AsyncSession) -> ModelFixture:
     assert schema_item.training_group_id == group.id
 
     return ModelFixture(
-        user=user,
-        segment=segment,
-        equipment=equipment,
-        training_type=training_type,
-        exercise=exercise,
-        trainer_exercise=trainer_exercise,
-        group=group,
+        trainer_id=user.id,
+        segment_id=segment.id,
+        segment_code=segment.code,
+        segment_name=segment.name,
+        equipment_id=equipment.id,
+        training_type_id=training_type.id,
+        exercise_id=exercise.id,
+        trainer_exercise_id=trainer_exercise.id,
+        group_id=group.id,
+        group_name=group.name,
+        group_min_age=group.min_age,
+        group_max_age=group.max_age,
+        group_duration_minutes=group.duration_minutes,
     )
 
 
@@ -188,9 +200,9 @@ async def _assert_constraints(session: AsyncSession, fixture: ModelFixture) -> N
 
     async with session.begin_nested():
         invalid_duration_exercise = TrainerExercise(
-            trainer=fixture.user,
+            trainer_id=fixture.trainer_id,
             exercise=Exercise(
-                owner=fixture.user,
+                owner_user_id=fixture.trainer_id,
                 scope=ExerciseScope.PRIVATE,
                 name="Invalid duration exercise",
                 description="Used to test a duration constraint.",
@@ -210,8 +222,8 @@ async def _assert_constraints(session: AsyncSession, fixture: ModelFixture) -> N
 
     async with session.begin_nested():
         invalid_schema_item = TrainingGroupSchemaItem(
-            training_group=fixture.group,
-            segment=fixture.segment,
+            training_group_id=fixture.group_id,
+            segment_id=fixture.segment_id,
             percentage=101,
             position=2,
         )
@@ -229,8 +241,8 @@ async def _assert_unique_constraints(
 
     async with session.begin_nested():
         duplicate_trainer_exercise = TrainerExercise(
-            trainer=fixture.user,
-            exercise=fixture.exercise,
+            trainer_id=fixture.trainer_id,
+            exercise_id=fixture.exercise_id,
             status=TrainerExerciseStatus.ACTIVE,
             min_age=7,
             max_age=14,
@@ -288,40 +300,40 @@ async def _assert_unique_constraints(
 async def _assert_jsonb_snapshots(session: AsyncSession, fixture: ModelFixture) -> None:
     """Persist and reload the immutable JSONB snapshots of a training plan."""
 
-    equipment_snapshot = [{"id": str(fixture.equipment.id), "name": "Test target"}]
+    equipment_snapshot = [{"id": str(fixture.equipment_id), "name": "Test target"}]
     training_type_snapshot = [
-        {"id": str(fixture.training_type.id), "name": "Test technique"}
+        {"id": str(fixture.training_type_id), "name": "Test technique"}
     ]
     schema_snapshot = [
         {
             "position": 1,
-            "segment_id": fixture.segment.id,
-            "code": fixture.segment.code,
-            "name": fixture.segment.name,
+            "segment_id": fixture.segment_id,
+            "code": fixture.segment_code,
+            "name": fixture.segment_name,
             "percentage": 100,
         }
     ]
     plan = TrainingPlan(
-        trainer=fixture.user,
-        training_group=fixture.group,
+        trainer_id=fixture.trainer_id,
+        training_group_id=fixture.group_id,
         participant_count=10,
         name="Model test plan",
-        group_name_snapshot=fixture.group.name,
-        group_min_age_snapshot=fixture.group.min_age,
-        group_max_age_snapshot=fixture.group.max_age,
-        training_duration_snapshot=fixture.group.duration_minutes,
+        group_name_snapshot=fixture.group_name,
+        group_min_age_snapshot=fixture.group_min_age,
+        group_max_age_snapshot=fixture.group_max_age,
+        training_duration_snapshot=fixture.group_duration_minutes,
         available_equipment_snapshot=equipment_snapshot,
         training_types_snapshot=training_type_snapshot,
         schema_snapshot=schema_snapshot,
     )
     plan_exercise = TrainingPlanExercise(
         training_plan=plan,
-        trainer_exercise=fixture.trainer_exercise,
-        exercise=fixture.exercise,
+        trainer_exercise_id=fixture.trainer_exercise_id,
+        exercise_id=fixture.exercise_id,
         position=1,
         schema_position=1,
-        name_snapshot=fixture.exercise.name,
-        description_snapshot=fixture.exercise.description,
+        name_snapshot="Test exercise",
+        description_snapshot="Exercise used only by the model integration test.",
         min_age_snapshot=7,
         max_age_snapshot=14,
         min_participants_snapshot=2,
@@ -331,9 +343,9 @@ async def _assert_jsonb_snapshots(session: AsyncSession, fixture: ModelFixture) 
         training_types_snapshot=training_type_snapshot,
         segments_snapshot=[
             {
-                "id": fixture.segment.id,
-                "code": fixture.segment.code,
-                "name": fixture.segment.name,
+                "id": fixture.segment_id,
+                "code": fixture.segment_code,
+                "name": fixture.segment_name,
             }
         ],
     )
@@ -347,8 +359,8 @@ async def _assert_jsonb_snapshots(session: AsyncSession, fixture: ModelFixture) 
     assert plan.schema_snapshot == schema_snapshot
     assert plan_exercise.segments_snapshot == [
         {
-            "id": fixture.segment.id,
-            "code": fixture.segment.code,
-            "name": fixture.segment.name,
+            "id": fixture.segment_id,
+            "code": fixture.segment_code,
+            "name": fixture.segment_name,
         }
     ]
