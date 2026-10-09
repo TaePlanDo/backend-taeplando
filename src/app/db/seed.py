@@ -48,6 +48,7 @@ SYSTEM_TRAINING_SEGMENTS: Sequence[TrainingSegmentSeed] = (
     {"id": 4, "code": "COOLDOWN", "name": "Wyciszenie"},
 )
 
+# Fixed identifiers make repeated seed runs idempotent and preserve relations.
 DEMO_TRAINER_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a01")
 DEMO_EQUIPMENT_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a02")
 DEMO_TRAINING_TYPE_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a03")
@@ -59,6 +60,7 @@ DEMO_MAIN_SCHEMA_ITEM_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a08")
 DEMO_COOLDOWN_SCHEMA_ITEM_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a09")
 DEMO_TRAINING_PLAN_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a10")
 DEMO_PLAN_EXERCISE_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a11")
+# Local development only. Plain-text password: Demo123!
 DEMO_TRAINER_PASSWORD_HASH = (
     "pbkdf2_sha256$600000$taeplando-demo-seed-v1$"
     "f37e02498c063bf6f088b44328439246366ee0dfb1197761d28607afe69e113f"
