@@ -1,13 +1,9 @@
 import asyncio
-import sys
-from pathlib import Path
 
 from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from app.core.config import get_settings
 from app.models import Base
