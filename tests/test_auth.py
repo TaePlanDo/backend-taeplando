@@ -93,9 +93,7 @@ def test_refresh_without_cookie_returns_401(
     assert response.json()["detail"] == "Invalid or expired refresh token"
 
 
-def test_refresh_rotates_token(
-    client: TestClient, override_settings: Settings
-) -> None:
+def test_refresh_rotates_token(client: TestClient, override_settings: Settings) -> None:
     user_id = uuid4()
     plain = "current-refresh-token"
     record = RefreshToken(
@@ -155,9 +153,7 @@ def test_me_without_bearer_returns_401(client: TestClient) -> None:
     assert response.json()["detail"] == "Not authenticated"
 
 
-def test_me_with_valid_jwt(
-    client: TestClient, override_settings: Settings
-) -> None:
+def test_me_with_valid_jwt(client: TestClient, override_settings: Settings) -> None:
     user = _local_user()
     access_token, _ = create_access_token(user.id, override_settings)
 
