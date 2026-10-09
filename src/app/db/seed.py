@@ -59,6 +59,10 @@ DEMO_MAIN_SCHEMA_ITEM_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a08")
 DEMO_COOLDOWN_SCHEMA_ITEM_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a09")
 DEMO_TRAINING_PLAN_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a10")
 DEMO_PLAN_EXERCISE_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a11")
+DEMO_TRAINER_PASSWORD_HASH = (
+    "pbkdf2_sha256$600000$taeplando-demo-seed-v1$"
+    "f37e02498c063bf6f088b44328439246366ee0dfb1197761d28607afe69e113f"
+)
 
 
 async def seed_training_segments(session: AsyncSession) -> None:
@@ -88,16 +92,24 @@ async def insert_if_missing(
 async def seed_demo_data(session: AsyncSession) -> None:
     """Insert one connected trainer, group, exercise, and example plan."""
 
-    await insert_if_missing(
-        session,
-        User.__table__,
-        {
-            "id": DEMO_TRAINER_ID,
-            "email": "demo.trener@taeplando.local",
-            "full_name": "Trener demonstracyjny",
-            "auth_method": AuthMethod.GOOGLE,
-            "oauth_subject": "seed-demo-trainer",
-        },
+    demo_trainer = insert(User).values(
+        id=DEMO_TRAINER_ID,
+        email="demo.trener@taeplando.local",
+        full_name="Trener demonstracyjny",
+        auth_method=AuthMethod.LOCAL,
+        password_hash=DEMO_TRAINER_PASSWORD_HASH,
+    )
+    await session.execute(
+        demo_trainer.on_conflict_do_update(
+            index_elements=[User.id],
+            set_={
+                "email": demo_trainer.excluded.email,
+                "full_name": demo_trainer.excluded.full_name,
+                "auth_method": demo_trainer.excluded.auth_method,
+                "password_hash": demo_trainer.excluded.password_hash,
+                "oauth_subject": None,
+            },
+        )
     )
     await insert_if_missing(
         session,
