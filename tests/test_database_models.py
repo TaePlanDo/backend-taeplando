@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
+from typing import Protocol, TypeGuard
 from uuid import UUID, uuid4
 
 import pytest
@@ -47,6 +48,12 @@ class ModelFixture:
     group_min_age: int
     group_max_age: int
     group_duration_minutes: int
+
+
+class SqlStateError(Protocol):
+    """Database error shape exposed by PostgreSQL drivers."""
+
+    sqlstate: str
 
 
 def test_database_models_relationships_and_constraints() -> None:
@@ -170,36 +177,31 @@ async def _assert_relationships(session: AsyncSession) -> ModelFixture:
 async def _assert_constraints(session: AsyncSession, fixture: ModelFixture) -> None:
     """Verify representative check and foreign-key constraints."""
 
-    async with session.begin_nested():
-        invalid_group = TrainingGroup(
+    await _assert_integrity_error(
+        session,
+        TrainingGroup(
             trainer_id=uuid4(),
             name="Invalid age range",
             min_age=14,
             max_age=7,
             duration_minutes=60,
-        )
-        session.add(invalid_group)
-        with pytest.raises(IntegrityError) as check_error:
-            await session.flush()
-
-    assert check_error.value.orig.sqlstate == "23514"
-
-    async with session.begin_nested():
-        missing_trainer_group = TrainingGroup(
+        ),
+        "23514",
+    )
+    await _assert_integrity_error(
+        session,
+        TrainingGroup(
             trainer_id=uuid4(),
             name="Missing trainer",
             min_age=7,
             max_age=14,
             duration_minutes=60,
-        )
-        session.add(missing_trainer_group)
-        with pytest.raises(IntegrityError) as foreign_key_error:
-            await session.flush()
-
-    assert foreign_key_error.value.orig.sqlstate == "23503"
-
-    async with session.begin_nested():
-        invalid_duration_exercise = TrainerExercise(
+        ),
+        "23503",
+    )
+    await _assert_integrity_error(
+        session,
+        TrainerExercise(
             trainer_id=fixture.trainer_id,
             exercise=Exercise(
                 owner_user_id=fixture.trainer_id,
@@ -213,25 +215,19 @@ async def _assert_constraints(session: AsyncSession, fixture: ModelFixture) -> N
             min_participants=2,
             max_participants=20,
             duration_minutes=0,
-        )
-        session.add(invalid_duration_exercise)
-        with pytest.raises(IntegrityError) as duration_error:
-            await session.flush()
-
-    assert duration_error.value.orig.sqlstate == "23514"
-
-    async with session.begin_nested():
-        invalid_schema_item = TrainingGroupSchemaItem(
+        ),
+        "23514",
+    )
+    await _assert_integrity_error(
+        session,
+        TrainingGroupSchemaItem(
             training_group_id=fixture.group_id,
             segment_id=fixture.segment_id,
             percentage=101,
             position=2,
-        )
-        session.add(invalid_schema_item)
-        with pytest.raises(IntegrityError) as percentage_error:
-            await session.flush()
-
-    assert percentage_error.value.orig.sqlstate == "23514"
+        ),
+        "23514",
+    )
 
 
 async def _assert_unique_constraints(
@@ -239,8 +235,9 @@ async def _assert_unique_constraints(
 ) -> None:
     """Verify unique constraints and partial indexes used by the catalog."""
 
-    async with session.begin_nested():
-        duplicate_trainer_exercise = TrainerExercise(
+    await _assert_integrity_error(
+        session,
+        TrainerExercise(
             trainer_id=fixture.trainer_id,
             exercise_id=fixture.exercise_id,
             status=TrainerExerciseStatus.ACTIVE,
@@ -249,52 +246,47 @@ async def _assert_unique_constraints(
             min_participants=2,
             max_participants=20,
             duration_minutes=10,
-        )
-        session.add(duplicate_trainer_exercise)
-        with pytest.raises(IntegrityError) as trainer_exercise_error:
-            await session.flush()
-
-    assert trainer_exercise_error.value.orig.sqlstate == "23505"
-
-    global_equipment_name = f"Global equipment {uuid4()}"
-    session.add(
-        Equipment(
-            name=global_equipment_name,
-            visibility=CatalogVisibility.GLOBAL,
-        )
+        ),
+        "23505",
     )
-    await session.flush()
+    await _assert_case_insensitive_global_catalog_uniqueness(session, Equipment)
+    await _assert_case_insensitive_global_catalog_uniqueness(session, TrainingType)
+
+
+async def _assert_integrity_error(
+    session: AsyncSession, record: object, expected_sqlstate: str
+) -> None:
+    """Assert that one insert fails with the expected PostgreSQL SQLSTATE."""
+
     async with session.begin_nested():
-        session.add(
-            Equipment(
-                name=global_equipment_name.upper(),
-                visibility=CatalogVisibility.GLOBAL,
-            )
-        )
-        with pytest.raises(IntegrityError) as equipment_error:
+        session.add(record)
+        with pytest.raises(IntegrityError) as error:
             await session.flush()
 
-    assert equipment_error.value.orig.sqlstate == "23505"
+    original_error = error.value.orig
+    assert _has_sqlstate(original_error)
+    assert original_error.sqlstate == expected_sqlstate
 
-    global_training_type_name = f"Global training type {uuid4()}"
-    session.add(
-        TrainingType(
-            name=global_training_type_name,
-            visibility=CatalogVisibility.GLOBAL,
-        )
+
+def _has_sqlstate(error: BaseException | None) -> TypeGuard[SqlStateError]:
+    """Narrow a driver exception to PostgreSQL's SQLSTATE error contract."""
+
+    return error is not None and isinstance(getattr(error, "sqlstate", None), str)
+
+
+async def _assert_case_insensitive_global_catalog_uniqueness(
+    session: AsyncSession, catalog_model: type[Equipment] | type[TrainingType]
+) -> None:
+    """Verify the case-insensitive unique index of one global catalog."""
+
+    name = f"Global catalog {uuid4()}"
+    session.add(catalog_model(name=name, visibility=CatalogVisibility.GLOBAL))
+    await session.flush()
+    await _assert_integrity_error(
+        session,
+        catalog_model(name=name.upper(), visibility=CatalogVisibility.GLOBAL),
+        "23505",
     )
-    await session.flush()
-    async with session.begin_nested():
-        session.add(
-            TrainingType(
-                name=global_training_type_name.upper(),
-                visibility=CatalogVisibility.GLOBAL,
-            )
-        )
-        with pytest.raises(IntegrityError) as training_type_error:
-            await session.flush()
-
-    assert training_type_error.value.orig.sqlstate == "23505"
 
 
 async def _assert_jsonb_snapshots(session: AsyncSession, fixture: ModelFixture) -> None:
