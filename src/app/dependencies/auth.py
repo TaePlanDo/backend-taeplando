@@ -20,6 +20,7 @@ async def get_current_user(
     session: Annotated[AsyncSession, Depends(get_db)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> UserResponse:
+    """Resolve the Bearer access token to the current user."""
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise AuthError("Not authenticated")
     try:

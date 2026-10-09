@@ -18,10 +18,12 @@ _google_oauth_initialized = False
 
 
 def is_google_oauth_configured(settings: Settings) -> bool:
+    """Return True when Google client id and secret are both set."""
     return bool(settings.google_client_id and settings.google_client_secret)
 
 
 def init_google_oauth(settings: Settings) -> None:
+    """Register the Authlib Google client once at application startup."""
     global _google_oauth_initialized
     if _google_oauth_initialized or not is_google_oauth_configured(settings):
         return
@@ -39,6 +41,7 @@ def init_google_oauth(settings: Settings) -> None:
 async def google_login_redirect(
     request: Request, settings: Settings
 ) -> RedirectResponse:
+    """Start the Google OAuth authorization redirect."""
     if not is_google_oauth_configured(settings):
         raise AuthError("Google OAuth is not configured", status_code=503)
     response: RedirectResponse = await oauth.google.authorize_redirect(
@@ -52,7 +55,7 @@ async def complete_google_login(
     session: AsyncSession,
     settings: Settings,
 ) -> str | None:
-    """Return a new refresh token, or None when Google OAuth fails."""
+    """Finish Google OAuth and return a new refresh token, or None on failure."""
     if not is_google_oauth_configured(settings):
         return None
 
@@ -74,6 +77,9 @@ async def complete_google_login(
     email = userinfo.get("email")
     if not oauth_subject or not email:
         logger.warning("Google OAuth userinfo missing sub or email")
+        return None
+    if userinfo.get("email_verified") is not True:
+        logger.warning("Google OAuth email is not verified")
         return None
 
     user = await users_db.upsert_oauth_user(

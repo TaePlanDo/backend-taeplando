@@ -9,11 +9,13 @@ from app.models.users import User
 
 
 async def get_user_by_email(session: AsyncSession, email: str) -> User | None:
+    """Return the user with this email, if any."""
     result = await session.execute(select(User).where(User.email == email))
     return result.scalar_one_or_none()
 
 
 async def get_user_by_id(session: AsyncSession, user_id: UUID) -> User | None:
+    """Return the user with this id, if any."""
     result = await session.execute(select(User).where(User.id == user_id))
     return result.scalar_one_or_none()
 
@@ -21,6 +23,7 @@ async def get_user_by_id(session: AsyncSession, user_id: UUID) -> User | None:
 async def get_user_by_oauth_subject(
     session: AsyncSession, oauth_subject: str
 ) -> User | None:
+    """Return the user linked to this OAuth subject, if any."""
     result = await session.execute(
         select(User).where(User.oauth_subject == oauth_subject)
     )
@@ -34,6 +37,7 @@ async def upsert_oauth_user(
     email: str,
     full_name: str | None,
 ) -> User:
+    """Create or update a Google OAuth user; raises AuthError on email clash."""
     user = await get_user_by_oauth_subject(session, oauth_subject)
     if user is None:
         await _ensure_email_available(session, email)
@@ -62,6 +66,7 @@ async def _ensure_email_available(
     *,
     exclude_user_id: UUID | None = None,
 ) -> None:
+    """Raise AuthError when the email belongs to a different user."""
     existing = await get_user_by_email(session, email)
     if existing is None:
         return

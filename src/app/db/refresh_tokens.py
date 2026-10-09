@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.users import RefreshToken
@@ -14,6 +14,7 @@ async def create_refresh_token(
     token_hash: str,
     expires_at: datetime,
 ) -> None:
+    """Persist a hashed refresh token for the given user."""
     session.add(
         RefreshToken(
             user_id=user_id,
@@ -24,21 +25,20 @@ async def create_refresh_token(
     await session.flush()
 
 
-async def get_refresh_token_by_hash(
+async def consume_refresh_token(
     session: AsyncSession, token_hash: str
 ) -> RefreshToken | None:
-    result = await session.execute(
-        select(RefreshToken).where(RefreshToken.token_hash == token_hash)
-    )
-    return result.scalar_one_or_none()
+    """Delete the refresh token by hash and return it, or None if missing.
 
-
-async def revoke_refresh_token(session: AsyncSession, token_hash: str) -> None:
+    Uses a single DELETE … RETURNING so concurrent refreshes cannot both
+    consume the same token.
+    """
     result = await session.execute(
-        select(RefreshToken).where(RefreshToken.token_hash == token_hash)
+        delete(RefreshToken)
+        .where(RefreshToken.token_hash == token_hash)
+        .returning(RefreshToken)
     )
-    row = result.scalar_one_or_none()
-    if row is None:
-        return
-    await session.delete(row)
-    await session.flush()
+    record = result.scalar_one_or_none()
+    if record is not None:
+        await session.flush()
+    return record

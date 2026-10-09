@@ -18,6 +18,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def _oauth_error_redirect(settings: Settings) -> RedirectResponse:
+    """Redirect the browser to the SPA login page with an OAuth error flag."""
     query = urlencode({"error": "oauth"})
     return RedirectResponse(
         url=f"{settings.frontend_url.rstrip('/')}/login?{query}",
@@ -32,6 +33,7 @@ async def login(
     session: Annotated[AsyncSession, Depends(get_db)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> TokenResponse:
+    """Log in with email/password and set the refresh cookie."""
     token_response, plain_refresh = await auth_service.login(
         session, body.email, body.password, settings
     )
@@ -46,6 +48,7 @@ async def refresh_token(
     session: Annotated[AsyncSession, Depends(get_db)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> TokenResponse:
+    """Rotate the refresh cookie and return a new access token."""
     refresh_value = request.cookies.get(settings.refresh_cookie_name)
     if not refresh_value:
         raise AuthError("Invalid or expired refresh token")
@@ -60,6 +63,7 @@ async def refresh_token(
 async def me(
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ) -> UserResponse:
+    """Return the currently authenticated user."""
     return current_user
 
 
@@ -68,6 +72,7 @@ async def google_login(
     request: Request,
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> Response:
+    """Start the Google OAuth login redirect."""
     return await google_login_redirect(request, settings)
 
 
@@ -77,6 +82,7 @@ async def google_oauth_callback(
     session: Annotated[AsyncSession, Depends(get_db)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> Response:
+    """Handle the Google OAuth callback and set the refresh cookie."""
     try:
         plain_refresh = await complete_google_login(request, session, settings)
     except AuthError:

@@ -18,6 +18,7 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """Initialize OAuth on startup and dispose the DB engine on shutdown."""
     init_google_oauth(settings)
     yield
     await dispose_engine()
@@ -40,4 +41,5 @@ app.include_router(auth_router)
 
 @app.exception_handler(AuthError)
 async def auth_error_handler(_request: Request, exc: AuthError) -> JSONResponse:
+    """Map domain AuthError to a FastAPI-style JSON error response."""
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})

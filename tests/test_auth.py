@@ -110,12 +110,8 @@ def test_refresh_rotates_token(client: TestClient, override_settings: Settings) 
 
     with (
         patch(
-            "app.db.refresh_tokens.get_refresh_token_by_hash",
+            "app.db.refresh_tokens.consume_refresh_token",
             new=AsyncMock(return_value=record),
-        ),
-        patch(
-            "app.db.refresh_tokens.revoke_refresh_token",
-            new=AsyncMock(),
         ),
         patch(
             "app.db.refresh_tokens.create_refresh_token",
@@ -139,7 +135,7 @@ def test_refresh_rejects_unknown_token(
         path=override_settings.refresh_cookie_path,
     )
     with patch(
-        "app.db.refresh_tokens.get_refresh_token_by_hash",
+        "app.db.refresh_tokens.consume_refresh_token",
         new=AsyncMock(return_value=None),
     ):
         response = client.post("/auth/refresh")

@@ -4,6 +4,7 @@ from app.core.config import Settings
 
 
 def set_refresh_cookie(response: Response, token: str, settings: Settings) -> None:
+    """Attach the HttpOnly refresh cookie to the response."""
     max_age = settings.refresh_token_expire_days * 24 * 60 * 60
     response.set_cookie(
         key=settings.refresh_cookie_name,

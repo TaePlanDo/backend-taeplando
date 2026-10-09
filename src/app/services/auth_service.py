@@ -19,6 +19,7 @@ from app.schemas.auth import TokenResponse, UserResponse
 
 
 def user_to_response(user: User) -> UserResponse:
+    """Map an ORM user to the public API shape."""
     return UserResponse(
         id=str(user.id),
         email=user.email,
@@ -33,6 +34,7 @@ async def login(
     password: str,
     settings: Settings,
 ) -> tuple[TokenResponse, str]:
+    """Authenticate with email/password and issue a new token pair."""
     user = await users_db.get_user_by_email(session, email)
     if user is None or user.password_hash is None:
         raise AuthError("Invalid credentials")
@@ -46,20 +48,20 @@ async def refresh(
     refresh_token: str,
     settings: Settings,
 ) -> tuple[TokenResponse, str]:
+    """Rotate a refresh token: consume the old one and issue a new pair."""
     token_hash = hash_refresh_token(refresh_token)
-    record = await refresh_tokens_db.get_refresh_token_by_hash(session, token_hash)
+    record = await refresh_tokens_db.consume_refresh_token(session, token_hash)
     if record is None:
         raise AuthError("Invalid or expired refresh token")
     if record.expires_at < datetime.now(UTC):
-        await refresh_tokens_db.revoke_refresh_token(session, token_hash)
         await session.commit()
         raise AuthError("Invalid or expired refresh token")
 
-    await refresh_tokens_db.revoke_refresh_token(session, token_hash)
     return await create_auth_tokens(session, record.user_id, settings)
 
 
 async def get_user_response(session: AsyncSession, user_id: UUID) -> UserResponse:
+    """Load the user for `/auth/me`, or raise if missing."""
     user = await users_db.get_user_by_id(session, user_id)
     if user is None:
         raise AuthError("Not authenticated")
@@ -71,6 +73,7 @@ async def create_auth_tokens(
     user_id: UUID,
     settings: Settings,
 ) -> tuple[TokenResponse, str]:
+    """Create an access JWT and a new persisted refresh token; commit once."""
     access_token, expires_in = create_access_token(user_id, settings)
     plain_refresh = generate_refresh_token()
     await refresh_tokens_db.create_refresh_token(

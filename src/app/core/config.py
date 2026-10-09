@@ -9,11 +9,15 @@ _DEV_SESSION_SECRET = "dev-session-secret-change-in-prod-min-32!!"
 
 
 class AppEnvironment(StrEnum):
+    """Runtime environment used for production-only checks."""
+
     DEVELOPMENT = "development"
     PRODUCTION = "production"
 
 
 class Settings(BaseSettings):
+    """Application settings loaded from environment variables and `.env`."""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -53,14 +57,17 @@ class Settings(BaseSettings):
     @field_validator("cors_origins")
     @classmethod
     def strip_cors_origins(cls, value: str) -> str:
+        """Trim surrounding whitespace from the raw CORS origins string."""
         return value.strip()
 
     @property
     def cors_origin_list(self) -> list[str]:
+        """Parse `cors_origins` into a list of non-empty origin URLs."""
         return [part.strip() for part in self.cors_origins.split(",") if part.strip()]
 
     @model_validator(mode="after")
     def require_strong_secrets_in_production(self) -> "Settings":
+        """Reject default/weak secrets when `environment` is production."""
         if self.environment != AppEnvironment.PRODUCTION:
             return self
         if self.jwt_secret == _DEV_JWT_SECRET:
@@ -74,4 +81,5 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
+    """Return the cached application settings instance."""
     return Settings()
