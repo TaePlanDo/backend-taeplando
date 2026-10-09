@@ -45,20 +45,14 @@ jobs:
       - name: Mypy
         run: uv run mypy src
 
-      - name: Apply database migrations
-        env:
-          DATABASE_URL: postgresql+asyncpg://taeplando:taeplando@localhost:5432/taeplando
-        run: uv run alembic upgrade head
-
       - name: Tests
-        env:
-          DATABASE_URL: postgresql+asyncpg://taeplando:taeplando@localhost:5432/taeplando
         run: uv run pytest
 
       - name: Verify Alembic migration round trip
         env:
           DATABASE_URL: postgresql+asyncpg://taeplando:taeplando@localhost:5432/taeplando
         run: |
+          uv run alembic upgrade head
           uv run alembic check
           uv run alembic downgrade base
           uv run alembic upgrade head
