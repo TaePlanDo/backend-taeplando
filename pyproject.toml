@@ -5,7 +5,10 @@ description = "FastAPI backend"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "asyncpg>=0.32.0",
     "fastapi>=0.115.0",
+    "pydantic-settings>=2.15.0",
+    "sqlalchemy>=2.1.4",
     "uvicorn[standard]>=0.32.0",
 ]
 
