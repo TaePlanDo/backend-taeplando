@@ -1,11 +1,8 @@
 import asyncio
 import sys
-from logging.config import fileConfig
 from pathlib import Path
-from typing import Any
 
 from alembic import context
-from sqlalchemy import Enum as SqlEnum
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
@@ -19,30 +16,8 @@ from app.models import Base
 # access to the values within the .ini file in use.
 config = context.config
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
-
 config.set_main_option("sqlalchemy.url", get_settings().require_database_url())
 target_metadata = Base.metadata
-
-
-def render_item(type_: str, obj: object, autogen_context: Any) -> str | bool:
-    """Render PostgreSQL enums without duplicate CREATE TYPE statements."""
-
-    if type_ != "type" or not isinstance(obj, SqlEnum):
-        return False
-
-    autogen_context.imports.add("from sqlalchemy.dialects import postgresql")
-    values = ", ".join(repr(value) for value in obj.enums)
-    return f"postgresql.ENUM({values}, name={obj.name!r}, create_type=False)"
-
-
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
 
 
 def run_migrations_offline() -> None:
@@ -75,8 +50,6 @@ def do_run_migrations(connection: Connection) -> None:
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
-        compare_type=True,
-        render_item=render_item,
     )
 
     with context.begin_transaction():
