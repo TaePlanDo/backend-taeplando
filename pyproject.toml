@@ -5,6 +5,7 @@ description = "FastAPI backend"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "alembic>=1.20.0",
     "asyncpg>=0.32.0",
     "fastapi>=0.115.0",
     "pydantic-settings>=2.15.0",
@@ -31,6 +32,9 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+"migrations/versions/*.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"
