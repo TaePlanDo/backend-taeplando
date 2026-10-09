@@ -8,6 +8,18 @@ on:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: taeplando
+          POSTGRES_USER: taeplando
+          POSTGRES_PASSWORD: taeplando
+        options: >-
+          --health-cmd "pg_isready -U taeplando -d taeplando"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -33,3 +45,12 @@ jobs:
 
       - name: Tests
         run: uv run pytest
+
+      - name: Verify Alembic migration round trip
+        env:
+          DATABASE_URL: postgresql+asyncpg://taeplando:taeplando@localhost:5432/taeplando
+        run: |
+          uv run alembic upgrade head
+          uv run alembic check
+          uv run alembic downgrade base
+          uv run alembic upgrade head
