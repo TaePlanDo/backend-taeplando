@@ -18,7 +18,9 @@ class Settings(BaseSettings):
         """Return the database URL or raise an error when it is missing."""
 
         if self.database_url is None:
-            message = "DATABASE_URL must be configured before connecting to the database."
+            message = (
+                "DATABASE_URL must be configured before connecting to the database."
+            )
             raise RuntimeError(message)
 
         return self.database_url
