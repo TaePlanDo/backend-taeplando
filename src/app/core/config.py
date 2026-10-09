@@ -4,6 +4,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """Application settings loaded from environment variables."""
+
     database_url: str | None = None
 
     model_config = SettingsConfigDict(
@@ -13,6 +15,8 @@ class Settings(BaseSettings):
     )
 
     def require_database_url(self) -> str:
+        """Return the database URL or raise an error when it is missing."""
+
         if self.database_url is None:
             message = "DATABASE_URL must be configured before connecting to the database."
             raise RuntimeError(message)
@@ -22,4 +26,6 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
+    """Create and cache application settings for the process lifetime."""
+
     return Settings()

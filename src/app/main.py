@@ -10,6 +10,8 @@ from app.db.session import dispose_engine
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    """Release database resources when the FastAPI application stops."""
+
     yield
     await dispose_engine()
 
