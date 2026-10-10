@@ -7,7 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.catalogs import TrainingSegment
-from app.models.training import TrainingGroup, TrainingGroupSchemaItem, TrainingPlan
+from app.models.training import (
+    TrainingGroup,
+    TrainingGroupSchemaItem,
+    TrainingPlan,
+    TrainingPlanExercise,
+)
 
 
 def _group_response_query() -> Select[TrainingGroup]:
@@ -17,6 +22,19 @@ def _group_response_query() -> Select[TrainingGroup]:
             TrainingGroupSchemaItem.segment
         ),
         selectinload(TrainingGroup.training_plans).load_only(TrainingPlan.id),
+    )
+
+
+def _group_delete_query() -> Select[TrainingGroup]:
+    """Load only the dependent rows required for ORM cascade deletion."""
+    return select(TrainingGroup).options(
+        selectinload(TrainingGroup.schema_items).load_only(
+            TrainingGroupSchemaItem.id
+        ),
+        selectinload(TrainingGroup.training_plans).load_only(TrainingPlan.id),
+        selectinload(TrainingGroup.training_plans)
+        .selectinload(TrainingPlan.exercises)
+        .load_only(TrainingPlanExercise.id),
     )
 
 
@@ -53,6 +71,16 @@ async def get_for_trainer(
         )
     )
     return result.scalar_one_or_none()
+
+
+async def list_for_deletion(
+    session: AsyncSession, trainer_id: UUID
+) -> list[TrainingGroup]:
+    """Return a trainer's groups with only the rows their cascade needs."""
+    result = await session.execute(
+        _group_delete_query().where(TrainingGroup.trainer_id == trainer_id)
+    )
+    return list(result.scalars().unique())
 
 
 async def get_training_segment_by_code(

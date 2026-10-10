@@ -38,6 +38,7 @@ async def list_groups(
     )
     return [_to_response(group) for group in groups]
 
+
 async def get_group(
     session: AsyncSession, trainer_id: UUID, group_id: UUID
 ) -> GroupResponse:
@@ -96,7 +97,7 @@ async def delete_all_trainer_groups(
     session: AsyncSession, trainer_id: UUID
 ) -> None:
     """Delete all of a trainer's groups and their dependent historical plans."""
-    groups = await training_groups_db.list_for_trainer(session, trainer_id)
+    groups = await training_groups_db.list_for_deletion(session, trainer_id)
     for group in groups:
         await session.delete(group)
     await session.commit()

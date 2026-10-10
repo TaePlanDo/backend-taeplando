@@ -47,8 +47,6 @@ class GroupSchemaItemResponse(BaseModel):
 class GroupResponse(BaseModel):
     """A trainer-owned group and the schema used for new training plans."""
 
-    model_config = ConfigDict(from_attributes=True)
-
     id: UUID
     trainer_id: UUID
     name: str
