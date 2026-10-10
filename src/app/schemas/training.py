@@ -1,4 +1,4 @@
-"""Request and response models for trainer-owned training groups."""
+"""Request and response models for trainer-owned groups."""
 
 from datetime import datetime
 from decimal import Decimal
@@ -7,8 +7,8 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
-class TrainingGroupWrite(BaseModel):
-    """Complete editable payload used to create or replace a training group."""
+class GroupWrite(BaseModel):
+    """Complete editable payload used to create or replace a group."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -27,14 +27,14 @@ class TrainingGroupWrite(BaseModel):
         return normalized
 
     @model_validator(mode="after")
-    def validate_age_range(self) -> "TrainingGroupWrite":
+    def validate_age_range(self) -> "GroupWrite":
         """Keep the API validation consistent with the database constraint."""
         if self.max_age < self.min_age:
             raise ValueError("max_age must be greater than or equal to min_age")
         return self
 
 
-class TrainingGroupSchemaItemResponse(BaseModel):
+class GroupSchemaItemResponse(BaseModel):
     """One immutable segment allocation in a group's current schema."""
 
     segment_id: int
@@ -44,7 +44,7 @@ class TrainingGroupSchemaItemResponse(BaseModel):
     position: int
 
 
-class TrainingGroupResponse(BaseModel):
+class GroupResponse(BaseModel):
     """A trainer-owned group and the schema used for new training plans."""
 
     model_config = ConfigDict(from_attributes=True)
@@ -58,6 +58,6 @@ class TrainingGroupResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     plan_ids: list[UUID]
-    schema_items: list[TrainingGroupSchemaItemResponse] = Field(
+    schema_items: list[GroupSchemaItemResponse] = Field(
         serialization_alias="schema"
     )

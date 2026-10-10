@@ -1,4 +1,4 @@
-"""Database queries for trainer-owned training groups."""
+"""Database queries for trainer-owned groups."""
 
 from uuid import UUID
 

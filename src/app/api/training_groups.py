@@ -1,4 +1,4 @@
-"""Authenticated API for a trainer's training groups."""
+"""Authenticated API for a trainer's groups."""
 
 from typing import Annotated
 from uuid import UUID
@@ -10,8 +10,8 @@ from app.db.session import get_db
 from app.dependencies.auth import get_current_user
 from app.schemas.auth import UserResponse
 from app.schemas.training import (
-    TrainingGroupResponse,
-    TrainingGroupWrite,
+    GroupResponse,
+    GroupWrite,
 )
 from app.services import training_group_service
 
@@ -44,16 +44,16 @@ def _ensure_current_trainer(trainer_id: UUID, current_trainer_id: UUID) -> None:
         )
 
 
-@router.get("", response_model=list[TrainingGroupResponse])
+@router.get("", response_model=list[GroupResponse])
 async def list_groups(
     trainer_id: CurrentTrainerId,
     session: Annotated[AsyncSession, Depends(get_db)],
     duration_minutes: Annotated[int | None, Query(gt=0)] = None,
     min_age: Annotated[int | None, Query(gt=0)] = None,
     max_age: Annotated[int | None, Query(gt=0)] = None,
-) -> list[TrainingGroupResponse]:
+) -> list[GroupResponse]:
     """List and optionally filter groups belonging to the authenticated trainer."""
-    return await training_group_service.list_training_groups(
+    return await training_group_service.list_groups(
         session,
         trainer_id,
         duration_minutes=duration_minutes,
@@ -63,47 +63,47 @@ async def list_groups(
 
 
 @router.post(
-    "", response_model=TrainingGroupResponse, status_code=status.HTTP_201_CREATED
+    "", response_model=GroupResponse, status_code=status.HTTP_201_CREATED
 )
 async def create_group(
-    payload: TrainingGroupWrite,
+    payload: GroupWrite,
     trainer_id: CurrentTrainerId,
     session: Annotated[AsyncSession, Depends(get_db)],
-) -> TrainingGroupResponse:
+) -> GroupResponse:
     """Create a group with the default 100% main-part schema."""
-    return await training_group_service.create_training_group(
+    return await training_group_service.create_group(
         session, trainer_id, payload
     )
 
 
-@router.get("/{group_id}", response_model=TrainingGroupResponse)
+@router.get("/{group_id}", response_model=GroupResponse)
 async def get_group(
     group_id: UUID,
     trainer_id: CurrentTrainerId,
     session: Annotated[AsyncSession, Depends(get_db)],
-) -> TrainingGroupResponse:
+) -> GroupResponse:
     """Return one group owned by the authenticated trainer."""
     try:
-        return await training_group_service.get_training_group(
+        return await training_group_service.get_group(
             session, trainer_id, group_id
         )
-    except training_group_service.TrainingGroupNotFoundError as exc:
+    except training_group_service.GroupNotFoundError as exc:
         raise _not_found() from exc
 
 
-@router.put("/{group_id}", response_model=TrainingGroupResponse)
+@router.put("/{group_id}", response_model=GroupResponse)
 async def put_group(
     group_id: UUID,
-    payload: TrainingGroupWrite,
+    payload: GroupWrite,
     trainer_id: CurrentTrainerId,
     session: Annotated[AsyncSession, Depends(get_db)],
-) -> TrainingGroupResponse:
+) -> GroupResponse:
     """Replace all editable fields of a group owned by the authenticated trainer."""
     try:
-        return await training_group_service.put_training_group(
+        return await training_group_service.put_group(
             session, trainer_id, group_id, payload
         )
-    except training_group_service.TrainingGroupNotFoundError as exc:
+    except training_group_service.GroupNotFoundError as exc:
         raise _not_found() from exc
 
 
@@ -129,9 +129,9 @@ async def delete_group(
 ) -> Response:
     """Delete an owned group together with its dependent historical plans."""
     try:
-        await training_group_service.delete_training_group(
+        await training_group_service.delete_group(
             session, trainer_id, group_id
         )
-    except training_group_service.TrainingGroupNotFoundError as exc:
+    except training_group_service.GroupNotFoundError as exc:
         raise _not_found() from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)

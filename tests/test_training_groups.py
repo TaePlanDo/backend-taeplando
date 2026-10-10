@@ -11,12 +11,12 @@ from app.models.catalogs import TrainingSegment
 from app.models.training import TrainingGroup, TrainingPlan
 from app.schemas.auth import UserResponse
 from app.schemas.training import (
-    TrainingGroupResponse,
-    TrainingGroupSchemaItemResponse,
-    TrainingGroupWrite,
+    GroupResponse,
+    GroupSchemaItemResponse,
+    GroupWrite,
 )
 from app.services import training_group_service
-from app.services.training_group_service import TrainingGroupNotFoundError
+from app.services.training_group_service import GroupNotFoundError
 
 TRAINER_ID = UUID("d9aa16f7-b30a-4887-890b-247f86a2eef5")
 GROUP_ID = UUID("0ac590e1-2a46-4cb7-8944-803e364cc46b")
@@ -38,9 +38,9 @@ def authenticated_trainer() -> None:
     app.dependency_overrides.pop(get_current_user, None)
 
 
-def _group_response() -> TrainingGroupResponse:
+def _group_response() -> GroupResponse:
     """Build one complete group response used by route tests."""
-    return TrainingGroupResponse(
+    return GroupResponse(
         id=GROUP_ID,
         trainer_id=TRAINER_ID,
         name="Młodzież",
@@ -51,7 +51,7 @@ def _group_response() -> TrainingGroupResponse:
         updated_at=UPDATED_AT,
         plan_ids=[PLAN_ID],
         schema_items=[
-            TrainingGroupSchemaItemResponse(
+            GroupSchemaItemResponse(
                 segment_id=3,
                 segment_code="MAIN",
                 segment_name="Część główna",
@@ -68,7 +68,7 @@ def test_list_groups_returns_only_current_trainers_groups(
     """List only the OAuth trainer's groups and forward the optional filters."""
     group = _group_response()
     with patch(
-        "app.api.training_groups.training_group_service.list_training_groups",
+        "app.api.training_groups.training_group_service.list_groups",
         new=AsyncMock(return_value=[group]),
     ) as list_groups:
         response = client.get(
@@ -92,7 +92,7 @@ def test_create_group_uses_authenticated_trainer_and_returns_service_response(
     """Create a group for the OAuth trainer and serialize the service response."""
     group = _group_response()
     with patch(
-        "app.api.training_groups.training_group_service.create_training_group",
+        "app.api.training_groups.training_group_service.create_group",
         new=AsyncMock(return_value=group),
     ) as create_group:
         response = client.post(
@@ -118,13 +118,13 @@ def test_create_group_uses_authenticated_trainer_and_returns_service_response(
     assert create_group.await_args.args[1] == TRAINER_ID
 
 
-def test_create_training_group_builds_the_default_main_schema() -> None:
+def test_create_group_builds_the_default_main_schema() -> None:
     """Create each group with one 100% MAIN schema item."""
     session = MagicMock()
     session.commit = AsyncMock()
     main_segment = TrainingSegment(id=3, code="MAIN", name="Część główna")
     expected_response = _group_response()
-    payload = TrainingGroupWrite(
+    payload = GroupWrite(
         name="Młodzież", min_age=7, max_age=14, duration_minutes=60
     )
     with (
@@ -139,7 +139,7 @@ def test_create_training_group_builds_the_default_main_schema() -> None:
         ),
     ):
         result = asyncio.run(
-            training_group_service.create_training_group(session, TRAINER_ID, payload)
+            training_group_service.create_group(session, TRAINER_ID, payload)
         )
 
     group = session.add.call_args.args[0]
@@ -173,7 +173,7 @@ def test_create_group_rejects_identifiers_in_body(
 ) -> None:
     """Reject IDs because ownership is derived from the OAuth user."""
     with patch(
-        "app.api.training_groups.training_group_service.create_training_group",
+        "app.api.training_groups.training_group_service.create_group",
         new=AsyncMock(),
     ) as create_group:
         response = client.post(
@@ -197,8 +197,8 @@ def test_get_group_returns_not_found_for_a_foreign_or_missing_group(
 ) -> None:
     """Do not expose whether a missing group belongs to another trainer."""
     with patch(
-        "app.api.training_groups.training_group_service.get_training_group",
-        new=AsyncMock(side_effect=TrainingGroupNotFoundError),
+        "app.api.training_groups.training_group_service.get_group",
+        new=AsyncMock(side_effect=GroupNotFoundError),
     ):
         response = client.get(f"/training-groups/{uuid4()}")
 
@@ -210,7 +210,7 @@ def test_get_group_returns_only_plan_identifiers(client, authenticated_trainer) 
     """Expose related plan UUIDs without embedding complete plan records."""
     group = _group_response()
     with patch(
-        "app.api.training_groups.training_group_service.get_training_group",
+        "app.api.training_groups.training_group_service.get_group",
         new=AsyncMock(return_value=group),
     ):
         response = client.get(f"/training-groups/{GROUP_ID}")
@@ -229,7 +229,7 @@ def test_put_group_requires_all_editable_fields(client, authenticated_trainer) -
 def test_put_group_rejects_identifiers_in_body(client, authenticated_trainer) -> None:
     """Reject IDs because the URL and OAuth context supply them."""
     with patch(
-        "app.api.training_groups.training_group_service.put_training_group",
+        "app.api.training_groups.training_group_service.put_group",
         new=AsyncMock(),
     ) as put_group:
         response = client.put(
@@ -252,7 +252,7 @@ def test_put_group_replaces_all_editable_fields(client, authenticated_trainer) -
     """Forward a complete mutable payload to the current trainer's service call."""
     group = _group_response()
     with patch(
-        "app.api.training_groups.training_group_service.put_training_group",
+        "app.api.training_groups.training_group_service.put_group",
         new=AsyncMock(return_value=group),
     ) as put_group:
         response = client.put(
@@ -281,7 +281,7 @@ def test_delete_group_returns_no_content_after_success(
 ) -> None:
     """Return an empty successful response after removing one owned group."""
     with patch(
-        "app.api.training_groups.training_group_service.delete_training_group",
+        "app.api.training_groups.training_group_service.delete_group",
         new=AsyncMock(),
     ) as delete_group:
         response = client.delete(f"/training-groups/{GROUP_ID}")
@@ -291,7 +291,7 @@ def test_delete_group_returns_no_content_after_success(
     assert delete_group.await_args.args[1] == TRAINER_ID
 
 
-def test_delete_training_group_deletes_the_owned_group() -> None:
+def test_delete_group_deletes_the_owned_group() -> None:
     """Delegate deletion of an owned group to the SQLAlchemy session."""
     session = AsyncMock()
     group = MagicMock(id=GROUP_ID)
@@ -300,7 +300,7 @@ def test_delete_training_group_deletes_the_owned_group() -> None:
         new=AsyncMock(return_value=group),
     ):
         asyncio.run(
-            training_group_service.delete_training_group(session, TRAINER_ID, GROUP_ID)
+            training_group_service.delete_group(session, TRAINER_ID, GROUP_ID)
         )
 
     session.delete.assert_awaited_once_with(group)

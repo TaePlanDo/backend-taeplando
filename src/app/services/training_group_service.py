@@ -1,4 +1,4 @@
-"""Business operations for a trainer's training groups."""
+"""Business operations for a trainer's groups."""
 
 from uuid import UUID
 
@@ -8,26 +8,26 @@ from app.db import training_groups as training_groups_db
 from app.models.catalogs import TrainingSegment
 from app.models.training import TrainingGroup, TrainingGroupSchemaItem
 from app.schemas.training import (
-    TrainingGroupResponse,
-    TrainingGroupSchemaItemResponse,
-    TrainingGroupWrite,
+    GroupResponse,
+    GroupSchemaItemResponse,
+    GroupWrite,
 )
 
 MAIN_SEGMENT_CODE = "MAIN"
 
 
-class TrainingGroupNotFoundError(Exception):
+class GroupNotFoundError(Exception):
     """Raised when a group is absent or belongs to another trainer."""
 
 
-async def list_training_groups(
+async def list_groups(
     session: AsyncSession,
     trainer_id: UUID,
     *,
     duration_minutes: int | None = None,
     min_age: int | None = None,
     max_age: int | None = None,
-) -> list[TrainingGroupResponse]:
+) -> list[GroupResponse]:
     """List the groups owned by one trainer."""
     groups = await training_groups_db.list_for_trainer(
         session,
@@ -38,18 +38,17 @@ async def list_training_groups(
     )
     return [_to_response(group) for group in groups]
 
-
-async def get_training_group(
+async def get_group(
     session: AsyncSession, trainer_id: UUID, group_id: UUID
-) -> TrainingGroupResponse:
+) -> GroupResponse:
     """Return a single owned group, without disclosing other trainers' data."""
     group = await _get_owned_group_or_raise(session, trainer_id, group_id)
     return _to_response(group)
 
 
-async def create_training_group(
-    session: AsyncSession, trainer_id: UUID, payload: TrainingGroupWrite
-) -> TrainingGroupResponse:
+async def create_group(
+    session: AsyncSession, trainer_id: UUID, payload: GroupWrite
+) -> GroupResponse:
     """Create a group with its required 100% main-part starting schema."""
     main_segment = await _get_main_segment(session)
     group = TrainingGroup(
@@ -68,12 +67,12 @@ async def create_training_group(
     return _to_response(group)
 
 
-async def put_training_group(
+async def put_group(
     session: AsyncSession,
     trainer_id: UUID,
     group_id: UUID,
-    payload: TrainingGroupWrite,
-) -> TrainingGroupResponse:
+    payload: GroupWrite,
+) -> GroupResponse:
     """Replace all editable fields of a group owned by the current trainer."""
     group = await _get_owned_group_or_raise(session, trainer_id, group_id)
     group.name = payload.name
@@ -84,7 +83,7 @@ async def put_training_group(
     return _to_response(group)
 
 
-async def delete_training_group(
+async def delete_group(
     session: AsyncSession, trainer_id: UUID, group_id: UUID
 ) -> None:
     """Delete an owned group together with its dependent historical plans."""
@@ -109,7 +108,7 @@ async def _get_owned_group_or_raise(
     """Return an owned group or raise a uniform not-found outcome."""
     group = await training_groups_db.get_for_trainer(session, trainer_id, group_id)
     if group is None:
-        raise TrainingGroupNotFoundError
+        raise GroupNotFoundError
     return group
 
 
@@ -123,9 +122,9 @@ async def _get_main_segment(session: AsyncSession) -> TrainingSegment:
     return segment
 
 
-def _to_response(group: TrainingGroup) -> TrainingGroupResponse:
+def _to_response(group: TrainingGroup) -> GroupResponse:
     """Map an ORM group to the complete API contract."""
-    return TrainingGroupResponse(
+    return GroupResponse(
         id=group.id,
         trainer_id=group.trainer_id,
         name=group.name,
@@ -136,7 +135,7 @@ def _to_response(group: TrainingGroup) -> TrainingGroupResponse:
         updated_at=group.updated_at,
         plan_ids=sorted(plan.id for plan in group.training_plans),
         schema_items=[
-            TrainingGroupSchemaItemResponse(
+            GroupSchemaItemResponse(
                 segment_id=item.segment.id,
                 segment_code=item.segment.code,
                 segment_name=item.segment.name,
