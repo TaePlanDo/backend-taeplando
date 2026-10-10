@@ -28,9 +28,7 @@ def _group_response_query() -> Select[TrainingGroup]:
 def _group_delete_query() -> Select[TrainingGroup]:
     """Load only the dependent rows required for ORM cascade deletion."""
     return select(TrainingGroup).options(
-        selectinload(TrainingGroup.schema_items).load_only(
-            TrainingGroupSchemaItem.id
-        ),
+        selectinload(TrainingGroup.schema_items).load_only(TrainingGroupSchemaItem.id),
         selectinload(TrainingGroup.training_plans).load_only(TrainingPlan.id),
         selectinload(TrainingGroup.training_plans)
         .selectinload(TrainingPlan.exercises)

@@ -62,18 +62,14 @@ async def list_groups(
     )
 
 
-@router.post(
-    "", response_model=GroupResponse, status_code=status.HTTP_201_CREATED
-)
+@router.post("", response_model=GroupResponse, status_code=status.HTTP_201_CREATED)
 async def create_group(
     payload: GroupWrite,
     trainer_id: CurrentTrainerId,
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> GroupResponse:
     """Create a group with the default 100% main-part schema."""
-    return await training_group_service.create_group(
-        session, trainer_id, payload
-    )
+    return await training_group_service.create_group(session, trainer_id, payload)
 
 
 @router.get("/{group_id}", response_model=GroupResponse)
@@ -84,9 +80,7 @@ async def get_group(
 ) -> GroupResponse:
     """Return one group owned by the authenticated trainer."""
     try:
-        return await training_group_service.get_group(
-            session, trainer_id, group_id
-        )
+        return await training_group_service.get_group(session, trainer_id, group_id)
     except training_group_service.GroupNotFoundError as exc:
         raise _not_found() from exc
 
@@ -115,9 +109,7 @@ async def delete_all_trainer_groups(
 ) -> Response:
     """Delete all groups of the OAuth-authenticated trainer named in the path."""
     _ensure_current_trainer(trainer_id, current_trainer_id)
-    await training_group_service.delete_all_trainer_groups(
-        session, current_trainer_id
-    )
+    await training_group_service.delete_all_trainer_groups(session, current_trainer_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -129,9 +121,7 @@ async def delete_group(
 ) -> Response:
     """Delete an owned group together with its dependent historical plans."""
     try:
-        await training_group_service.delete_group(
-            session, trainer_id, group_id
-        )
+        await training_group_service.delete_group(session, trainer_id, group_id)
     except training_group_service.GroupNotFoundError as exc:
         raise _not_found() from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)

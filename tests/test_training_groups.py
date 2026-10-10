@@ -124,9 +124,7 @@ def test_create_group_builds_the_default_main_schema() -> None:
     session.commit = AsyncMock()
     main_segment = TrainingSegment(id=3, code="MAIN", name="Część główna")
     expected_response = _group_response()
-    payload = GroupWrite(
-        name="Młodzież", min_age=7, max_age=14, duration_minutes=60
-    )
+    payload = GroupWrite(name="Młodzież", min_age=7, max_age=14, duration_minutes=60)
     with (
         patch(
             "app.db.training_groups.get_training_segment_by_code",
@@ -299,9 +297,7 @@ def test_delete_group_deletes_the_owned_group() -> None:
         "app.db.training_groups.get_for_deletion",
         new=AsyncMock(return_value=group),
     ):
-        asyncio.run(
-            training_group_service.delete_group(session, TRAINER_ID, GROUP_ID)
-        )
+        asyncio.run(training_group_service.delete_group(session, TRAINER_ID, GROUP_ID))
 
     session.delete.assert_awaited_once_with(group)
     session.commit.assert_awaited_once()

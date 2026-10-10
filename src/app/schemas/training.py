@@ -56,6 +56,4 @@ class GroupResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     plan_ids: list[UUID]
-    schema_items: list[GroupSchemaItemResponse] = Field(
-        serialization_alias="schema"
-    )
+    schema_items: list[GroupSchemaItemResponse] = Field(serialization_alias="schema")
