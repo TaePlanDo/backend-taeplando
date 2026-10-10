@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Sequence
 from typing import Any, TypedDict
 from uuid import UUID
@@ -10,6 +11,7 @@ from uuid import UUID
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import hash_password
 from app.db.session import dispose_engine, get_session_factory
 from app.models.associations import (
     trainer_exercise_equipment,
@@ -32,6 +34,12 @@ from app.models.training import (
 )
 from app.models.users import User
 
+logger = logging.getLogger(__name__)
+
+# Local development credentials for the deterministic demo trainer.
+DEMO_TRAINER_EMAIL = "demo.trener@gmail.com"
+DEMO_TRAINER_PASSWORD = "Demo123!"
+
 
 class TrainingSegmentSeed(TypedDict):
     """One immutable entry of the system training-segment dictionary."""
@@ -39,6 +47,15 @@ class TrainingSegmentSeed(TypedDict):
     id: int
     code: str
     name: str
+
+
+class LocalUserSeed(TypedDict):
+    """One local user created by the development seed."""
+
+    id: UUID
+    email: str
+    full_name: str
+    password: str
 
 
 SYSTEM_TRAINING_SEGMENTS: Sequence[TrainingSegmentSeed] = (
@@ -60,15 +77,20 @@ DEMO_MAIN_SCHEMA_ITEM_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a08")
 DEMO_COOLDOWN_SCHEMA_ITEM_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a09")
 DEMO_TRAINING_PLAN_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a10")
 DEMO_PLAN_EXERCISE_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a11")
-# Local development only. Plain-text password: Demo123!
-DEMO_TRAINER_PASSWORD_HASH = (
-    "$2b$12$lKh3KdhbwN93vZ0SYbtWFuO15sk0Y.H64xZaP3v6hGaaqqKe2S.Mm"
+DEMO_LOCAL_USERS: Sequence[LocalUserSeed] = (
+    {
+        "id": DEMO_TRAINER_ID,
+        "email": DEMO_TRAINER_EMAIL,
+        "full_name": "Trener demonstracyjny",
+        "password": DEMO_TRAINER_PASSWORD,
+    },
 )
 
 
 async def seed_training_segments(session: AsyncSession) -> None:
     """Insert or restore the fixed training-segment dictionary."""
 
+    logger.info("Seeding %d fixed training segments", len(SYSTEM_TRAINING_SEGMENTS))
     statement = insert(TrainingSegment).values(list(SYSTEM_TRAINING_SEGMENTS))
     await session.execute(
         statement.on_conflict_do_update(
@@ -90,28 +112,38 @@ async def insert_if_missing(
     await session.execute(statement.on_conflict_do_nothing(index_elements=[table.c.id]))
 
 
-async def seed_demo_data(session: AsyncSession) -> None:
-    """Insert one connected trainer, group, exercise, and example plan."""
+async def upsert_local_user(session: AsyncSession, user: LocalUserSeed) -> None:
+    """Create or update a deterministic local user with a fresh bcrypt hash."""
 
-    demo_trainer = insert(User).values(
-        id=DEMO_TRAINER_ID,
-        email="demo.trener@gmail.com",
-        full_name="Trener demonstracyjny",
+    statement = insert(User).values(
+        id=user["id"],
+        email=user["email"],
+        full_name=user["full_name"],
         auth_method=AuthMethod.LOCAL,
-        password_hash=DEMO_TRAINER_PASSWORD_HASH,
+        password_hash=hash_password(user["password"]),
     )
     await session.execute(
-        demo_trainer.on_conflict_do_update(
+        statement.on_conflict_do_update(
             index_elements=[User.id],
             set_={
-                "email": demo_trainer.excluded.email,
-                "full_name": demo_trainer.excluded.full_name,
-                "auth_method": demo_trainer.excluded.auth_method,
-                "password_hash": demo_trainer.excluded.password_hash,
+                "email": statement.excluded.email,
+                "full_name": statement.excluded.full_name,
+                "auth_method": statement.excluded.auth_method,
+                "password_hash": statement.excluded.password_hash,
                 "oauth_subject": None,
             },
         )
     )
+
+
+async def seed_demo_data(session: AsyncSession) -> None:
+    """Insert one connected trainer, group, exercise, and example plan."""
+
+    logger.info("Seeding %d local demo users", len(DEMO_LOCAL_USERS))
+    for user in DEMO_LOCAL_USERS:
+        await upsert_local_user(session, user)
+
+    logger.info("Seeding demo catalog, group, and training plan")
     await insert_if_missing(
         session,
         Equipment.__table__,
@@ -284,10 +316,12 @@ async def seed_demo_data(session: AsyncSession) -> None:
 async def seed_system_data() -> None:
     """Apply all system seed data in one transaction."""
 
+    logger.info("Starting system-data seed transaction")
     async with get_session_factory()() as session:
         async with session.begin():
             await seed_training_segments(session)
             await seed_demo_data(session)
+    logger.info("System-data seed transaction completed")
 
 
 async def run_seed_command() -> None:
@@ -295,6 +329,9 @@ async def run_seed_command() -> None:
 
     try:
         await seed_system_data()
+    except Exception:
+        logger.exception("System-data seed failed")
+        raise
     finally:
         await dispose_engine()
 
@@ -302,6 +339,10 @@ async def run_seed_command() -> None:
 def main() -> None:
     """Run the system-data seed command."""
 
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
     asyncio.run(run_seed_command())
 
 
