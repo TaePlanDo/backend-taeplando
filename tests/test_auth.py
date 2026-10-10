@@ -242,6 +242,51 @@ def test_logout_revokes_refresh_token(
     db_session.commit.assert_awaited()
 
 
+def test_logout_with_invalid_cookie_clears_cookie(
+    client: TestClient,
+    override_settings: Settings,
+    db_session: AsyncMock,
+) -> None:
+    client.cookies.set(
+        override_settings.refresh_cookie_name,
+        "not-a-valid-refresh-token",
+        path=override_settings.refresh_cookie_path,
+    )
+    consume = AsyncMock(return_value=None)
+
+    with patch("app.db.refresh_tokens.consume_refresh_token", new=consume):
+        response = client.post("/auth/logout")
+
+    assert response.status_code == 204
+    consume.assert_awaited_once()
+    db_session.commit.assert_awaited()
+    set_cookie = response.headers.get("set-cookie", "")
+    assert override_settings.refresh_cookie_name in set_cookie
+    assert "Max-Age=0" in set_cookie or "max-age=0" in set_cookie.lower()
+
+
+def test_logout_clears_cookie_when_revoke_fails(
+    client: TestClient,
+    override_settings: Settings,
+) -> None:
+    client.cookies.set(
+        override_settings.refresh_cookie_name,
+        "logout-refresh-token",
+        path=override_settings.refresh_cookie_path,
+    )
+
+    with patch(
+        "app.services.auth_service.logout",
+        new=AsyncMock(side_effect=RuntimeError("db unavailable")),
+    ):
+        response = client.post("/auth/logout")
+
+    assert response.status_code == 204
+    set_cookie = response.headers.get("set-cookie", "")
+    assert override_settings.refresh_cookie_name in set_cookie
+    assert "Max-Age=0" in set_cookie or "max-age=0" in set_cookie.lower()
+
+
 def test_consume_refresh_token_deletes_row() -> None:
     """consume_refresh_token must DELETE the row (not only SELECT it)."""
     token_hash = hash_refresh_token("plain-refresh")

@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated
 from urllib.parse import urlencode
 
@@ -13,6 +14,8 @@ from app.dependencies.auth import get_current_user
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserResponse
 from app.services import auth_service
 from app.services.oauth_service import complete_google_login, google_login_redirect
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -89,9 +92,15 @@ async def logout(
     session: Annotated[AsyncSession, Depends(get_db)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> None:
-    """Revoke the refresh session and clear the refresh cookie."""
+    """Best-effort revoke of the refresh session; always clear the cookie."""
     refresh_value = request.cookies.get(settings.refresh_cookie_name)
-    await auth_service.logout(session, refresh_value)
+    try:
+        await auth_service.logout(session, refresh_value)
+    except Exception:
+        logger.exception(
+            "Failed to revoke refresh token during logout (refresh_token=%r)",
+            refresh_value,
+        )
     clear_refresh_cookie(response, settings)
 
 
