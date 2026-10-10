@@ -7,8 +7,8 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
-class TrainingGroupCreate(BaseModel):
-    """Payload used to create a training group."""
+class TrainingGroupWrite(BaseModel):
+    """Complete editable payload used to create or replace a training group."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -27,15 +27,11 @@ class TrainingGroupCreate(BaseModel):
         return normalized
 
     @model_validator(mode="after")
-    def validate_age_range(self) -> "TrainingGroupCreate":
+    def validate_age_range(self) -> "TrainingGroupWrite":
         """Keep the API validation consistent with the database constraint."""
         if self.max_age < self.min_age:
             raise ValueError("max_age must be greater than or equal to min_age")
         return self
-
-
-class TrainingGroupReplace(TrainingGroupCreate):
-    """Complete payload used to replace a training group through PUT."""
 
 
 class TrainingGroupSchemaItemResponse(BaseModel):

@@ -2,17 +2,15 @@
 
 from uuid import UUID
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import training_groups as training_groups_db
 from app.models.catalogs import TrainingSegment
 from app.models.training import TrainingGroup, TrainingGroupSchemaItem
 from app.schemas.training import (
-    TrainingGroupCreate,
-    TrainingGroupReplace,
     TrainingGroupResponse,
     TrainingGroupSchemaItemResponse,
+    TrainingGroupWrite,
 )
 
 MAIN_SEGMENT_CODE = "MAIN"
@@ -50,7 +48,7 @@ async def get_training_group(
 
 
 async def create_training_group(
-    session: AsyncSession, trainer_id: UUID, payload: TrainingGroupCreate
+    session: AsyncSession, trainer_id: UUID, payload: TrainingGroupWrite
 ) -> TrainingGroupResponse:
     """Create a group with its required 100% main-part starting schema."""
     main_segment = await _get_main_segment(session)
@@ -74,7 +72,7 @@ async def put_training_group(
     session: AsyncSession,
     trainer_id: UUID,
     group_id: UUID,
-    payload: TrainingGroupReplace,
+    payload: TrainingGroupWrite,
 ) -> TrainingGroupResponse:
     """Replace all editable fields of a group owned by the current trainer."""
     group = await _get_owned_group_or_raise(session, trainer_id, group_id)
@@ -117,10 +115,9 @@ async def _get_owned_group_or_raise(
 
 async def _get_main_segment(session: AsyncSession) -> TrainingSegment:
     """Resolve the fixed dictionary item used by every new group's schema."""
-    result = await session.execute(
-        select(TrainingSegment).where(TrainingSegment.code == MAIN_SEGMENT_CODE)
+    segment = await training_groups_db.get_training_segment_by_code(
+        session, MAIN_SEGMENT_CODE
     )
-    segment = result.scalar_one_or_none()
     if segment is None:
         raise RuntimeError("The MAIN training segment has not been seeded")
     return segment

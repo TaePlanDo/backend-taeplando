@@ -6,6 +6,7 @@ from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.models.catalogs import TrainingSegment
 from app.models.training import TrainingGroup, TrainingGroupSchemaItem, TrainingPlan
 
 
@@ -50,5 +51,15 @@ async def get_for_trainer(
             TrainingGroup.id == group_id,
             TrainingGroup.trainer_id == trainer_id,
         )
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_training_segment_by_code(
+    session: AsyncSession, code: str
+) -> TrainingSegment | None:
+    """Return one fixed training-schema segment by its immutable code."""
+    result = await session.execute(
+        select(TrainingSegment).where(TrainingSegment.code == code)
     )
     return result.scalar_one_or_none()
