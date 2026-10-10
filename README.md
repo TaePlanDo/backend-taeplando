@@ -84,6 +84,31 @@ Duplicate email on register returns `409` with `{"detail":"Email already registe
 Refresh cookie path defaults to `/api/auth` (Vite proxy) so both refresh and logout receive it.
 After logout, `/auth/refresh` fails and `/auth/me` still requires a valid (unexpired) access JWT.
 
+## Training groups API (short)
+
+All endpoints below require `Authorization: Bearer <access-token>` and operate
+only on groups owned by that trainer.
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| `GET` | `/training-groups?duration_minutes=60&min_age=7&max_age=14` | List and optionally filter the trainer's groups, including `plan_ids`. |
+| `POST` | `/training-groups` | Create a group from `name`, `min_age`, `max_age`, and `duration_minutes`; its starting schema is 100% `MAIN`. |
+| `GET` | `/training-groups/{group_id}` | Return one owned group, including its `plan_ids`. |
+| `PUT` | `/training-groups/{group_id}` | Replace all editable group fields; the body never accepts `id` or `trainer_id`. |
+| `DELETE` | `/training-groups/{group_id}` | Delete a group together with its plans and plan exercises. |
+| `DELETE` | `/training-groups/trainer/{trainer_id}` | Delete all groups of the OAuth-authenticated trainer only. |
+
+Example creation payload:
+
+```json
+{
+  "name": "Młodzież początkująca",
+  "min_age": 7,
+  "max_age": 14,
+  "duration_minutes": 60
+}
+```
+
 ## Quality checks
 
 ```powershell
