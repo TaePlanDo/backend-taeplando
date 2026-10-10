@@ -83,6 +83,19 @@ async def list_for_deletion(
     return list(result.scalars().unique())
 
 
+async def get_for_deletion(
+    session: AsyncSession, trainer_id: UUID, group_id: UUID
+) -> TrainingGroup | None:
+    """Find one owned group with only the rows its cascade needs."""
+    result = await session.execute(
+        _group_delete_query().where(
+            TrainingGroup.id == group_id,
+            TrainingGroup.trainer_id == trainer_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
 async def get_training_segment_by_code(
     session: AsyncSession, code: str
 ) -> TrainingSegment | None:

@@ -88,7 +88,9 @@ async def delete_group(
     session: AsyncSession, trainer_id: UUID, group_id: UUID
 ) -> None:
     """Delete an owned group together with its dependent historical plans."""
-    group = await _get_owned_group_or_raise(session, trainer_id, group_id)
+    group = await training_groups_db.get_for_deletion(session, trainer_id, group_id)
+    if group is None:
+        raise GroupNotFoundError
     await session.delete(group)
     await session.commit()
 

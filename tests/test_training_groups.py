@@ -296,7 +296,7 @@ def test_delete_group_deletes_the_owned_group() -> None:
     session = AsyncMock()
     group = MagicMock(id=GROUP_ID)
     with patch(
-        "app.db.training_groups.get_for_trainer",
+        "app.db.training_groups.get_for_deletion",
         new=AsyncMock(return_value=group),
     ):
         asyncio.run(
