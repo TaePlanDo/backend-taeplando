@@ -22,7 +22,7 @@ def test_settings() -> Settings:
     return Settings(
         jwt_secret="test-jwt-secret-at-least-32-bytes-long",
         session_secret="test-session-secret-at-least-32-bytes",
-        refresh_cookie_path="/auth/refresh",
+        refresh_cookie_path="/auth",
         refresh_cookie_secure=False,
         frontend_url="http://localhost:5173",
         google_client_id="",
@@ -44,7 +44,7 @@ def client() -> Iterator[TestClient]:
 
 
 @pytest.fixture(autouse=True)
-def _override_db_session() -> Iterator[AsyncMock]:
+def db_session() -> Iterator[AsyncMock]:
     """Avoid a real PostgreSQL connection in unit tests."""
     session = AsyncMock(spec=AsyncSession)
 

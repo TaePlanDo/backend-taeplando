@@ -60,6 +60,15 @@ async def refresh(
     return await create_auth_tokens(session, record.user_id, settings)
 
 
+async def logout(session: AsyncSession, refresh_token: str | None) -> None:
+    """Invalidate the presented refresh session on the server, if any."""
+    if not refresh_token:
+        return
+    token_hash = hash_refresh_token(refresh_token)
+    await refresh_tokens_db.consume_refresh_token(session, token_hash)
+    await session.commit()
+
+
 async def get_user_response(session: AsyncSession, user_id: UUID) -> UserResponse:
     """Load the user for `/auth/me`, or raise if missing."""
     user = await users_db.get_user_by_id(session, user_id)

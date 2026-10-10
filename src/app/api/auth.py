@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import RedirectResponse
 
 from app.core.config import Settings, get_settings
-from app.core.cookies import set_refresh_cookie
+from app.core.cookies import clear_refresh_cookie, set_refresh_cookie
 from app.core.errors import AuthError
 from app.db.session import get_db
 from app.dependencies.auth import get_current_user
@@ -57,6 +57,19 @@ async def refresh_token(
     )
     set_refresh_cookie(response, plain_refresh, settings)
     return token_response
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(
+    request: Request,
+    response: Response,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> None:
+    """Revoke the refresh session and clear the refresh cookie."""
+    refresh_value = request.cookies.get(settings.refresh_cookie_name)
+    await auth_service.logout(session, refresh_value)
+    clear_refresh_cookie(response, settings)
 
 
 @router.get("/me", response_model=UserResponse)

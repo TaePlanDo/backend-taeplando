@@ -27,6 +27,20 @@
 If port `5432` is already used, set the same free port in both `POSTGRES_PORT`
 and `DATABASE_URL` (for example `5433`).
 
+## Auth API (short)
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| `POST` | `/auth/login` | Email/password → access JWT + HttpOnly refresh cookie |
+| `POST` | `/auth/refresh` | Cookie → new access JWT + rotated refresh cookie |
+| `POST` | `/auth/logout` | Revokes refresh token server-side and clears the cookie (`204`) |
+| `GET` | `/auth/me` | Bearer access JWT → current user |
+| `GET` | `/auth/google` | Start Google OAuth |
+| `GET` | `/auth/google/callback` | OAuth callback → refresh cookie + redirect to SPA |
+
+Refresh cookie path defaults to `/api/auth` (Vite proxy) so both refresh and logout receive it.
+After logout, `/auth/refresh` fails and `/auth/me` still requires a valid (unexpired) access JWT.
+
 ## Quality checks
 
 ```powershell

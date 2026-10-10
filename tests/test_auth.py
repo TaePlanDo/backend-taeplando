@@ -1,13 +1,14 @@
 import asyncio
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
+from sqlalchemy.sql.dml import Delete
 from starlette.responses import RedirectResponse, Response
 
 from app.core.config import Settings
-from app.core.cookies import set_refresh_cookie
+from app.core.cookies import clear_refresh_cookie, set_refresh_cookie
 from app.core.errors import AuthError
 from app.core.security import (
     create_access_token,
@@ -17,6 +18,7 @@ from app.core.security import (
     verify_password,
 )
 from app.db import users as users_db
+from app.db.refresh_tokens import consume_refresh_token
 from app.models.enums import AuthMethod
 from app.models.users import RefreshToken, User
 
@@ -143,6 +145,68 @@ def test_refresh_rejects_unknown_token(
     assert response.status_code == 401
 
 
+def test_logout_without_cookie_clears_cookie(
+    client: TestClient, override_settings: Settings
+) -> None:
+    response = client.post("/auth/logout")
+    assert response.status_code == 204
+    set_cookie = response.headers.get("set-cookie", "")
+    assert override_settings.refresh_cookie_name in set_cookie
+    assert "Max-Age=0" in set_cookie or "max-age=0" in set_cookie.lower()
+
+
+def test_logout_revokes_refresh_token(
+    client: TestClient,
+    override_settings: Settings,
+    db_session: AsyncMock,
+) -> None:
+    plain = "logout-refresh-token"
+    token_hash = hash_refresh_token(plain)
+    client.cookies.set(
+        override_settings.refresh_cookie_name,
+        plain,
+        path=override_settings.refresh_cookie_path,
+    )
+    consume = AsyncMock(
+        return_value=RefreshToken(
+            id=uuid4(),
+            user_id=uuid4(),
+            token_hash=token_hash,
+            expires_at=datetime.now(UTC) + timedelta(days=1),
+        )
+    )
+
+    with patch("app.db.refresh_tokens.consume_refresh_token", new=consume):
+        response = client.post("/auth/logout")
+
+    assert response.status_code == 204
+    consume.assert_awaited_once_with(db_session, token_hash)
+    db_session.commit.assert_awaited()
+
+
+def test_consume_refresh_token_deletes_row() -> None:
+    """consume_refresh_token must DELETE the row (not only SELECT it)."""
+    token_hash = hash_refresh_token("plain-refresh")
+    record = RefreshToken(
+        id=uuid4(),
+        user_id=uuid4(),
+        token_hash=token_hash,
+        expires_at=datetime.now(UTC) + timedelta(days=1),
+    )
+    session = AsyncMock()
+    result = MagicMock()
+    result.scalar_one_or_none.return_value = record
+    session.execute = AsyncMock(return_value=result)
+
+    deleted = asyncio.run(consume_refresh_token(session, token_hash))
+
+    assert deleted is record
+    session.execute.assert_awaited_once()
+    statement = session.execute.await_args.args[0]
+    assert isinstance(statement, Delete)
+    session.flush.assert_awaited_once()
+
+
 def test_me_without_bearer_returns_401(client: TestClient) -> None:
     response = client.get("/auth/me")
     assert response.status_code == 401
@@ -187,8 +251,17 @@ def test_refresh_cookie_attributes(test_settings: Settings) -> None:
     cookie_header = response.headers.get("set-cookie", "")
     assert "refresh_token=refresh-value" in cookie_header
     assert "HttpOnly" in cookie_header
-    assert "Path=/auth/refresh" in cookie_header
+    assert "Path=/auth" in cookie_header
     assert "SameSite=lax" in cookie_header
+
+
+def test_clear_refresh_cookie_attributes(test_settings: Settings) -> None:
+    response = Response()
+    clear_refresh_cookie(response, test_settings)
+    cookie_header = response.headers.get("set-cookie", "")
+    assert "refresh_token=" in cookie_header
+    assert "Path=/auth" in cookie_header
+    assert "Max-Age=0" in cookie_header or "max-age=0" in cookie_header.lower()
 
 
 def test_google_login_unconfigured_returns_503(

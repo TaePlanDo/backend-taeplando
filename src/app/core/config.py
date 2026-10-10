@@ -35,8 +35,8 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
 
     refresh_cookie_name: str = "refresh_token"
-    # Browser path when using Vite proxy (POST /api/auth/refresh on :5173).
-    refresh_cookie_path: str = "/api/auth/refresh"
+    # Sent on /api/auth/* via Vite proxy (refresh + logout).
+    refresh_cookie_path: str = "/api/auth"
     refresh_cookie_secure: bool = False
 
     cors_origins: str = "http://localhost:5173"
