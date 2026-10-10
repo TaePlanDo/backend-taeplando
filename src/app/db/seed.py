@@ -62,8 +62,7 @@ DEMO_TRAINING_PLAN_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a10")
 DEMO_PLAN_EXERCISE_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a11")
 # Local development only. Plain-text password: Demo123!
 DEMO_TRAINER_PASSWORD_HASH = (
-    "pbkdf2_sha256$600000$taeplando-demo-seed-v1$"
-    "f37e02498c063bf6f088b44328439246366ee0dfb1197761d28607afe69e113f"
+    "$2b$12$lKh3KdhbwN93vZ0SYbtWFuO15sk0Y.H64xZaP3v6hGaaqqKe2S.Mm"
 )
 
 
@@ -96,7 +95,7 @@ async def seed_demo_data(session: AsyncSession) -> None:
 
     demo_trainer = insert(User).values(
         id=DEMO_TRAINER_ID,
-        email="demo.trener@taeplando.local",
+        email="demo.trener@gmail.com",
         full_name="Trener demonstracyjny",
         auth_method=AuthMethod.LOCAL,
         password_hash=DEMO_TRAINER_PASSWORD_HASH,
