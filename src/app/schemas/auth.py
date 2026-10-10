@@ -10,6 +10,12 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=8)
 
 
+class RegisterRequest(LoginRequest):
+    """Payload to create a local trainer account (same credentials as login)."""
+
+    full_name: str | None = None
+
+
 class TokenResponse(BaseModel):
     """Access-token payload returned by login and refresh."""
 
