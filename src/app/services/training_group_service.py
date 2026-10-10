@@ -54,14 +54,18 @@ async def create_training_group(
 ) -> TrainingGroupResponse:
     """Create a group with its required 100% main-part starting schema."""
     main_segment = await _get_main_segment(session)
-    group = TrainingGroup(trainer_id=trainer_id, **payload.model_dump())
-    schema_item = TrainingGroupSchemaItem(
-        training_group=group,
-        segment=main_segment,
-        percentage=100,
-        position=1,
+    group = TrainingGroup(
+        trainer_id=trainer_id,
+        **payload.model_dump(),
+        schema_items=[
+            TrainingGroupSchemaItem(
+                segment=main_segment,
+                percentage=100,
+                position=1,
+            )
+        ],
     )
-    session.add_all([group, schema_item])
+    session.add(group)
     await session.commit()
     return _to_response(group)
 
@@ -74,9 +78,10 @@ async def put_training_group(
 ) -> TrainingGroupResponse:
     """Replace all editable fields of a group owned by the current trainer."""
     group = await _get_owned_group_or_raise(session, trainer_id, group_id)
-    changes = payload.model_dump()
-    for field, value in changes.items():
-        setattr(group, field, value)
+    group.name = payload.name
+    group.min_age = payload.min_age
+    group.max_age = payload.max_age
+    group.duration_minutes = payload.duration_minutes
     await session.commit()
     return _to_response(group)
 

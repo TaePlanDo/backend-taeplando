@@ -7,7 +7,7 @@ import pytest
 
 from app.dependencies.auth import get_current_user
 from app.main import app
-from app.models.training import TrainingGroup
+from app.models.training import TrainingGroup, TrainingPlan
 from app.schemas.auth import UserResponse
 from app.schemas.training import (
     TrainingGroupResponse,
@@ -131,6 +131,30 @@ def test_create_group_rejects_invalid_age_range(client, authenticated_trainer) -
     assert response.status_code == 422
 
 
+def test_create_group_rejects_identifiers_in_body(
+    client, authenticated_trainer
+) -> None:
+    """Reject IDs because ownership is derived from the OAuth user."""
+    with patch(
+        "app.api.training_groups.training_group_service.create_training_group",
+        new=AsyncMock(),
+    ) as create_group:
+        response = client.post(
+            "/training-groups",
+            json={
+                "name": "Młodzież",
+                "min_age": 7,
+                "max_age": 14,
+                "duration_minutes": 60,
+                "id": str(uuid4()),
+                "trainer_id": str(uuid4()),
+            },
+        )
+
+    assert response.status_code == 422
+    create_group.assert_not_awaited()
+
+
 def test_get_group_returns_not_found_for_a_foreign_or_missing_group(
     client, authenticated_trainer
 ) -> None:
@@ -248,10 +272,13 @@ def test_group_deletion_delegates_the_plan_cascade_to_sqlalchemy() -> None:
 
 def test_group_plan_relationship_deletes_orphans() -> None:
     """The model cascade removes both plans and their plan-exercise children."""
-    cascade = TrainingGroup.training_plans.property.cascade
+    group_plan_cascade = TrainingGroup.training_plans.property.cascade
+    plan_exercise_cascade = TrainingPlan.exercises.property.cascade
 
-    assert cascade.delete
-    assert cascade.delete_orphan
+    assert group_plan_cascade.delete
+    assert group_plan_cascade.delete_orphan
+    assert plan_exercise_cascade.delete
+    assert plan_exercise_cascade.delete_orphan
 
 
 def test_delete_all_groups_uses_only_the_authenticated_trainers_id(
