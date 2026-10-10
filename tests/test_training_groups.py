@@ -291,8 +291,8 @@ def test_delete_group_returns_no_content_after_success(
     assert delete_group.await_args.args[1] == TRAINER_ID
 
 
-def test_group_deletion_delegates_the_plan_cascade_to_sqlalchemy() -> None:
-    """Deleting the parent lets the ORM remove plans and plan exercises."""
+def test_delete_training_group_deletes_the_owned_group() -> None:
+    """Delegate deletion of an owned group to the SQLAlchemy session."""
     session = AsyncMock()
     group = MagicMock(id=GROUP_ID)
     with patch(
@@ -307,7 +307,7 @@ def test_group_deletion_delegates_the_plan_cascade_to_sqlalchemy() -> None:
     session.commit.assert_awaited_once()
 
 
-def test_group_plan_relationship_deletes_orphans() -> None:
+def test_group_and_plan_relationships_delete_orphans() -> None:
     """The model cascade removes both plans and their plan-exercise children."""
     group_plan_cascade = TrainingGroup.training_plans.property.cascade
     plan_exercise_cascade = TrainingPlan.exercises.property.cascade
@@ -318,30 +318,30 @@ def test_group_plan_relationship_deletes_orphans() -> None:
     assert plan_exercise_cascade.delete_orphan
 
 
-def test_delete_all_groups_uses_only_the_authenticated_trainers_id(
+def test_delete_all_trainer_groups_uses_only_the_authenticated_trainers_id(
     client, authenticated_trainer
 ) -> None:
     """Allow a bulk delete only when its path ID matches the OAuth trainer."""
     with patch(
-        "app.api.training_groups.training_group_service.delete_all_trainer_training_groups",
+        "app.api.training_groups.training_group_service.delete_all_trainer_groups",
         new=AsyncMock(),
-    ) as delete_all_groups:
+    ) as delete_all_trainer_groups:
         response = client.delete(f"/training-groups/trainer/{TRAINER_ID}")
 
     assert response.status_code == 204
-    delete_all_groups.assert_awaited_once()
-    assert delete_all_groups.await_args.args[1] == TRAINER_ID
+    delete_all_trainer_groups.assert_awaited_once()
+    assert delete_all_trainer_groups.await_args.args[1] == TRAINER_ID
 
 
-def test_delete_all_groups_rejects_a_different_trainers_id(
+def test_delete_all_trainer_groups_rejects_a_different_trainers_id(
     client, authenticated_trainer
 ) -> None:
     """Reject a bulk delete attempt aimed at another trainer's groups."""
     with patch(
-        "app.api.training_groups.training_group_service.delete_all_trainer_training_groups",
+        "app.api.training_groups.training_group_service.delete_all_trainer_groups",
         new=AsyncMock(),
-    ) as delete_all_groups:
+    ) as delete_all_trainer_groups:
         response = client.delete(f"/training-groups/trainer/{uuid4()}")
 
     assert response.status_code == 403
-    delete_all_groups.assert_not_awaited()
+    delete_all_trainer_groups.assert_not_awaited()

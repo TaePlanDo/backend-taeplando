@@ -93,7 +93,7 @@ async def delete_training_group(
     await session.commit()
 
 
-async def delete_all_trainer_training_groups(
+async def delete_all_trainer_groups(
     session: AsyncSession, trainer_id: UUID
 ) -> None:
     """Delete all of a trainer's groups and their dependent historical plans."""

@@ -108,14 +108,14 @@ async def put_group(
 
 
 @router.delete("/trainer/{trainer_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_all_groups(
+async def delete_all_trainer_groups(
     trainer_id: UUID,
     current_trainer_id: CurrentTrainerId,
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     """Delete all groups of the OAuth-authenticated trainer named in the path."""
     _ensure_current_trainer(trainer_id, current_trainer_id)
-    await training_group_service.delete_all_trainer_training_groups(
+    await training_group_service.delete_all_trainer_groups(
         session, current_trainer_id
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
