@@ -69,7 +69,6 @@ docker compose exec -T postgres psql -U taeplando -d taeplando -c "SELECT id, co
 
 The first query should return the seeded local users, and the second should return
 four fixed training segments.
-
 ## Auth API (short)
 
 | Method | Path | Notes |
