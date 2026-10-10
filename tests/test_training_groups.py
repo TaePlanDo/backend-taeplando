@@ -7,11 +7,13 @@ import pytest
 
 from app.dependencies.auth import get_current_user
 from app.main import app
+from app.models.catalogs import TrainingSegment
 from app.models.training import TrainingGroup, TrainingPlan
 from app.schemas.auth import UserResponse
 from app.schemas.training import (
     TrainingGroupResponse,
     TrainingGroupSchemaItemResponse,
+    TrainingGroupWrite,
 )
 from app.services import training_group_service
 from app.services.training_group_service import TrainingGroupNotFoundError
@@ -84,10 +86,10 @@ def test_list_groups_returns_only_current_trainers_groups(
     }
 
 
-def test_create_group_uses_authenticated_trainer_and_returns_default_schema(
+def test_create_group_uses_authenticated_trainer_and_returns_service_response(
     client, authenticated_trainer
 ) -> None:
-    """Create a group for the OAuth trainer with the default schema response."""
+    """Create a group for the OAuth trainer and serialize the service response."""
     group = _group_response()
     with patch(
         "app.api.training_groups.training_group_service.create_training_group",
@@ -114,6 +116,41 @@ def test_create_group_uses_authenticated_trainer_and_returns_default_schema(
         }
     ]
     assert create_group.await_args.args[1] == TRAINER_ID
+
+
+def test_create_training_group_builds_the_default_main_schema() -> None:
+    """Create each group with one 100% MAIN schema item."""
+    session = MagicMock()
+    session.commit = AsyncMock()
+    main_segment = TrainingSegment(id=3, code="MAIN", name="Część główna")
+    expected_response = _group_response()
+    payload = TrainingGroupWrite(
+        name="Młodzież", min_age=7, max_age=14, duration_minutes=60
+    )
+    with (
+        patch(
+            "app.db.training_groups.get_training_segment_by_code",
+            new=AsyncMock(return_value=main_segment),
+        ) as get_segment,
+        patch.object(
+            training_group_service,
+            "_to_response",
+            return_value=expected_response,
+        ),
+    ):
+        result = asyncio.run(
+            training_group_service.create_training_group(session, TRAINER_ID, payload)
+        )
+
+    group = session.add.call_args.args[0]
+    schema_item = group.schema_items[0]
+    assert result == expected_response
+    get_segment.assert_awaited_once_with(session, "MAIN")
+    assert group.trainer_id == TRAINER_ID
+    assert schema_item.segment is main_segment
+    assert schema_item.percentage == 100
+    assert schema_item.position == 1
+    session.commit.assert_awaited_once()
 
 
 def test_create_group_rejects_invalid_age_range(client, authenticated_trainer) -> None:
