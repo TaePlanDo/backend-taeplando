@@ -16,4 +16,4 @@ def test_production_rejects_default_secrets() -> None:
 
 def test_default_refresh_cookie_path_matches_vite_proxy() -> None:
     settings = Settings()
-    assert settings.refresh_cookie_path == "/api/auth/refresh"
+    assert settings.refresh_cookie_path == "/api/auth"

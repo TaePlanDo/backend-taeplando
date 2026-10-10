@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated
 from urllib.parse import urlencode
 
@@ -6,13 +7,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import RedirectResponse
 
 from app.core.config import Settings, get_settings
-from app.core.cookies import set_refresh_cookie
+from app.core.cookies import clear_refresh_cookie, set_refresh_cookie
 from app.core.errors import AuthError
 from app.db.session import get_db
 from app.dependencies.auth import get_current_user
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserResponse
 from app.services import auth_service
 from app.services.oauth_service import complete_google_login, google_login_redirect
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -80,6 +83,25 @@ async def refresh_token(
         session, refresh_value, settings
     )
     return _set_session(response, token_response, plain_refresh, settings)
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(
+    request: Request,
+    response: Response,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> None:
+    """Best-effort revoke of the refresh session; always clear the cookie."""
+    refresh_value = request.cookies.get(settings.refresh_cookie_name)
+    try:
+        await auth_service.logout(session, refresh_value)
+    except Exception:
+        logger.exception(
+            "Failed to revoke refresh token during logout (refresh_token=%r)",
+            refresh_value,
+        )
+    clear_refresh_cookie(response, settings)
 
 
 @router.get("/me", response_model=UserResponse)
