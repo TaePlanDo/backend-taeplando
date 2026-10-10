@@ -30,6 +30,27 @@ async def get_user_by_oauth_subject(
     return result.scalar_one_or_none()
 
 
+async def create_local_user(
+    session: AsyncSession,
+    *,
+    email: str,
+    password_hash: str,
+    full_name: str | None,
+) -> User:
+    """Insert a LOCAL trainer; raises AuthError 409 if the email is taken."""
+    await _ensure_email_available(session, email)
+    user = User(
+        email=email,
+        full_name=full_name,
+        auth_method=AuthMethod.LOCAL,
+        password_hash=password_hash,
+        oauth_subject=None,
+    )
+    session.add(user)
+    await session.flush()
+    return user
+
+
 async def upsert_oauth_user(
     session: AsyncSession,
     *,
@@ -73,6 +94,6 @@ async def _ensure_email_available(
     if exclude_user_id is not None and existing.id == exclude_user_id:
         return
     raise AuthError(
-        "Email already registered with a different sign-in method",
+        "Email already registered",
         status_code=409,
     )

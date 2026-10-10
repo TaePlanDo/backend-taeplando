@@ -10,7 +10,7 @@ from app.core.cookies import clear_refresh_cookie, set_refresh_cookie
 from app.core.errors import AuthError
 from app.db.session import get_db
 from app.dependencies.auth import get_current_user
-from app.schemas.auth import LoginRequest, TokenResponse, UserResponse
+from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserResponse
 from app.services import auth_service
 from app.services.oauth_service import complete_google_login, google_login_redirect
 
@@ -26,6 +26,31 @@ def _oauth_error_redirect(settings: Settings) -> RedirectResponse:
     )
 
 
+def _set_session(
+    response: Response,
+    token_response: TokenResponse,
+    plain_refresh: str,
+    settings: Settings,
+) -> TokenResponse:
+    """Attach the refresh cookie and return the access-token payload."""
+    set_refresh_cookie(response, plain_refresh, settings)
+    return token_response
+
+
+@router.post("/register", response_model=TokenResponse)
+async def register(
+    body: RegisterRequest,
+    response: Response,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> TokenResponse:
+    """Create a LOCAL trainer, issue tokens, and set the refresh cookie."""
+    token_response, plain_refresh = await auth_service.register(
+        session, body.email, body.password, body.full_name, settings
+    )
+    return _set_session(response, token_response, plain_refresh, settings)
+
+
 @router.post("/login", response_model=TokenResponse)
 async def login(
     body: LoginRequest,
@@ -37,8 +62,7 @@ async def login(
     token_response, plain_refresh = await auth_service.login(
         session, body.email, body.password, settings
     )
-    set_refresh_cookie(response, plain_refresh, settings)
-    return token_response
+    return _set_session(response, token_response, plain_refresh, settings)
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -55,8 +79,7 @@ async def refresh_token(
     token_response, plain_refresh = await auth_service.refresh(
         session, refresh_value, settings
     )
-    set_refresh_cookie(response, plain_refresh, settings)
-    return token_response
+    return _set_session(response, token_response, plain_refresh, settings)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

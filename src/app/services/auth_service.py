@@ -8,6 +8,7 @@ from app.core.errors import AuthError
 from app.core.security import (
     create_access_token,
     generate_refresh_token,
+    hash_password,
     hash_refresh_token,
     refresh_token_expires_at,
     verify_password,
@@ -26,6 +27,23 @@ def user_to_response(user: User) -> UserResponse:
         full_name=user.full_name,
         auth_method=user.auth_method,
     )
+
+
+async def register(
+    session: AsyncSession,
+    email: str,
+    password: str,
+    full_name: str | None,
+    settings: Settings,
+) -> tuple[TokenResponse, str]:
+    """Create a LOCAL trainer and issue a new token pair (auto-login)."""
+    user = await users_db.create_local_user(
+        session,
+        email=email,
+        password_hash=hash_password(password),
+        full_name=full_name,
+    )
+    return await create_auth_tokens(session, user.id, settings)
 
 
 async def login(

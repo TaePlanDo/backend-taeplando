@@ -87,6 +87,64 @@ def test_login_invalid_credentials(
     assert response.json()["detail"] == "Invalid credentials"
 
 
+def test_register_validation_invalid_email(client: TestClient) -> None:
+    response = client.post(
+        "/auth/register",
+        json={"email": "not-an-email", "password": "longenough"},
+    )
+    assert response.status_code == 422
+
+
+def test_register_validation_short_password(client: TestClient) -> None:
+    response = client.post(
+        "/auth/register",
+        json={"email": "trainer@example.com", "password": "short"},
+    )
+    assert response.status_code == 422
+
+
+def test_register_success_sets_cookie(
+    client: TestClient, override_settings: Settings
+) -> None:
+    user = _local_user()
+    with patch(
+        "app.db.users.create_local_user",
+        new=AsyncMock(return_value=user),
+    ):
+        response = client.post(
+            "/auth/register",
+            json={
+                "email": user.email,
+                "password": "password123",
+                "full_name": "Trainer",
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["token_type"] == "bearer"
+    assert decode_access_token(body["access_token"], override_settings) == user.id
+    assert "refresh_token=" in response.headers.get("set-cookie", "")
+
+
+def test_register_duplicate_email_returns_409(
+    client: TestClient, override_settings: Settings
+) -> None:
+    with patch(
+        "app.db.users.create_local_user",
+        new=AsyncMock(
+            side_effect=AuthError("Email already registered", status_code=409)
+        ),
+    ):
+        response = client.post(
+            "/auth/register",
+            json={"email": "taken@example.com", "password": "password123"},
+        )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Email already registered"
+
+
 def test_refresh_without_cookie_returns_401(
     client: TestClient, override_settings: Settings
 ) -> None:

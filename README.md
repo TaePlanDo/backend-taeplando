@@ -31,6 +31,7 @@ and `DATABASE_URL` (for example `5433`).
 
 | Method | Path | Notes |
 | --- | --- | --- |
+| `POST` | `/auth/register` | Create LOCAL trainer → access JWT + HttpOnly refresh cookie (auto-login) |
 | `POST` | `/auth/login` | Email/password → access JWT + HttpOnly refresh cookie |
 | `POST` | `/auth/refresh` | Cookie → new access JWT + rotated refresh cookie |
 | `POST` | `/auth/logout` | Revokes refresh token server-side and clears the cookie (`204`) |
@@ -38,6 +39,7 @@ and `DATABASE_URL` (for example `5433`).
 | `GET` | `/auth/google` | Start Google OAuth |
 | `GET` | `/auth/google/callback` | OAuth callback → refresh cookie + redirect to SPA |
 
+Duplicate email on register returns `409` with `{"detail":"Email already registered"}`.
 Refresh cookie path defaults to `/api/auth` (Vite proxy) so both refresh and logout receive it.
 After logout, `/auth/refresh` fails and `/auth/me` still requires a valid (unexpired) access JWT.
 
