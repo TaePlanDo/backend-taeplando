@@ -12,6 +12,9 @@ Install and start both of the following before setting up the project:
 
 ## Local setup
 
+Before continuing, install the `uv` CLI and ensure `uv --version` works in your
+terminal.
+
 1. Copy `.env.example` to `.env` and adjust the values if needed. Keep
    `POSTGRES_PORT` and the port in `DATABASE_URL` in sync.
 2. Start PostgreSQL:
