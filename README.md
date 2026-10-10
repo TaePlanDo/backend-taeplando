@@ -27,6 +27,19 @@
 If port `5432` is already used, set the same free port in both `POSTGRES_PORT`
 and `DATABASE_URL` (for example `5433`).
 
+## Auth API (short)
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| `POST` | `/auth/register` | Create LOCAL trainer → access JWT + HttpOnly refresh cookie (auto-login) |
+| `POST` | `/auth/login` | Email/password → access JWT + refresh cookie |
+| `POST` | `/auth/refresh` | Cookie → new access JWT + rotated refresh cookie |
+| `GET` | `/auth/me` | Bearer access JWT → current user |
+| `GET` | `/auth/google` | Start Google OAuth |
+| `GET` | `/auth/google/callback` | OAuth callback → refresh cookie + redirect to SPA |
+
+Duplicate email on register returns `409` with `{"detail":"Email already registered"}`.
+
 ## Quality checks
 
 ```powershell
