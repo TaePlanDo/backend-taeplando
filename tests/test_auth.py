@@ -103,20 +103,35 @@ def test_register_validation_short_password(client: TestClient) -> None:
     assert response.status_code == 422
 
 
+def test_register_rejects_invalid_full_name(client: TestClient) -> None:
+    for full_name in ("   ", "a" * 256):
+        response = client.post(
+            "/auth/register",
+            json={
+                "email": "trainer@example.com",
+                "password": "password123",
+                "full_name": full_name,
+            },
+        )
+
+        assert response.status_code == 422
+
+
 def test_register_success_sets_cookie(
     client: TestClient, override_settings: Settings
 ) -> None:
     user = _local_user()
+    create_user = AsyncMock(return_value=user)
     with patch(
         "app.db.users.create_local_user",
-        new=AsyncMock(return_value=user),
+        new=create_user,
     ):
         response = client.post(
             "/auth/register",
             json={
                 "email": user.email,
                 "password": "password123",
-                "full_name": "Trainer",
+                "full_name": "  Trainer  ",
             },
         )
 
@@ -125,6 +140,7 @@ def test_register_success_sets_cookie(
     assert body["token_type"] == "bearer"
     assert decode_access_token(body["access_token"], override_settings) == user.id
     assert "refresh_token=" in response.headers.get("set-cookie", "")
+    assert create_user.await_args.kwargs["full_name"] == "Trainer"
 
 
 def test_register_duplicate_email_returns_409(

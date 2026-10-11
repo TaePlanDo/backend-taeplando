@@ -1,6 +1,23 @@
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from typing import Annotated
+
+from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field
 
 from app.models.enums import AuthMethod
+
+
+def _normalize_full_name(value: str) -> str:
+    """Trim a full name and reject blank values."""
+    normalized = value.strip()
+    if not normalized:
+        raise ValueError("Full name cannot be blank")
+    return normalized
+
+
+FullName = Annotated[
+    str,
+    Field(min_length=1, max_length=255),
+    AfterValidator(_normalize_full_name),
+]
 
 
 class LoginRequest(BaseModel):
@@ -13,7 +30,7 @@ class LoginRequest(BaseModel):
 class RegisterRequest(LoginRequest):
     """Payload to create a local trainer account (same credentials as login)."""
 
-    full_name: str | None = None
+    full_name: FullName | None = None
 
 
 class FullNameUpdateRequest(BaseModel):
@@ -21,16 +38,7 @@ class FullNameUpdateRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    full_name: str = Field(min_length=1, max_length=255)
-
-    @field_validator("full_name")
-    @classmethod
-    def normalize_full_name(cls, value: str) -> str:
-        """Reject names consisting only of whitespace."""
-        normalized = value.strip()
-        if not normalized:
-            raise ValueError("Full name cannot be blank")
-        return normalized
+    full_name: FullName
 
 
 class TokenResponse(BaseModel):
