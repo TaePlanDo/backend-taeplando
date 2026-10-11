@@ -42,3 +42,8 @@ async def consume_refresh_token(
     if record is not None:
         await session.flush()
     return record
+
+
+async def delete_refresh_tokens_for_user(session: AsyncSession, user_id: UUID) -> None:
+    """Delete every refresh-token session belonging to one user."""
+    await session.execute(delete(RefreshToken).where(RefreshToken.user_id == user_id))

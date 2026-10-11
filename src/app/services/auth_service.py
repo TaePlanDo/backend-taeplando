@@ -61,6 +61,29 @@ async def login(
     return await create_auth_tokens(session, user.id, settings)
 
 
+async def change_password(
+    session: AsyncSession,
+    user: User,
+    old_password: str,
+    new_password: str,
+) -> None:
+    """Verify and replace the authenticated local user's password."""
+    if user.password_hash is None:
+        raise AuthError(
+            "Password change is unavailable for Google accounts", status_code=409
+        )
+    if not verify_password(old_password, user.password_hash):
+        raise AuthError("Invalid current password")
+    if old_password == new_password:
+        raise AuthError(
+            "New password must differ from current password", status_code=400
+        )
+
+    user.password_hash = hash_password(new_password)
+    await refresh_tokens_db.delete_refresh_tokens_for_user(session, user.id)
+    await session.commit()
+
+
 async def refresh(
     session: AsyncSession,
     refresh_token: str,
@@ -87,12 +110,12 @@ async def logout(session: AsyncSession, refresh_token: str | None) -> None:
     await session.commit()
 
 
-async def get_user_response(session: AsyncSession, user_id: UUID) -> UserResponse:
-    """Load the user for `/auth/me`, or raise if missing."""
+async def get_user(session: AsyncSession, user_id: UUID) -> User:
+    """Load an authenticated user, or raise if the account no longer exists."""
     user = await users_db.get_user_by_id(session, user_id)
     if user is None:
         raise AuthError("Not authenticated")
-    return user_to_response(user)
+    return user
 
 
 async def update_user_full_name(

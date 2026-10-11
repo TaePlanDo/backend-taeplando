@@ -18,7 +18,7 @@ from app.core.security import (
     verify_password,
 )
 from app.db import users as users_db
-from app.db.refresh_tokens import consume_refresh_token
+from app.db.refresh_tokens import consume_refresh_token, delete_refresh_tokens_for_user
 from app.models.enums import AuthMethod
 from app.models.users import RefreshToken, User
 
@@ -326,6 +326,18 @@ def test_consume_refresh_token_deletes_row() -> None:
     session.flush.assert_awaited_once()
 
 
+def test_delete_refresh_tokens_for_user_deletes_all_sessions() -> None:
+    user_id = uuid4()
+    session = AsyncMock()
+
+    asyncio.run(delete_refresh_tokens_for_user(session, user_id))
+
+    session.execute.assert_awaited_once()
+    statement = session.execute.await_args.args[0]
+    assert isinstance(statement, Delete)
+    assert str(statement.whereclause) == "refresh_tokens.user_id = :user_id_1"
+
+
 def test_me_without_bearer_returns_401(client: TestClient) -> None:
     response = client.get("/auth/me")
     assert response.status_code == 401
@@ -385,6 +397,94 @@ def test_patch_me_rejects_unexpected_profile_data(
     assert response.status_code == 422
 
 
+def test_change_password_updates_authenticated_user(
+    client: TestClient,
+    override_settings: Settings,
+    db_session: AsyncMock,
+) -> None:
+    user = _local_user()
+    access_token, _ = create_access_token(user.id, override_settings)
+    get_user = AsyncMock(return_value=user)
+    delete_user_tokens = AsyncMock()
+
+    with (
+        patch(
+            "app.db.users.get_user_by_id",
+            new=get_user,
+        ),
+        patch(
+            "app.db.refresh_tokens.delete_refresh_tokens_for_user",
+            new=delete_user_tokens,
+        ),
+    ):
+        response = client.put(
+            "/auth/me/password",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={
+                "old_password": "password123",
+                "new_password": "new-password123",
+            },
+        )
+
+    assert response.status_code == 204
+    assert verify_password("new-password123", user.password_hash)
+    assert not verify_password("password123", user.password_hash)
+    get_user.assert_awaited_once_with(db_session, user.id)
+    delete_user_tokens.assert_awaited_once_with(db_session, user.id)
+    db_session.commit.assert_awaited_once()
+
+
+def test_change_password_rejects_invalid_current_password(
+    client: TestClient,
+    override_settings: Settings,
+    db_session: AsyncMock,
+) -> None:
+    user = _local_user()
+    access_token, _ = create_access_token(user.id, override_settings)
+
+    with patch(
+        "app.db.users.get_user_by_id",
+        new=AsyncMock(return_value=user),
+    ):
+        response = client.put(
+            "/auth/me/password",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={
+                "old_password": "wrong-password",
+                "new_password": "new-password123",
+            },
+        )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid current password"
+    assert verify_password("password123", user.password_hash)
+    db_session.commit.assert_not_awaited()
+
+
+def test_change_password_rejects_user_id_in_payload(
+    client: TestClient,
+    override_settings: Settings,
+) -> None:
+    user = _local_user()
+    access_token, _ = create_access_token(user.id, override_settings)
+
+    with patch(
+        "app.db.users.get_user_by_id",
+        new=AsyncMock(return_value=user),
+    ):
+        response = client.put(
+            "/auth/me/password",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={
+                "old_password": "password123",
+                "new_password": "new-password123",
+                "user_id": str(uuid4()),
+            },
+        )
+
+    assert response.status_code == 422
+
+
 def test_patch_me_rejects_a_blank_full_name(
     client: TestClient, override_settings: Settings
 ) -> None:
@@ -398,6 +498,100 @@ def test_patch_me_rejects_a_blank_full_name(
         )
 
     assert response.status_code == 422
+
+
+def test_change_password_requires_a_valid_new_password_length(
+    client: TestClient,
+    override_settings: Settings,
+) -> None:
+    user = _local_user()
+    access_token, _ = create_access_token(user.id, override_settings)
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    with patch(
+        "app.db.users.get_user_by_id",
+        new=AsyncMock(return_value=user),
+    ):
+        short_new_password = client.put(
+            "/auth/me/password",
+            headers=headers,
+            json={"old_password": "password123", "new_password": "short"},
+        )
+        too_long_new_password = client.put(
+            "/auth/me/password",
+            headers=headers,
+            json={"old_password": "password123", "new_password": "ą" * 37},
+        )
+
+    assert short_new_password.status_code == 422
+    assert too_long_new_password.status_code == 422
+
+
+def test_change_password_rejects_the_current_password_as_the_new_password(
+    client: TestClient,
+    override_settings: Settings,
+    db_session: AsyncMock,
+) -> None:
+    user = _local_user()
+    access_token, _ = create_access_token(user.id, override_settings)
+    delete_user_tokens = AsyncMock()
+
+    with (
+        patch(
+            "app.db.users.get_user_by_id",
+            new=AsyncMock(return_value=user),
+        ),
+        patch(
+            "app.db.refresh_tokens.delete_refresh_tokens_for_user",
+            new=delete_user_tokens,
+        ),
+    ):
+        response = client.put(
+            "/auth/me/password",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={"old_password": "password123", "new_password": "password123"},
+        )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "New password must differ from current password"
+    assert verify_password("password123", user.password_hash)
+    delete_user_tokens.assert_not_awaited()
+    db_session.commit.assert_not_awaited()
+
+
+def test_change_password_rejects_google_user(
+    client: TestClient,
+    override_settings: Settings,
+    db_session: AsyncMock,
+) -> None:
+    user = User(
+        id=uuid4(),
+        email="google@example.com",
+        full_name="Google Trainer",
+        auth_method=AuthMethod.GOOGLE,
+        oauth_subject="google-subject",
+        password_hash=None,
+    )
+    access_token, _ = create_access_token(user.id, override_settings)
+
+    with patch(
+        "app.db.users.get_user_by_id",
+        new=AsyncMock(return_value=user),
+    ):
+        response = client.put(
+            "/auth/me/password",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={
+                "old_password": "password123",
+                "new_password": "new-password123",
+            },
+        )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "Password change is unavailable for Google accounts"
+    )
+    db_session.commit.assert_not_awaited()
 
 
 def test_jwt_create_and_decode(test_settings: Settings) -> None:
