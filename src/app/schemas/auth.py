@@ -25,7 +25,7 @@ def _validate_password_complexity(value: str) -> str:
     return value
 
 
-# Presented at login / as the current password — length only (legacy hashes may be weaker).
+# Presented at login — length only (legacy hashes may be weaker).
 LoginPassword = Annotated[
     str,
     Field(min_length=8),
