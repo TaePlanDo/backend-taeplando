@@ -83,6 +83,8 @@ four fixed training segments.
 | `GET` | `/auth/google/callback` | OAuth callback → refresh cookie + redirect to SPA |
 
 Duplicate email on register returns `409` with `{"detail":"Email already registered"}`.
+Local passwords on register / password change must be at least 8 characters and include a
+letter, a digit, and a special character. Login only enforces minimum length (8).
 Refresh cookie path defaults to `/api/auth` (Vite proxy) so both refresh and logout receive it.
 After logout, `/auth/refresh` fails and `/auth/me` still requires a valid (unexpired) access JWT.
 
