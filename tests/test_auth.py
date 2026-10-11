@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.sql.dml import Delete
 from starlette.responses import RedirectResponse, Response
@@ -21,6 +22,8 @@ from app.db import users as users_db
 from app.db.refresh_tokens import consume_refresh_token
 from app.models.enums import AuthMethod
 from app.models.users import RefreshToken, User
+from app.schemas.auth import UserProfileUpdateRequest
+from app.services import auth_service
 
 
 def _local_user(*, password: str = "password123") -> User:
@@ -333,6 +336,87 @@ def test_me_with_valid_jwt(client: TestClient, override_settings: Settings) -> N
     data = response.json()
     assert data["email"] == user.email
     assert data["auth_method"] == "LOCAL"
+
+
+def test_update_me_replaces_authenticated_users_profile(
+    client: TestClient, override_settings: Settings, db_session: AsyncMock
+) -> None:
+    user = _local_user()
+    access_token, _ = create_access_token(user.id, override_settings)
+    updated_user = User(
+        id=user.id,
+        email="updated@example.com",
+        full_name="Updated Trainer",
+        auth_method=AuthMethod.LOCAL,
+        password_hash=user.password_hash,
+    )
+    with (
+        patch("app.db.users.get_user_by_id", new=AsyncMock(return_value=user)),
+        patch(
+            "app.api.auth.auth_service.update_user_profile",
+            new=AsyncMock(return_value=auth_service.user_to_response(updated_user)),
+        ) as update_profile,
+    ):
+        response = client.put(
+            "/auth/me",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={"email": updated_user.email, "full_name": updated_user.full_name},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["email"] == updated_user.email
+    assert response.json()["full_name"] == updated_user.full_name
+    update_profile.assert_awaited_once()
+    assert update_profile.await_args.args == (
+        db_session,
+        user.id,
+        UserProfileUpdateRequest(
+            email=updated_user.email,
+            full_name=updated_user.full_name,
+        ),
+    )
+
+
+def test_update_me_rejects_invalid_profile_data(
+    client: TestClient, override_settings: Settings
+) -> None:
+    user = _local_user()
+    access_token, _ = create_access_token(user.id, override_settings)
+    with patch("app.db.users.get_user_by_id", new=AsyncMock(return_value=user)):
+        response = client.put(
+            "/auth/me",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={"email": "not-an-email", "full_name": "Trainer"},
+        )
+
+    assert response.status_code == 422
+
+
+def test_update_user_profile_rejects_another_users_email() -> None:
+    user = _local_user()
+    existing_user = _local_user()
+    existing_user.email = "taken@example.com"
+    session = AsyncMock()
+
+    async def run() -> None:
+        with (
+            patch("app.db.users.get_user_by_id", new=AsyncMock(return_value=user)),
+            patch(
+                "app.db.users.get_user_by_email",
+                new=AsyncMock(return_value=existing_user),
+            ),
+        ):
+            with pytest.raises(AuthError, match="Email already registered") as error:
+                await users_db.update_user_profile(
+                    session,
+                    user_id=user.id,
+                    email=existing_user.email,
+                    full_name="Updated Trainer",
+                )
+
+        assert error.value.status_code == 409
+
+    asyncio.run(run())
 
 
 def test_jwt_create_and_decode(test_settings: Settings) -> None:

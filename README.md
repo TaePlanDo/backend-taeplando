@@ -77,10 +77,12 @@ four fixed training segments.
 | `POST` | `/auth/refresh` | Cookie → new access JWT + rotated refresh cookie |
 | `POST` | `/auth/logout` | Revokes refresh token server-side and clears the cookie (`204`) |
 | `GET` | `/auth/me` | Bearer access JWT → current user |
+| `PUT` | `/auth/me` | Bearer access JWT + `{ "email", "full_name" }` → updated current user |
 | `GET` | `/auth/google` | Start Google OAuth |
 | `GET` | `/auth/google/callback` | OAuth callback → refresh cookie + redirect to SPA |
 
 Duplicate email on register returns `409` with `{"detail":"Email already registered"}`.
+Updating a profile with an email already used by another account returns the same `409` response.
 Refresh cookie path defaults to `/api/auth` (Vite proxy) so both refresh and logout receive it.
 After logout, `/auth/refresh` fails and `/auth/me` still requires a valid (unexpired) access JWT.
 

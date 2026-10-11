@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.models.enums import AuthMethod
 
@@ -14,6 +14,23 @@ class RegisterRequest(LoginRequest):
     """Payload to create a local trainer account (same credentials as login)."""
 
     full_name: str | None = None
+
+
+class UserProfileUpdateRequest(BaseModel):
+    """Complete editable profile data for the authenticated trainer."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr
+    full_name: str | None = Field(max_length=255)
+
+    @field_validator("full_name")
+    @classmethod
+    def normalize_full_name(cls, value: str | None) -> str | None:
+        """Store blank names as absent profile data."""
+        if value is None:
+            return None
+        return value.strip() or None
 
 
 class TokenResponse(BaseModel):

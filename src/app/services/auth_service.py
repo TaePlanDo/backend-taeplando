@@ -16,7 +16,7 @@ from app.core.security import (
 from app.db import refresh_tokens as refresh_tokens_db
 from app.db import users as users_db
 from app.models.users import User
-from app.schemas.auth import TokenResponse, UserResponse
+from app.schemas.auth import TokenResponse, UserProfileUpdateRequest, UserResponse
 
 
 def user_to_response(user: User) -> UserResponse:
@@ -92,6 +92,19 @@ async def get_user_response(session: AsyncSession, user_id: UUID) -> UserRespons
     user = await users_db.get_user_by_id(session, user_id)
     if user is None:
         raise AuthError("Not authenticated")
+    return user_to_response(user)
+
+
+async def update_user_profile(
+    session: AsyncSession, user_id: UUID, profile: UserProfileUpdateRequest
+) -> UserResponse:
+    """Persist editable profile data for the authenticated user."""
+    user = await users_db.update_user_profile(
+        session,
+        user_id=user_id,
+        email=str(profile.email),
+        full_name=profile.full_name,
+    )
     return user_to_response(user)
 
 

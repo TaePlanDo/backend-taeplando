@@ -51,6 +51,26 @@ async def create_local_user(
     return user
 
 
+async def update_user_profile(
+    session: AsyncSession,
+    *,
+    user_id: UUID,
+    email: str,
+    full_name: str | None,
+) -> User:
+    """Update one user's editable profile fields and persist the change."""
+    user = await get_user_by_id(session, user_id)
+    if user is None:
+        raise AuthError("Not authenticated")
+
+    if user.email != email:
+        await _ensure_email_available(session, email, exclude_user_id=user.id)
+    user.email = email
+    user.full_name = full_name
+    await session.commit()
+    return user
+
+
 async def upsert_oauth_user(
     session: AsyncSession,
     *,
