@@ -103,20 +103,35 @@ def test_register_validation_short_password(client: TestClient) -> None:
     assert response.status_code == 422
 
 
+def test_register_rejects_invalid_full_name(client: TestClient) -> None:
+    for full_name in ("   ", "a" * 256):
+        response = client.post(
+            "/auth/register",
+            json={
+                "email": "trainer@example.com",
+                "password": "password123",
+                "full_name": full_name,
+            },
+        )
+
+        assert response.status_code == 422
+
+
 def test_register_success_sets_cookie(
     client: TestClient, override_settings: Settings
 ) -> None:
     user = _local_user()
+    create_user = AsyncMock(return_value=user)
     with patch(
         "app.db.users.create_local_user",
-        new=AsyncMock(return_value=user),
+        new=create_user,
     ):
         response = client.post(
             "/auth/register",
             json={
                 "email": user.email,
                 "password": "password123",
-                "full_name": "Trainer",
+                "full_name": "  Trainer  ",
             },
         )
 
@@ -125,6 +140,7 @@ def test_register_success_sets_cookie(
     assert body["token_type"] == "bearer"
     assert decode_access_token(body["access_token"], override_settings) == user.id
     assert "refresh_token=" in response.headers.get("set-cookie", "")
+    assert create_user.await_args.kwargs["full_name"] == "Trainer"
 
 
 def test_register_duplicate_email_returns_409(
@@ -347,6 +363,40 @@ def test_me_with_valid_jwt(client: TestClient, override_settings: Settings) -> N
     assert data["auth_method"] == "LOCAL"
 
 
+def test_patch_me_updates_authenticated_users_full_name(
+    client: TestClient, override_settings: Settings, db_session: AsyncMock
+) -> None:
+    user = _local_user()
+    access_token, _ = create_access_token(user.id, override_settings)
+    with patch("app.db.users.get_user_by_id", new=AsyncMock(return_value=user)):
+        response = client.patch(
+            "/auth/me",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={"full_name": "Updated Trainer"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["email"] == user.email
+    assert response.json()["full_name"] == "Updated Trainer"
+    assert user.full_name == "Updated Trainer"
+    db_session.commit.assert_awaited_once()
+
+
+def test_patch_me_rejects_unexpected_profile_data(
+    client: TestClient, override_settings: Settings
+) -> None:
+    user = _local_user()
+    access_token, _ = create_access_token(user.id, override_settings)
+    with patch("app.db.users.get_user_by_id", new=AsyncMock(return_value=user)):
+        response = client.patch(
+            "/auth/me",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={"email": "new@example.com", "full_name": "Trainer"},
+        )
+
+    assert response.status_code == 422
+
+
 def test_change_password_updates_authenticated_user(
     client: TestClient,
     override_settings: Settings,
@@ -430,6 +480,21 @@ def test_change_password_rejects_user_id_in_payload(
                 "new_password": "new-password123",
                 "user_id": str(uuid4()),
             },
+        )
+
+    assert response.status_code == 422
+
+
+def test_patch_me_rejects_a_blank_full_name(
+    client: TestClient, override_settings: Settings
+) -> None:
+    user = _local_user()
+    access_token, _ = create_access_token(user.id, override_settings)
+    with patch("app.db.users.get_user_by_id", new=AsyncMock(return_value=user)):
+        response = client.patch(
+            "/auth/me",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={"full_name": "   "},
         )
 
     assert response.status_code == 422

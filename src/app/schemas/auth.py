@@ -22,6 +22,21 @@ Password = Annotated[
 PasswordAttempt = Annotated[str, AfterValidator(_validate_password_byte_length)]
 
 
+def _normalize_full_name(value: str) -> str:
+    """Trim a full name and reject blank values."""
+    normalized = value.strip()
+    if not normalized:
+        raise ValueError("Full name cannot be blank")
+    return normalized
+
+
+FullName = Annotated[
+    str,
+    Field(min_length=1, max_length=255),
+    AfterValidator(_normalize_full_name),
+]
+
+
 class LoginRequest(BaseModel):
     """Email/password credentials for local login."""
 
@@ -32,7 +47,15 @@ class LoginRequest(BaseModel):
 class RegisterRequest(LoginRequest):
     """Payload to create a local trainer account (same credentials as login)."""
 
-    full_name: str | None = None
+    full_name: FullName | None = None
+
+
+class FullNameUpdateRequest(BaseModel):
+    """New full name for the authenticated trainer."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    full_name: FullName
 
 
 class PasswordChangeRequest(BaseModel):

@@ -16,7 +16,7 @@ from app.core.security import (
 from app.db import refresh_tokens as refresh_tokens_db
 from app.db import users as users_db
 from app.models.users import User
-from app.schemas.auth import TokenResponse, UserResponse
+from app.schemas.auth import FullNameUpdateRequest, TokenResponse, UserResponse
 
 
 def user_to_response(user: User) -> UserResponse:
@@ -116,6 +116,19 @@ async def get_user(session: AsyncSession, user_id: UUID) -> User:
     if user is None:
         raise AuthError("Not authenticated")
     return user
+
+
+async def update_user_full_name(
+    session: AsyncSession, user_id: UUID, update: FullNameUpdateRequest
+) -> UserResponse:
+    """Persist a new full name for the authenticated user."""
+    user = await users_db.update_user_full_name(
+        session,
+        user_id=user_id,
+        full_name=update.full_name,
+    )
+    await session.commit()
+    return user_to_response(user)
 
 
 async def create_auth_tokens(
