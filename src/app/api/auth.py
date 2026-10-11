@@ -1,6 +1,7 @@
 import logging
 from typing import Annotated
 from urllib.parse import urlencode
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +12,13 @@ from app.core.cookies import clear_refresh_cookie, set_refresh_cookie
 from app.core.errors import AuthError
 from app.db.session import get_db
 from app.dependencies.auth import get_current_user
-from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserResponse
+from app.schemas.auth import (
+    FullNameUpdateRequest,
+    LoginRequest,
+    RegisterRequest,
+    TokenResponse,
+    UserResponse,
+)
 from app.services import auth_service
 from app.services.oauth_service import complete_google_login, google_login_redirect
 
@@ -110,6 +117,18 @@ async def me(
 ) -> UserResponse:
     """Return the currently authenticated user."""
     return current_user
+
+
+@router.put("/me", response_model=UserResponse)
+async def update_me(
+    body: FullNameUpdateRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> UserResponse:
+    """Replace the full name of the authenticated user."""
+    return await auth_service.update_user_full_name(
+        session, UUID(current_user.id), body
+    )
 
 
 @router.get("/google")

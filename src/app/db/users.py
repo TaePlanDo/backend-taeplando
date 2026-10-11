@@ -51,6 +51,22 @@ async def create_local_user(
     return user
 
 
+async def update_user_full_name(
+    session: AsyncSession,
+    *,
+    user_id: UUID,
+    full_name: str,
+) -> User:
+    """Update one user's full name and persist the change."""
+    user = await get_user_by_id(session, user_id)
+    if user is None:
+        raise AuthError("Not authenticated")
+
+    user.full_name = full_name
+    await session.commit()
+    return user
+
+
 async def upsert_oauth_user(
     session: AsyncSession,
     *,
