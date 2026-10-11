@@ -63,7 +63,7 @@ class TrainingGroup(Base):
         cascade="all, delete-orphan",
     )
     training_plans: Mapped[list[TrainingPlan]] = relationship(
-        "TrainingPlan", back_populates="training_group"
+        "TrainingPlan", back_populates="training_group", cascade="all, delete-orphan"
     )
 
 
