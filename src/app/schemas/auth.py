@@ -1,19 +1,70 @@
-from pydantic import BaseModel, EmailStr, Field
+from typing import Annotated
+
+from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field
 
 from app.models.enums import AuthMethod
+
+MAX_PASSWORD_BYTES = 72
+
+
+def _validate_password_byte_length(value: str) -> str:
+    """Reject passwords that bcrypt would truncate."""
+    if len(value.encode()) > MAX_PASSWORD_BYTES:
+        raise ValueError(f"Password must be at most {MAX_PASSWORD_BYTES} bytes long")
+    return value
+
+
+Password = Annotated[
+    str,
+    Field(min_length=8),
+    AfterValidator(_validate_password_byte_length),
+]
+PasswordAttempt = Annotated[str, AfterValidator(_validate_password_byte_length)]
+
+
+def _normalize_full_name(value: str) -> str:
+    """Trim a full name and reject blank values."""
+    normalized = value.strip()
+    if not normalized:
+        raise ValueError("Full name cannot be blank")
+    return normalized
+
+
+FullName = Annotated[
+    str,
+    Field(min_length=1, max_length=255),
+    AfterValidator(_normalize_full_name),
+]
 
 
 class LoginRequest(BaseModel):
     """Email/password credentials for local login."""
 
     email: EmailStr
-    password: str = Field(min_length=8)
+    password: Password
 
 
 class RegisterRequest(LoginRequest):
     """Payload to create a local trainer account (same credentials as login)."""
 
-    full_name: str | None = None
+    full_name: FullName | None = None
+
+
+class FullNameUpdateRequest(BaseModel):
+    """New full name for the authenticated trainer."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    full_name: FullName
+
+
+class PasswordChangeRequest(BaseModel):
+    """Current and replacement password for the authenticated trainer."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    old_password: PasswordAttempt
+    new_password: Password
 
 
 class TokenResponse(BaseModel):

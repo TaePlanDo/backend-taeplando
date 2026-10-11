@@ -16,7 +16,7 @@ from app.core.security import (
 from app.db import refresh_tokens as refresh_tokens_db
 from app.db import users as users_db
 from app.models.users import User
-from app.schemas.auth import TokenResponse, UserResponse
+from app.schemas.auth import FullNameUpdateRequest, TokenResponse, UserResponse
 
 
 def user_to_response(user: User) -> UserResponse:
@@ -61,6 +61,29 @@ async def login(
     return await create_auth_tokens(session, user.id, settings)
 
 
+async def change_password(
+    session: AsyncSession,
+    user: User,
+    old_password: str,
+    new_password: str,
+) -> None:
+    """Verify and replace the authenticated local user's password."""
+    if user.password_hash is None:
+        raise AuthError(
+            "Password change is unavailable for Google accounts", status_code=409
+        )
+    if not verify_password(old_password, user.password_hash):
+        raise AuthError("Invalid current password")
+    if old_password == new_password:
+        raise AuthError(
+            "New password must differ from current password", status_code=400
+        )
+
+    user.password_hash = hash_password(new_password)
+    await refresh_tokens_db.delete_refresh_tokens_for_user(session, user.id)
+    await session.commit()
+
+
 async def refresh(
     session: AsyncSession,
     refresh_token: str,
@@ -93,6 +116,19 @@ async def get_user(session: AsyncSession, user_id: UUID) -> User:
     if user is None:
         raise AuthError("Not authenticated")
     return user
+
+
+async def update_user_full_name(
+    session: AsyncSession, user_id: UUID, update: FullNameUpdateRequest
+) -> UserResponse:
+    """Persist a new full name for the authenticated user."""
+    user = await users_db.update_user_full_name(
+        session,
+        user_id=user_id,
+        full_name=update.full_name,
+    )
+    await session.commit()
+    return user_to_response(user)
 
 
 async def create_auth_tokens(
