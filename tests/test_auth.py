@@ -335,6 +335,142 @@ def test_me_with_valid_jwt(client: TestClient, override_settings: Settings) -> N
     assert data["auth_method"] == "LOCAL"
 
 
+def test_change_password_updates_authenticated_user(
+    client: TestClient,
+    override_settings: Settings,
+    db_session: AsyncMock,
+) -> None:
+    user = _local_user()
+    access_token, _ = create_access_token(user.id, override_settings)
+    get_user = AsyncMock(return_value=user)
+
+    with patch(
+        "app.db.users.get_user_by_id",
+        new=get_user,
+    ):
+        response = client.put(
+            "/auth/me/password",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={
+                "old_password": "password123",
+                "new_password": "new-password123",
+            },
+        )
+
+    assert response.status_code == 204
+    assert verify_password("new-password123", user.password_hash)
+    assert not verify_password("password123", user.password_hash)
+    get_user.assert_awaited_once_with(db_session, user.id)
+    db_session.commit.assert_awaited_once()
+
+
+def test_change_password_rejects_invalid_current_password(
+    client: TestClient,
+    override_settings: Settings,
+    db_session: AsyncMock,
+) -> None:
+    user = _local_user()
+    access_token, _ = create_access_token(user.id, override_settings)
+
+    with patch(
+        "app.db.users.get_user_by_id",
+        new=AsyncMock(return_value=user),
+    ):
+        response = client.put(
+            "/auth/me/password",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={
+                "old_password": "wrong-password",
+                "new_password": "new-password123",
+            },
+        )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid current password"
+    assert verify_password("password123", user.password_hash)
+    db_session.commit.assert_not_awaited()
+
+
+def test_change_password_rejects_user_id_in_payload(
+    client: TestClient,
+    override_settings: Settings,
+) -> None:
+    user = _local_user()
+    access_token, _ = create_access_token(user.id, override_settings)
+
+    with patch(
+        "app.db.users.get_user_by_id",
+        new=AsyncMock(return_value=user),
+    ):
+        response = client.put(
+            "/auth/me/password",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={
+                "old_password": "password123",
+                "new_password": "new-password123",
+                "user_id": str(uuid4()),
+            },
+        )
+
+    assert response.status_code == 422
+
+
+def test_change_password_requires_new_password_with_at_least_eight_characters(
+    client: TestClient,
+    override_settings: Settings,
+) -> None:
+    user = _local_user()
+    access_token, _ = create_access_token(user.id, override_settings)
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    with patch(
+        "app.db.users.get_user_by_id",
+        new=AsyncMock(return_value=user),
+    ):
+        short_new_password = client.put(
+            "/auth/me/password",
+            headers=headers,
+            json={"old_password": "password123", "new_password": "short"},
+        )
+
+    assert short_new_password.status_code == 422
+
+
+def test_change_password_rejects_google_user(
+    client: TestClient,
+    override_settings: Settings,
+    db_session: AsyncMock,
+) -> None:
+    user = User(
+        id=uuid4(),
+        email="google@example.com",
+        full_name="Google Trainer",
+        auth_method=AuthMethod.GOOGLE,
+        oauth_subject="google-subject",
+        password_hash=None,
+    )
+    access_token, _ = create_access_token(user.id, override_settings)
+
+    with patch(
+        "app.db.users.get_user_by_id",
+        new=AsyncMock(return_value=user),
+    ):
+        response = client.put(
+            "/auth/me/password",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={
+                "old_password": "password123",
+                "new_password": "new-password123",
+            },
+        )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Password change is unavailable for Google accounts"
+    )
+    db_session.commit.assert_not_awaited()
+
+
 def test_jwt_create_and_decode(test_settings: Settings) -> None:
     user_id = uuid4()
     token, expires_in = create_access_token(user_id, test_settings)

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.models.enums import AuthMethod
 
@@ -14,6 +14,15 @@ class RegisterRequest(LoginRequest):
     """Payload to create a local trainer account (same credentials as login)."""
 
     full_name: str | None = None
+
+
+class PasswordChangeRequest(BaseModel):
+    """Current and replacement password for the authenticated trainer."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    old_password: str
+    new_password: str = Field(min_length=8)
 
 
 class TokenResponse(BaseModel):

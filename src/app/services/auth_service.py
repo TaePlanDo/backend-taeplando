@@ -61,6 +61,27 @@ async def login(
     return await create_auth_tokens(session, user.id, settings)
 
 
+async def change_password(
+    session: AsyncSession,
+    user_id: UUID,
+    old_password: str,
+    new_password: str,
+) -> None:
+    """Verify and replace the authenticated local user's password."""
+    user = await users_db.get_user_by_id(session, user_id)
+    if user is None:
+        raise AuthError("Not authenticated")
+    if user.password_hash is None:
+        raise AuthError(
+            "Password change is unavailable for Google accounts", status_code=400
+        )
+    if not verify_password(old_password, user.password_hash):
+        raise AuthError("Invalid current password")
+
+    user.password_hash = hash_password(new_password)
+    await session.commit()
+
+
 async def refresh(
     session: AsyncSession,
     refresh_token: str,

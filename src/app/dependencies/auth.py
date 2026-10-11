@@ -1,4 +1,5 @@
 from typing import Annotated
+from uuid import UUID
 
 import jwt
 from fastapi import Depends
@@ -15,16 +16,22 @@ from app.services import auth_service
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
-async def get_current_user(
+async def get_current_user_id(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
-    session: Annotated[AsyncSession, Depends(get_db)],
     settings: Annotated[Settings, Depends(get_settings)],
-) -> UserResponse:
-    """Resolve the Bearer access token to the current user."""
+) -> UUID:
+    """Resolve the Bearer access token to its authenticated user id."""
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise AuthError("Not authenticated")
     try:
-        user_id = decode_access_token(credentials.credentials, settings)
+        return decode_access_token(credentials.credentials, settings)
     except jwt.PyJWTError as exc:
         raise AuthError("Not authenticated") from exc
+
+
+async def get_current_user(
+    user_id: Annotated[UUID, Depends(get_current_user_id)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> UserResponse:
+    """Resolve the Bearer access token to the current user."""
     return await auth_service.get_user_response(session, user_id)
