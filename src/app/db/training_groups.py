@@ -41,19 +41,23 @@ async def list_for_trainer(
     trainer_id: UUID,
     *,
     duration_minutes: int | None = None,
-    min_age: int | None = None,
-    max_age: int | None = None,
+    min_age: int = 0,
+    max_age: int = 99,
+    offset: int = 0,
+    limit: int = 20,
 ) -> list[TrainingGroup]:
-    """Return only the requesting trainer's groups in a stable display order."""
-    statement = _group_response_query().where(TrainingGroup.trainer_id == trainer_id)
+    """Return one stable page of a trainer's groups within the age range."""
+    statement = _group_response_query().where(
+        TrainingGroup.trainer_id == trainer_id,
+        TrainingGroup.min_age >= min_age,
+        TrainingGroup.max_age <= max_age,
+    )
     if duration_minutes is not None:
         statement = statement.where(TrainingGroup.duration_minutes == duration_minutes)
-    if min_age is not None:
-        statement = statement.where(TrainingGroup.min_age == min_age)
-    if max_age is not None:
-        statement = statement.where(TrainingGroup.max_age == max_age)
     result = await session.execute(
         statement.order_by(TrainingGroup.name, TrainingGroup.id)
+        .offset(offset)
+        .limit(limit)
     )
     return list(result.scalars().unique())
 

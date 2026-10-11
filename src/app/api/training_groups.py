@@ -28,30 +28,30 @@ def _not_found() -> HTTPException:
     )
 
 
-def _ensure_current_trainer(trainer_id: UUID, current_trainer_id: UUID) -> None:
-    """Ensure a bulk delete cannot target another trainer's groups."""
-    if trainer_id != current_trainer_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Cannot manage another trainer's groups",
-        )
-
-
 @router.get("", response_model=list[GroupResponse])
 async def list_groups(
     current_trainer: CurrentTrainer,
     session: Annotated[AsyncSession, Depends(get_db)],
     duration_minutes: Annotated[int | None, Query(gt=0)] = None,
-    min_age: Annotated[int | None, Query(gt=0)] = None,
-    max_age: Annotated[int | None, Query(gt=0)] = None,
+    min_age: Annotated[int, Query(ge=0)] = 0,
+    max_age: Annotated[int, Query(gt=0)] = 99,
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> list[GroupResponse]:
-    """List and optionally filter groups belonging to the authenticated trainer."""
+    """List a page of groups owned by the authenticated trainer."""
+    if min_age > max_age:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="min_age must be less than or equal to max_age",
+        )
     return await training_group_service.list_groups(
         session,
         current_trainer.id,
         duration_minutes=duration_minutes,
         min_age=min_age,
         max_age=max_age,
+        page=page,
+        page_size=page_size,
     )
 
 
@@ -98,14 +98,12 @@ async def put_group(
         raise _not_found() from exc
 
 
-@router.delete("/trainer/{trainer_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/trainer", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_all_trainer_groups(
-    trainer_id: UUID,
     current_trainer: CurrentTrainer,
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
-    """Delete all groups of the OAuth-authenticated trainer named in the path."""
-    _ensure_current_trainer(trainer_id, current_trainer.id)
+    """Delete all groups belonging to the OAuth-authenticated trainer."""
     await training_group_service.delete_all_trainer_groups(session, current_trainer.id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

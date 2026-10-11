@@ -64,17 +64,17 @@ def _group_response() -> GroupResponse:
     )
 
 
-def test_list_groups_returns_only_current_trainers_groups(
+def test_list_groups_returns_one_page_of_current_trainers_groups(
     client, authenticated_trainer
 ) -> None:
-    """List only the OAuth trainer's groups and forward the optional filters."""
+    """List only the OAuth trainer's groups and forward filters and pagination."""
     group = _group_response()
     with patch(
         "app.api.training_groups.training_group_service.list_groups",
         new=AsyncMock(return_value=[group]),
     ) as list_groups:
         response = client.get(
-            "/training-groups?duration_minutes=60&min_age=7&max_age=14"
+            "/training-groups?duration_minutes=60&min_age=7&max_age=14&page=2&page_size=10"
         )
 
     assert response.status_code == 200
@@ -85,7 +85,38 @@ def test_list_groups_returns_only_current_trainers_groups(
         "duration_minutes": 60,
         "min_age": 7,
         "max_age": 14,
+        "page": 2,
+        "page_size": 10,
     }
+
+
+def test_list_groups_defaults_to_the_full_age_range(
+    client, authenticated_trainer
+) -> None:
+    """Use the full supported age range when no age filters are provided."""
+    with patch(
+        "app.api.training_groups.training_group_service.list_groups",
+        new=AsyncMock(return_value=[]),
+    ) as list_groups:
+        response = client.get("/training-groups")
+
+    assert response.status_code == 200
+    assert list_groups.await_args.kwargs == {
+        "duration_minutes": None,
+        "min_age": 0,
+        "max_age": 99,
+        "page": 1,
+        "page_size": 20,
+    }
+
+
+def test_list_groups_rejects_an_inverted_age_range(
+    client, authenticated_trainer
+) -> None:
+    """Reject impossible inclusive age-filter ranges."""
+    response = client.get("/training-groups?min_age=15&max_age=14")
+
+    assert response.status_code == 422
 
 
 def test_create_group_uses_authenticated_trainer_and_returns_service_response(
@@ -317,30 +348,16 @@ def test_group_and_plan_relationships_delete_orphans() -> None:
     assert plan_exercise_cascade.delete_orphan
 
 
-def test_delete_all_trainer_groups_uses_only_the_authenticated_trainers_id(
+def test_delete_all_trainer_groups_uses_the_authenticated_trainers_id(
     client, authenticated_trainer
 ) -> None:
-    """Allow a bulk delete only when its path ID matches the OAuth trainer."""
+    """Derive the trainer ID for a bulk delete from OAuth authentication."""
     with patch(
         "app.api.training_groups.training_group_service.delete_all_trainer_groups",
         new=AsyncMock(),
     ) as delete_all_trainer_groups:
-        response = client.delete(f"/training-groups/trainer/{TRAINER_ID}")
+        response = client.delete("/training-groups/trainer")
 
     assert response.status_code == 204
     delete_all_trainer_groups.assert_awaited_once()
     assert delete_all_trainer_groups.await_args.args[1] == TRAINER_ID
-
-
-def test_delete_all_trainer_groups_rejects_a_different_trainers_id(
-    client, authenticated_trainer
-) -> None:
-    """Reject a bulk delete attempt aimed at another trainer's groups."""
-    with patch(
-        "app.api.training_groups.training_group_service.delete_all_trainer_groups",
-        new=AsyncMock(),
-    ) as delete_all_trainer_groups:
-        response = client.delete(f"/training-groups/trainer/{uuid4()}")
-
-    assert response.status_code == 403
-    delete_all_trainer_groups.assert_not_awaited()

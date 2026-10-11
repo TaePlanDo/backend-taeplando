@@ -25,16 +25,20 @@ async def list_groups(
     trainer_id: UUID,
     *,
     duration_minutes: int | None = None,
-    min_age: int | None = None,
-    max_age: int | None = None,
+    min_age: int = 0,
+    max_age: int = 99,
+    page: int = 1,
+    page_size: int = 20,
 ) -> list[GroupResponse]:
-    """List the groups owned by one trainer."""
+    """List one page of the groups owned by one trainer."""
     groups = await training_groups_db.list_for_trainer(
         session,
         trainer_id,
         duration_minutes=duration_minutes,
         min_age=min_age,
         max_age=max_age,
+        offset=(page - 1) * page_size,
+        limit=page_size,
     )
     return [_to_response(group) for group in groups]
 
