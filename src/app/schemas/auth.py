@@ -1,13 +1,32 @@
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from typing import Annotated
+
+from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field
 
 from app.models.enums import AuthMethod
+
+MAX_PASSWORD_BYTES = 72
+
+
+def _validate_password_byte_length(value: str) -> str:
+    """Reject passwords that bcrypt would truncate."""
+    if len(value.encode()) > MAX_PASSWORD_BYTES:
+        raise ValueError(f"Password must be at most {MAX_PASSWORD_BYTES} bytes long")
+    return value
+
+
+Password = Annotated[
+    str,
+    Field(min_length=8),
+    AfterValidator(_validate_password_byte_length),
+]
+PasswordAttempt = Annotated[str, AfterValidator(_validate_password_byte_length)]
 
 
 class LoginRequest(BaseModel):
     """Email/password credentials for local login."""
 
     email: EmailStr
-    password: str = Field(min_length=8)
+    password: Password
 
 
 class RegisterRequest(LoginRequest):
@@ -21,8 +40,8 @@ class PasswordChangeRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    old_password: str
-    new_password: str = Field(min_length=8)
+    old_password: PasswordAttempt
+    new_password: Password
 
 
 class TokenResponse(BaseModel):

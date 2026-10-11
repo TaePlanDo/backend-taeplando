@@ -70,12 +70,17 @@ async def change_password(
     """Verify and replace the authenticated local user's password."""
     if user.password_hash is None:
         raise AuthError(
-            "Password change is unavailable for Google accounts", status_code=400
+            "Password change is unavailable for Google accounts", status_code=409
         )
     if not verify_password(old_password, user.password_hash):
         raise AuthError("Invalid current password")
+    if old_password == new_password:
+        raise AuthError(
+            "New password must differ from current password", status_code=400
+        )
 
     user.password_hash = hash_password(new_password)
+    await refresh_tokens_db.delete_refresh_tokens_for_user(session, user.id)
     await session.commit()
 
 

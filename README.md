@@ -77,7 +77,7 @@ four fixed training segments.
 | `POST` | `/auth/refresh` | Cookie → new access JWT + rotated refresh cookie |
 | `POST` | `/auth/logout` | Revokes refresh token server-side and clears the cookie (`204`) |
 | `GET` | `/auth/me` | Bearer access JWT → current user |
-| `PUT` | `/auth/me/password` | Bearer access JWT + `old_password`, `new_password` → password changed (`204`) |
+| `PUT` | `/auth/me/password` | Bearer access JWT + `old_password`, `new_password` → password changed and refresh sessions revoked (`204`) |
 | `GET` | `/auth/google` | Start Google OAuth |
 | `GET` | `/auth/google/callback` | OAuth callback → refresh cookie + redirect to SPA |
 
