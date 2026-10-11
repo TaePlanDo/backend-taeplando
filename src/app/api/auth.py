@@ -1,7 +1,6 @@
 import logging
 from typing import Annotated
 from urllib.parse import urlencode
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +10,8 @@ from app.core.config import Settings, get_settings
 from app.core.cookies import clear_refresh_cookie, set_refresh_cookie
 from app.core.errors import AuthError
 from app.db.session import get_db
-from app.dependencies.auth import get_current_user, get_current_user_id
+from app.dependencies.auth import get_current_user, get_current_user_response
+from app.models.users import User
 from app.schemas.auth import (
     LoginRequest,
     PasswordChangeRequest,
@@ -113,7 +113,7 @@ async def logout(
 
 @router.get("/me", response_model=UserResponse)
 async def me(
-    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    current_user: Annotated[UserResponse, Depends(get_current_user_response)],
 ) -> UserResponse:
     """Return the currently authenticated user."""
     return current_user
@@ -122,13 +122,13 @@ async def me(
 @router.put("/me/password", status_code=status.HTTP_204_NO_CONTENT)
 async def change_password(
     body: PasswordChangeRequest,
-    current_user_id: Annotated[UUID, Depends(get_current_user_id)],
+    current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     """Replace the password of the authenticated local user."""
     await auth_service.change_password(
         session,
-        current_user_id,
+        current_user,
         body.old_password,
         body.new_password,
     )

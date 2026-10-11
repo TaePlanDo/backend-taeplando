@@ -63,14 +63,11 @@ async def login(
 
 async def change_password(
     session: AsyncSession,
-    user_id: UUID,
+    user: User,
     old_password: str,
     new_password: str,
 ) -> None:
     """Verify and replace the authenticated local user's password."""
-    user = await users_db.get_user_by_id(session, user_id)
-    if user is None:
-        raise AuthError("Not authenticated")
     if user.password_hash is None:
         raise AuthError(
             "Password change is unavailable for Google accounts", status_code=400
@@ -108,12 +105,12 @@ async def logout(session: AsyncSession, refresh_token: str | None) -> None:
     await session.commit()
 
 
-async def get_user_response(session: AsyncSession, user_id: UUID) -> UserResponse:
-    """Load the user for `/auth/me`, or raise if missing."""
+async def get_user(session: AsyncSession, user_id: UUID) -> User:
+    """Load an authenticated user, or raise if the account no longer exists."""
     user = await users_db.get_user_by_id(session, user_id)
     if user is None:
         raise AuthError("Not authenticated")
-    return user_to_response(user)
+    return user
 
 
 async def create_auth_tokens(
