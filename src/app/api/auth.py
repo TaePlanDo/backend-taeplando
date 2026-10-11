@@ -119,13 +119,13 @@ async def me(
     return current_user
 
 
-@router.put("/me", response_model=UserResponse)
-async def update_me(
+@router.patch("/me", response_model=UserResponse)
+async def patch_me(
     body: FullNameUpdateRequest,
     current_user: Annotated[UserResponse, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> UserResponse:
-    """Replace the full name of the authenticated user."""
+    """Update the full name of the authenticated user."""
     return await auth_service.update_user_full_name(
         session, UUID(current_user.id), body
     )

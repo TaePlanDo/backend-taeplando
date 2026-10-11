@@ -104,6 +104,7 @@ async def update_user_full_name(
         user_id=user_id,
         full_name=update.full_name,
     )
+    await session.commit()
     return user_to_response(user)
 
 

@@ -351,13 +351,13 @@ def test_me_with_valid_jwt(client: TestClient, override_settings: Settings) -> N
     assert data["auth_method"] == "LOCAL"
 
 
-def test_update_me_replaces_authenticated_users_full_name(
+def test_patch_me_updates_authenticated_users_full_name(
     client: TestClient, override_settings: Settings, db_session: AsyncMock
 ) -> None:
     user = _local_user()
     access_token, _ = create_access_token(user.id, override_settings)
     with patch("app.db.users.get_user_by_id", new=AsyncMock(return_value=user)):
-        response = client.put(
+        response = client.patch(
             "/auth/me",
             headers={"Authorization": f"Bearer {access_token}"},
             json={"full_name": "Updated Trainer"},
@@ -370,13 +370,13 @@ def test_update_me_replaces_authenticated_users_full_name(
     db_session.commit.assert_awaited_once()
 
 
-def test_update_me_rejects_unexpected_profile_data(
+def test_patch_me_rejects_unexpected_profile_data(
     client: TestClient, override_settings: Settings
 ) -> None:
     user = _local_user()
     access_token, _ = create_access_token(user.id, override_settings)
     with patch("app.db.users.get_user_by_id", new=AsyncMock(return_value=user)):
-        response = client.put(
+        response = client.patch(
             "/auth/me",
             headers={"Authorization": f"Bearer {access_token}"},
             json={"email": "new@example.com", "full_name": "Trainer"},
@@ -385,13 +385,13 @@ def test_update_me_rejects_unexpected_profile_data(
     assert response.status_code == 422
 
 
-def test_update_me_rejects_a_blank_full_name(
+def test_patch_me_rejects_a_blank_full_name(
     client: TestClient, override_settings: Settings
 ) -> None:
     user = _local_user()
     access_token, _ = create_access_token(user.id, override_settings)
     with patch("app.db.users.get_user_by_id", new=AsyncMock(return_value=user)):
-        response = client.put(
+        response = client.patch(
             "/auth/me",
             headers={"Authorization": f"Bearer {access_token}"},
             json={"full_name": "   "},
