@@ -62,6 +62,7 @@ async def create_group(
                 position=1,
             )
         ],
+        training_plans=[],
     )
     session.add(group)
     await session.commit()

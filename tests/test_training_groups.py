@@ -145,6 +145,7 @@ def test_create_group_builds_the_default_main_schema() -> None:
     assert result == expected_response
     get_segment.assert_awaited_once_with(session, "MAIN")
     assert group.trainer_id == TRAINER_ID
+    assert group.training_plans == []
     assert schema_item.segment is main_segment
     assert schema_item.percentage == 100
     assert schema_item.position == 1
