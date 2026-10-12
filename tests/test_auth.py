@@ -23,7 +23,7 @@ from app.models.enums import AuthMethod
 from app.models.users import RefreshToken, User
 
 
-def _local_user(*, password: str = "password123") -> User:
+def _local_user(*, password: str = "password123!") -> User:
     return User(
         id=uuid4(),
         email="trainer@example.com",
@@ -41,14 +41,6 @@ def test_login_validation_invalid_email(client: TestClient) -> None:
     assert response.status_code == 422
 
 
-def test_login_validation_short_password(client: TestClient) -> None:
-    response = client.post(
-        "/auth/login",
-        json={"email": "trainer@example.com", "password": "short"},
-    )
-    assert response.status_code == 422
-
-
 def test_login_success_sets_cookie(
     client: TestClient, override_settings: Settings
 ) -> None:
@@ -59,7 +51,7 @@ def test_login_success_sets_cookie(
     ):
         response = client.post(
             "/auth/login",
-            json={"email": user.email, "password": "password123"},
+            json={"email": user.email, "password": "password123!"},
         )
 
     assert response.status_code == 200
@@ -90,7 +82,7 @@ def test_login_invalid_credentials(
 def test_register_validation_invalid_email(client: TestClient) -> None:
     response = client.post(
         "/auth/register",
-        json={"email": "not-an-email", "password": "longenough"},
+        json={"email": "not-an-email", "password": "password123!"},
     )
     assert response.status_code == 422
 
@@ -103,13 +95,22 @@ def test_register_validation_short_password(client: TestClient) -> None:
     assert response.status_code == 422
 
 
+def test_register_validation_password_complexity(client: TestClient) -> None:
+    for password in ("longenough", "12345678", "password", "pass1234"):
+        response = client.post(
+            "/auth/register",
+            json={"email": "trainer@example.com", "password": password},
+        )
+        assert response.status_code == 422, password
+
+
 def test_register_rejects_invalid_full_name(client: TestClient) -> None:
     for full_name in ("   ", "a" * 256):
         response = client.post(
             "/auth/register",
             json={
                 "email": "trainer@example.com",
-                "password": "password123",
+                "password": "password123!",
                 "full_name": full_name,
             },
         )
@@ -130,7 +131,7 @@ def test_register_success_sets_cookie(
             "/auth/register",
             json={
                 "email": user.email,
-                "password": "password123",
+                "password": "password123!",
                 "full_name": "  Trainer  ",
             },
         )
@@ -154,7 +155,7 @@ def test_register_duplicate_email_returns_409(
     ):
         response = client.post(
             "/auth/register",
-            json={"email": "taken@example.com", "password": "password123"},
+            json={"email": "taken@example.com", "password": "password123!"},
         )
 
     assert response.status_code == 409
@@ -421,14 +422,14 @@ def test_change_password_updates_authenticated_user(
             "/auth/me/password",
             headers={"Authorization": f"Bearer {access_token}"},
             json={
-                "old_password": "password123",
+                "old_password": "password123!",
                 "new_password": "new-password123",
             },
         )
 
     assert response.status_code == 204
     assert verify_password("new-password123", user.password_hash)
-    assert not verify_password("password123", user.password_hash)
+    assert not verify_password("password123!", user.password_hash)
     get_user.assert_awaited_once_with(db_session, user.id)
     delete_user_tokens.assert_awaited_once_with(db_session, user.id)
     db_session.commit.assert_awaited_once()
@@ -457,7 +458,7 @@ def test_change_password_rejects_invalid_current_password(
 
     assert response.status_code == 401
     assert response.json()["detail"] == "Invalid current password"
-    assert verify_password("password123", user.password_hash)
+    assert verify_password("password123!", user.password_hash)
     db_session.commit.assert_not_awaited()
 
 
@@ -476,7 +477,7 @@ def test_change_password_rejects_user_id_in_payload(
             "/auth/me/password",
             headers={"Authorization": f"Bearer {access_token}"},
             json={
-                "old_password": "password123",
+                "old_password": "password123!",
                 "new_password": "new-password123",
                 "user_id": str(uuid4()),
             },
@@ -515,16 +516,22 @@ def test_change_password_requires_a_valid_new_password_length(
         short_new_password = client.put(
             "/auth/me/password",
             headers=headers,
-            json={"old_password": "password123", "new_password": "short"},
+            json={"old_password": "password123!", "new_password": "short"},
         )
         too_long_new_password = client.put(
             "/auth/me/password",
             headers=headers,
-            json={"old_password": "password123", "new_password": "ą" * 37},
+            json={"old_password": "password123!", "new_password": "ą" * 37},
+        )
+        weak_new_password = client.put(
+            "/auth/me/password",
+            headers=headers,
+            json={"old_password": "password123!", "new_password": "password123"},
         )
 
     assert short_new_password.status_code == 422
     assert too_long_new_password.status_code == 422
+    assert weak_new_password.status_code == 422
 
 
 def test_change_password_rejects_the_current_password_as_the_new_password(
@@ -549,12 +556,12 @@ def test_change_password_rejects_the_current_password_as_the_new_password(
         response = client.put(
             "/auth/me/password",
             headers={"Authorization": f"Bearer {access_token}"},
-            json={"old_password": "password123", "new_password": "password123"},
+            json={"old_password": "password123!", "new_password": "password123!"},
         )
 
     assert response.status_code == 400
     assert response.json()["detail"] == "New password must differ from current password"
-    assert verify_password("password123", user.password_hash)
+    assert verify_password("password123!", user.password_hash)
     delete_user_tokens.assert_not_awaited()
     db_session.commit.assert_not_awaited()
 
@@ -582,7 +589,7 @@ def test_change_password_rejects_google_user(
             "/auth/me/password",
             headers={"Authorization": f"Bearer {access_token}"},
             json={
-                "old_password": "password123",
+                "old_password": "password123!",
                 "new_password": "new-password123",
             },
         )
@@ -602,8 +609,8 @@ def test_jwt_create_and_decode(test_settings: Settings) -> None:
 
 
 def test_password_hash_roundtrip() -> None:
-    hashed = hash_password("password123")
-    assert verify_password("password123", hashed)
+    hashed = hash_password("password123!")
+    assert verify_password("password123!", hashed)
     assert not verify_password("nope", hashed)
 
 

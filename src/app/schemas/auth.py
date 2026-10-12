@@ -14,10 +14,22 @@ def _validate_password_byte_length(value: str) -> str:
     return value
 
 
+def _validate_password_complexity(value: str) -> str:
+    """Require letter, digit, and special character (local auth policy)."""
+    if not any(char.isalpha() for char in value):
+        raise ValueError("Password must contain at least one letter")
+    if not any(char.isdigit() for char in value):
+        raise ValueError("Password must contain at least one digit")
+    if all(char.isalnum() for char in value):
+        raise ValueError("Password must contain at least one special character")
+    return value
+
+
 Password = Annotated[
     str,
     Field(min_length=8),
     AfterValidator(_validate_password_byte_length),
+    AfterValidator(_validate_password_complexity),
 ]
 PasswordAttempt = Annotated[str, AfterValidator(_validate_password_byte_length)]
 
@@ -41,12 +53,14 @@ class LoginRequest(BaseModel):
     """Email/password credentials for local login."""
 
     email: EmailStr
+    password: PasswordAttempt
+
+
+class RegisterRequest(BaseModel):
+    """Payload to create a local trainer account."""
+
+    email: EmailStr
     password: Password
-
-
-class RegisterRequest(LoginRequest):
-    """Payload to create a local trainer account (same credentials as login)."""
-
     full_name: FullName | None = None
 
 
