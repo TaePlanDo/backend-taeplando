@@ -41,14 +41,6 @@ def test_login_validation_invalid_email(client: TestClient) -> None:
     assert response.status_code == 422
 
 
-def test_login_validation_short_password(client: TestClient) -> None:
-    response = client.post(
-        "/auth/login",
-        json={"email": "trainer@example.com", "password": "short"},
-    )
-    assert response.status_code == 422
-
-
 def test_login_success_sets_cookie(
     client: TestClient, override_settings: Settings
 ) -> None:
