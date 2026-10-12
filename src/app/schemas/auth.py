@@ -25,14 +25,6 @@ def _validate_password_complexity(value: str) -> str:
     return value
 
 
-# Presented at login — length only (legacy hashes may be weaker).
-LoginPassword = Annotated[
-    str,
-    Field(min_length=8),
-    AfterValidator(_validate_password_byte_length),
-]
-
-# Set on register / password change — full local-auth policy.
 Password = Annotated[
     str,
     Field(min_length=8),
@@ -61,7 +53,7 @@ class LoginRequest(BaseModel):
     """Email/password credentials for local login."""
 
     email: EmailStr
-    password: LoginPassword
+    password: PasswordAttempt
 
 
 class RegisterRequest(BaseModel):
