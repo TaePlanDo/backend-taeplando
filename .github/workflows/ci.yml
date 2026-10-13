@@ -62,3 +62,46 @@ jobs:
           uv run alembic check
           uv run alembic downgrade base
           uv run alembic upgrade head
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout backend
+        uses: actions/checkout@v4
+
+      - name: Checkout frontend
+        uses: actions/checkout@v4
+        with:
+          repository: TaePlanDo/frontend-taeplando
+          path: frontend-taeplando
+          ref: main
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install backend dependencies
+        run: uv sync
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend-taeplando/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend-taeplando
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        working-directory: frontend-taeplando
+        run: npx playwright install --with-deps chromium
+
+      - name: Run e2e tests
+        working-directory: frontend-taeplando
+        run: npm run test:e2e -- --backend-dir=${{ github.workspace }}
