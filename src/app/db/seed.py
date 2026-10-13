@@ -37,7 +37,7 @@ from app.models.users import User
 logger = logging.getLogger(__name__)
 
 # Local development credentials for the deterministic demo trainer.
-DEMO_TRAINER_EMAIL = "demo.trener@gmail.com"
+DEMO_TRAINER_EMAIL = "demo.trener@gmaill.com"
 DEMO_TRAINER_PASSWORD = "Demo123!"
 
 
