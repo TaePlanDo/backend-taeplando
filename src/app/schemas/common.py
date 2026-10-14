@@ -11,5 +11,3 @@ class PaginatedResponse[T](BaseModel):
     page: int
     page_size: int
     total_pages: int
-    has_next: bool
-    has_previous: bool

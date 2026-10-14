@@ -1,10 +1,12 @@
 """Database queries for trainer-owned groups."""
 
+from typing import NamedTuple
 from uuid import UUID
 
 from sqlalchemy import ColumnElement, Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.interfaces import LoaderOption
 
 from app.models.catalogs import TrainingSegment
 from app.models.training import (
@@ -15,14 +17,24 @@ from app.models.training import (
 )
 
 
-def _group_response_query() -> Select[TrainingGroup]:
-    """Load a group with all relations needed by the public API response."""
-    return select(TrainingGroup).options(
+class GroupPage(NamedTuple):
+    items: list[TrainingGroup]
+    total: int
+
+
+def _group_response_options() -> tuple[LoaderOption, ...]:
+    """Eager-load options shared by the response-building queries."""
+    return (
         selectinload(TrainingGroup.schema_items).selectinload(
             TrainingGroupSchemaItem.segment
         ),
         selectinload(TrainingGroup.training_plans).load_only(TrainingPlan.id),
     )
+
+
+def _group_response_query() -> Select[TrainingGroup]:
+    """Load a group with all relations needed by the public API response."""
+    return select(TrainingGroup).options(*_group_response_options())
 
 
 def _group_delete_query() -> Select[TrainingGroup]:
@@ -43,7 +55,7 @@ def _trainer_filters(
     min_age: int = 0,
     max_age: int = 99,
 ) -> list[ColumnElement[bool]]:
-    """Build the filter conditions shared by listing and counting."""
+    """Build the filter conditions applied to a trainer's group queries."""
     filters: list[ColumnElement[bool]] = [
         TrainingGroup.trainer_id == trainer_id,
         TrainingGroup.min_age >= min_age,
@@ -63,46 +75,38 @@ async def list_for_trainer(
     max_age: int = 99,
     offset: int = 0,
     limit: int = 20,
-) -> list[TrainingGroup]:
-    """Return one stable page of a trainer's groups within the age range."""
-    statement = _group_response_query().where(
-        *_trainer_filters(
-            trainer_id,
-            duration_minutes=duration_minutes,
-            min_age=min_age,
-            max_age=max_age,
-        )
+) -> GroupPage:
+    """Return one stable page of a trainer's groups and the matching total."""
+    filters = _trainer_filters(
+        trainer_id,
+        duration_minutes=duration_minutes,
+        min_age=min_age,
+        max_age=max_age,
     )
-    result = await session.execute(
-        statement.order_by(TrainingGroup.name, TrainingGroup.id)
+    statement = (
+        select(TrainingGroup, func.count().over())
+        .options(*_group_response_options())
+        .where(*filters)
+        .order_by(TrainingGroup.name, TrainingGroup.id)
         .offset(offset)
         .limit(limit)
     )
-    return list(result.scalars().unique())
-
-
-async def count_for_trainer(
-    session: AsyncSession,
-    trainer_id: UUID,
-    *,
-    duration_minutes: int | None = None,
-    min_age: int = 0,
-    max_age: int = 99,
-) -> int:
-    """Count all of a trainer's groups matching the given filters."""
-    statement = (
-        select(func.count())
-        .select_from(TrainingGroup)
-        .where(
-            *_trainer_filters(
-                trainer_id,
-                duration_minutes=duration_minutes,
-                min_age=min_age,
-                max_age=max_age,
-            )
-        )
-    )
     result = await session.execute(statement)
+    rows = result.unique().all()
+    if rows:
+        return GroupPage(items=[group for group, _ in rows], total=rows[0][1])
+    if offset == 0:
+        return GroupPage(items=[], total=0)
+    return GroupPage(items=[], total=await _count_matching(session, filters))
+
+
+async def _count_matching(
+    session: AsyncSession, filters: list[ColumnElement[bool]]
+) -> int:
+    """Count the groups matching the given filters."""
+    result = await session.execute(
+        select(func.count()).select_from(TrainingGroup).where(*filters)
+    )
     return result.scalar_one()
 
 

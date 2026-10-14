@@ -1,15 +1,22 @@
 import asyncio
 from datetime import UTC, datetime
+from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
 
+from app.db import training_groups as training_groups_db
+from app.db.training_groups import GroupPage
 from app.dependencies.auth import get_current_user
 from app.main import app
 from app.models.catalogs import TrainingSegment
 from app.models.enums import AuthMethod
-from app.models.training import TrainingGroup, TrainingPlan
+from app.models.training import (
+    TrainingGroup,
+    TrainingGroupSchemaItem,
+    TrainingPlan,
+)
 from app.models.users import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.training import (
@@ -65,6 +72,29 @@ def _group_response() -> GroupResponse:
     )
 
 
+def _training_group() -> TrainingGroup:
+    """Build one ORM group with the relations the response mapper reads."""
+    group = TrainingGroup(
+        id=GROUP_ID,
+        trainer_id=TRAINER_ID,
+        name="Młodzież",
+        min_age=7,
+        max_age=14,
+        duration_minutes=60,
+        created_at=CREATED_AT,
+        updated_at=UPDATED_AT,
+    )
+    group.training_plans = [TrainingPlan(id=PLAN_ID)]
+    group.schema_items = [
+        TrainingGroupSchemaItem(
+            segment=TrainingSegment(id=3, code="MAIN", name="Część główna"),
+            percentage=Decimal("100"),
+            position=1,
+        )
+    ]
+    return group
+
+
 def test_list_groups_returns_one_page_of_current_trainers_groups(
     client, authenticated_trainer
 ) -> None:
@@ -72,12 +102,10 @@ def test_list_groups_returns_one_page_of_current_trainers_groups(
     group = _group_response()
     page = PaginatedResponse(
         items=[group],
-        total=1,
+        total=15,
         page=2,
         page_size=10,
-        total_pages=1,
-        has_next=False,
-        has_previous=True,
+        total_pages=2,
     )
     with patch(
         "app.api.training_groups.training_group_service.list_groups",
@@ -90,12 +118,10 @@ def test_list_groups_returns_one_page_of_current_trainers_groups(
     assert response.status_code == 200
     assert response.json() == {
         "items": [group.model_dump(mode="json", by_alias=True)],
-        "total": 1,
+        "total": 15,
         "page": 2,
         "page_size": 10,
-        "total_pages": 1,
-        "has_next": False,
-        "has_previous": True,
+        "total_pages": 2,
     }
     list_groups.assert_awaited_once()
     assert list_groups.await_args.args[1] == TRAINER_ID
@@ -117,9 +143,7 @@ def test_list_groups_defaults_to_the_full_age_range(
         total=0,
         page=1,
         page_size=20,
-        total_pages=0,
-        has_next=False,
-        has_previous=False,
+        total_pages=1,
     )
     with patch(
         "app.api.training_groups.training_group_service.list_groups",
@@ -144,6 +168,166 @@ def test_list_groups_rejects_an_inverted_age_range(
     response = client.get("/training-groups?min_age=15&max_age=14")
 
     assert response.status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("total", "page_size", "expected_pages"),
+    [
+        (1, 20, 1),
+        (20, 20, 1),
+        (21, 20, 2),
+        (25, 10, 3),
+        (20, 10, 2),
+    ],
+)
+def test_list_groups_service_derives_total_pages_from_db_total(
+    total: int, page_size: int, expected_pages: int
+) -> None:
+    """The service computes total_pages from the single DB page's total."""
+    session = AsyncMock()
+    with patch(
+        "app.services.training_group_service.training_groups_db.list_for_trainer",
+        new=AsyncMock(return_value=GroupPage(items=[], total=total)),
+    ) as list_for_trainer:
+        result = asyncio.run(
+            training_group_service.list_groups(
+                session, TRAINER_ID, page=1, page_size=page_size
+            )
+        )
+
+    assert result.total == total
+    assert result.total_pages == expected_pages
+    assert result.page == 1
+    assert result.page_size == page_size
+    assert result.items == []
+    list_for_trainer.assert_awaited_once()
+
+
+def test_list_groups_service_normalizes_empty_page_to_one() -> None:
+    """An empty result set reports page 1 of 1, regardless of the request."""
+    session = AsyncMock()
+    with patch(
+        "app.services.training_group_service.training_groups_db.list_for_trainer",
+        new=AsyncMock(return_value=GroupPage(items=[], total=0)),
+    ) as list_for_trainer:
+        result = asyncio.run(
+            training_group_service.list_groups(
+                session, TRAINER_ID, page=5, page_size=20
+            )
+        )
+
+    assert result.total == 0
+    assert result.total_pages == 1
+    assert result.page == 1
+    list_for_trainer.assert_awaited_once()
+
+
+def test_list_groups_service_keeps_total_for_an_out_of_range_page() -> None:
+    """A page past the end is empty but must not hide that groups exist."""
+    session = AsyncMock()
+    with patch(
+        "app.services.training_group_service.training_groups_db.list_for_trainer",
+        new=AsyncMock(return_value=GroupPage(items=[], total=5)),
+    ):
+        result = asyncio.run(
+            training_group_service.list_groups(session, TRAINER_ID, page=9, page_size=2)
+        )
+
+    assert result.items == []
+    assert result.total == 5
+    assert result.total_pages == 3
+    assert result.page == 9
+    assert result.page_size == 2
+
+
+def test_list_groups_service_maps_items_and_forwards_pagination() -> None:
+    """The service maps ORM rows to responses and passes offset/limit down."""
+    session = AsyncMock()
+    group = _training_group()
+    with patch(
+        "app.services.training_group_service.training_groups_db.list_for_trainer",
+        new=AsyncMock(return_value=GroupPage(items=[group], total=25)),
+    ) as list_for_trainer:
+        result = asyncio.run(
+            training_group_service.list_groups(
+                session,
+                TRAINER_ID,
+                duration_minutes=60,
+                min_age=7,
+                max_age=14,
+                page=3,
+                page_size=10,
+            )
+        )
+
+    assert result.total_pages == 3
+    assert [item.id for item in result.items] == [GROUP_ID]
+    assert result.items[0].name == "Młodzież"
+    list_for_trainer.assert_awaited_once_with(
+        session,
+        TRAINER_ID,
+        duration_minutes=60,
+        min_age=7,
+        max_age=14,
+        offset=20,
+        limit=10,
+    )
+
+
+def test_list_for_trainer_returns_page_and_total_in_one_query() -> None:
+    """A single statement returns both the page and the windowed total."""
+    session = AsyncMock()
+    group = _training_group()
+    result = MagicMock()
+    result.unique.return_value.all.return_value = [(group, 7)]
+    session.execute = AsyncMock(return_value=result)
+
+    page = asyncio.run(
+        training_groups_db.list_for_trainer(session, TRAINER_ID, offset=0, limit=20)
+    )
+
+    assert page.items == [group]
+    assert page.total == 7
+    session.execute.assert_awaited_once()
+    statement = session.execute.await_args.args[0]
+    assert "over ()" in str(statement).lower()
+
+
+def test_list_for_trainer_empty_first_page_reports_zero_total_without_recount() -> None:
+    """An empty first page means nothing matches, so no second query is needed."""
+    session = AsyncMock()
+    result = MagicMock()
+    result.unique.return_value.all.return_value = []
+    session.execute = AsyncMock(return_value=result)
+
+    page = asyncio.run(
+        training_groups_db.list_for_trainer(session, TRAINER_ID, offset=0)
+    )
+
+    assert page.items == []
+    assert page.total == 0
+    session.execute.assert_awaited_once()
+
+
+def test_list_for_trainer_out_of_range_page_still_reports_the_real_total() -> None:
+    """A page past the end has no rows to carry the window count, so recount."""
+    session = AsyncMock()
+    empty_page = MagicMock()
+    empty_page.unique.return_value.all.return_value = []
+    count = MagicMock()
+    count.scalar_one.return_value = 5
+    session.execute = AsyncMock(side_effect=[empty_page, count])
+
+    page = asyncio.run(
+        training_groups_db.list_for_trainer(session, TRAINER_ID, offset=16, limit=2)
+    )
+
+    assert page.items == []
+    assert page.total == 5
+    assert session.execute.await_count == 2
+    count_statement = str(session.execute.await_args_list[1].args[0]).lower()
+    assert "count(*)" in count_statement
+    assert "over" not in count_statement
 
 
 def test_create_group_uses_authenticated_trainer_and_returns_service_response(

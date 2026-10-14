@@ -1,5 +1,6 @@
 """Business operations for a trainer's groups."""
 
+import math
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,7 +33,7 @@ async def list_groups(
     page_size: int = 20,
 ) -> PaginatedResponse[GroupResponse]:
     """List one page of the groups owned by one trainer."""
-    groups = await training_groups_db.list_for_trainer(
+    db_page = await training_groups_db.list_for_trainer(
         session,
         trainer_id,
         duration_minutes=duration_minutes,
@@ -41,22 +42,12 @@ async def list_groups(
         offset=(page - 1) * page_size,
         limit=page_size,
     )
-    total = await training_groups_db.count_for_trainer(
-        session,
-        trainer_id,
-        duration_minutes=duration_minutes,
-        min_age=min_age,
-        max_age=max_age,
-    )
-    total_pages = (total + page_size - 1) // page_size
     return PaginatedResponse(
-        items=[_to_response(group) for group in groups],
-        total=total,
-        page=page,
+        items=[_to_response(group) for group in db_page.items],
+        total=db_page.total,
+        page=page if db_page.total else 1,
         page_size=page_size,
-        total_pages=total_pages,
-        has_next=page < total_pages,
-        has_previous=page > 1,
+        total_pages=max(1, math.ceil(db_page.total / page_size)),
     )
 
 
