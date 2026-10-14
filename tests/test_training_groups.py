@@ -11,6 +11,7 @@ from app.models.catalogs import TrainingSegment
 from app.models.enums import AuthMethod
 from app.models.training import TrainingGroup, TrainingPlan
 from app.models.users import User
+from app.schemas.common import PaginatedResponse
 from app.schemas.training import (
     GroupResponse,
     GroupSchemaItemResponse,
@@ -69,16 +70,33 @@ def test_list_groups_returns_one_page_of_current_trainers_groups(
 ) -> None:
     """List only the OAuth trainer's groups and forward filters and pagination."""
     group = _group_response()
+    page = PaginatedResponse(
+        items=[group],
+        total=1,
+        page=2,
+        page_size=10,
+        total_pages=1,
+        has_next=False,
+        has_previous=True,
+    )
     with patch(
         "app.api.training_groups.training_group_service.list_groups",
-        new=AsyncMock(return_value=[group]),
+        new=AsyncMock(return_value=page),
     ) as list_groups:
         response = client.get(
             "/training-groups?duration_minutes=60&min_age=7&max_age=14&page=2&page_size=10"
         )
 
     assert response.status_code == 200
-    assert response.json() == [group.model_dump(mode="json", by_alias=True)]
+    assert response.json() == {
+        "items": [group.model_dump(mode="json", by_alias=True)],
+        "total": 1,
+        "page": 2,
+        "page_size": 10,
+        "total_pages": 1,
+        "has_next": False,
+        "has_previous": True,
+    }
     list_groups.assert_awaited_once()
     assert list_groups.await_args.args[1] == TRAINER_ID
     assert list_groups.await_args.kwargs == {
@@ -94,9 +112,18 @@ def test_list_groups_defaults_to_the_full_age_range(
     client, authenticated_trainer
 ) -> None:
     """Use the full supported age range when no age filters are provided."""
+    empty = PaginatedResponse(
+        items=[],
+        total=0,
+        page=1,
+        page_size=20,
+        total_pages=0,
+        has_next=False,
+        has_previous=False,
+    )
     with patch(
         "app.api.training_groups.training_group_service.list_groups",
-        new=AsyncMock(return_value=[]),
+        new=AsyncMock(return_value=empty),
     ) as list_groups:
         response = client.get("/training-groups")
 

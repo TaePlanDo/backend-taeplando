@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from sqlalchemy import Select, select
+from sqlalchemy import ColumnElement, Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -36,6 +36,24 @@ def _group_delete_query() -> Select[TrainingGroup]:
     )
 
 
+def _trainer_filters(
+    trainer_id: UUID,
+    *,
+    duration_minutes: int | None = None,
+    min_age: int = 0,
+    max_age: int = 99,
+) -> list[ColumnElement[bool]]:
+    """Build the filter conditions shared by listing and counting."""
+    filters: list[ColumnElement[bool]] = [
+        TrainingGroup.trainer_id == trainer_id,
+        TrainingGroup.min_age >= min_age,
+        TrainingGroup.max_age <= max_age,
+    ]
+    if duration_minutes is not None:
+        filters.append(TrainingGroup.duration_minutes == duration_minutes)
+    return filters
+
+
 async def list_for_trainer(
     session: AsyncSession,
     trainer_id: UUID,
@@ -48,18 +66,44 @@ async def list_for_trainer(
 ) -> list[TrainingGroup]:
     """Return one stable page of a trainer's groups within the age range."""
     statement = _group_response_query().where(
-        TrainingGroup.trainer_id == trainer_id,
-        TrainingGroup.min_age >= min_age,
-        TrainingGroup.max_age <= max_age,
+        *_trainer_filters(
+            trainer_id,
+            duration_minutes=duration_minutes,
+            min_age=min_age,
+            max_age=max_age,
+        )
     )
-    if duration_minutes is not None:
-        statement = statement.where(TrainingGroup.duration_minutes == duration_minutes)
     result = await session.execute(
         statement.order_by(TrainingGroup.name, TrainingGroup.id)
         .offset(offset)
         .limit(limit)
     )
     return list(result.scalars().unique())
+
+
+async def count_for_trainer(
+    session: AsyncSession,
+    trainer_id: UUID,
+    *,
+    duration_minutes: int | None = None,
+    min_age: int = 0,
+    max_age: int = 99,
+) -> int:
+    """Count all of a trainer's groups matching the given filters."""
+    statement = (
+        select(func.count())
+        .select_from(TrainingGroup)
+        .where(
+            *_trainer_filters(
+                trainer_id,
+                duration_minutes=duration_minutes,
+                min_age=min_age,
+                max_age=max_age,
+            )
+        )
+    )
+    result = await session.execute(statement)
+    return result.scalar_one()
 
 
 async def get_for_trainer(

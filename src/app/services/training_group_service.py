@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import training_groups as training_groups_db
 from app.models.catalogs import TrainingSegment
 from app.models.training import TrainingGroup, TrainingGroupSchemaItem
+from app.schemas.common import PaginatedResponse
 from app.schemas.training import (
     GroupResponse,
     GroupSchemaItemResponse,
@@ -29,7 +30,7 @@ async def list_groups(
     max_age: int = 99,
     page: int = 1,
     page_size: int = 20,
-) -> list[GroupResponse]:
+) -> PaginatedResponse[GroupResponse]:
     """List one page of the groups owned by one trainer."""
     groups = await training_groups_db.list_for_trainer(
         session,
@@ -40,7 +41,23 @@ async def list_groups(
         offset=(page - 1) * page_size,
         limit=page_size,
     )
-    return [_to_response(group) for group in groups]
+    total = await training_groups_db.count_for_trainer(
+        session,
+        trainer_id,
+        duration_minutes=duration_minutes,
+        min_age=min_age,
+        max_age=max_age,
+    )
+    total_pages = (total + page_size - 1) // page_size
+    return PaginatedResponse(
+        items=[_to_response(group) for group in groups],
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+        has_next=page < total_pages,
+        has_previous=page > 1,
+    )
 
 
 async def get_group(
