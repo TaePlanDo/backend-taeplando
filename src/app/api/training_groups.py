@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.dependencies.auth import get_current_user
 from app.models.users import User
+from app.schemas.common import PaginatedResponse
 from app.schemas.training import (
     GroupResponse,
     GroupWrite,
@@ -28,7 +29,7 @@ def _not_found() -> HTTPException:
     )
 
 
-@router.get("", response_model=list[GroupResponse])
+@router.get("", response_model=PaginatedResponse[GroupResponse])
 async def list_groups(
     current_trainer: CurrentTrainer,
     session: Annotated[AsyncSession, Depends(get_db)],
@@ -37,7 +38,7 @@ async def list_groups(
     max_age: Annotated[int, Query(gt=0)] = 99,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
-) -> list[GroupResponse]:
+) -> PaginatedResponse[GroupResponse]:
     """List a page of groups owned by the authenticated trainer."""
     if min_age > max_age:
         raise HTTPException(
