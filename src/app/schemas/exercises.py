@@ -37,6 +37,8 @@ class ExerciseWrite(ExerciseUpdate):
                 "max_participants must be greater than or equal to min_participants"
             )
         return self
+
+
 class ExerciseResponse(BaseModel):
     """One catalog or trainer-owned exercise available to the trainer."""
 
