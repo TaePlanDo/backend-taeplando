@@ -1,6 +1,23 @@
-"""Shared response models reused across endpoints."""
+"""Shared validation and response models reused across endpoints."""
 
-from pydantic import BaseModel
+from typing import Annotated
+
+from pydantic import AfterValidator, BaseModel, Field
+
+
+def _normalize_name(value: str) -> str:
+    """Trim a name and reject whitespace-only values."""
+    normalized = value.strip()
+    if not normalized:
+        raise ValueError("Name cannot be blank")
+    return normalized
+
+
+Name = Annotated[
+    str,
+    Field(min_length=1, max_length=255),
+    AfterValidator(_normalize_name),
+]
 
 
 class PaginatedResponse[T](BaseModel):

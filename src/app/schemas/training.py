@@ -4,7 +4,9 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from app.schemas.common import Name
 
 
 class GroupWrite(BaseModel):
@@ -12,19 +14,10 @@ class GroupWrite(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    name: str = Field(min_length=1, max_length=255)
+    name: Name
     min_age: int = Field(gt=0)
     max_age: int = Field(gt=0)
     duration_minutes: int = Field(gt=0)
-
-    @field_validator("name")
-    @classmethod
-    def normalize_name(cls, value: str) -> str:
-        """Reject names consisting only of whitespace."""
-        normalized = value.strip()
-        if not normalized:
-            raise ValueError("Name cannot be blank")
-        return normalized
 
     @model_validator(mode="after")
     def validate_age_range(self) -> "GroupWrite":
