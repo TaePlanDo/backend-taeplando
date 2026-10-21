@@ -17,6 +17,21 @@ class ExerciseUpdate(BaseModel):
     description: Description
     duration_minutes: int = Field(gt=0)
     image_url: HttpUrl | None = None
+    min_age: int = Field(gt=0)
+    max_age: int = Field(gt=0)
+    min_participants: int = Field(gt=0)
+    max_participants: int = Field(gt=0)
+
+    @model_validator(mode="after")
+    def validate_ranges(self) -> "ExerciseUpdate":
+        """Keep exercise ranges consistent with database constraints."""
+        if self.max_age < self.min_age:
+            raise ValueError("max_age must be greater than or equal to min_age")
+        if self.max_participants < self.min_participants:
+            raise ValueError(
+                "max_participants must be greater than or equal to min_participants"
+            )
+        return self
 
 
 class ExerciseWrite(ExerciseUpdate):
@@ -26,17 +41,6 @@ class ExerciseWrite(ExerciseUpdate):
     max_age: int = Field(default=99, gt=0)
     min_participants: int = Field(default=1, gt=0)
     max_participants: int = Field(default=99, gt=0)
-
-    @model_validator(mode="after")
-    def validate_ranges(self) -> "ExerciseWrite":
-        """Keep exercise ranges consistent with database constraints."""
-        if self.max_age < self.min_age:
-            raise ValueError("max_age must be greater than or equal to min_age")
-        if self.max_participants < self.min_participants:
-            raise ValueError(
-                "max_participants must be greater than or equal to min_participants"
-            )
-        return self
 
 
 class ExerciseResponse(BaseModel):

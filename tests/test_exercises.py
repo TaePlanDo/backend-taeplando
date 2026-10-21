@@ -310,6 +310,10 @@ def test_update_exercise_uses_the_authenticated_trainer(
                 "description": "  Kopnięcie okrężne.  ",
                 "duration_minutes": 15,
                 "image_url": "https://example.com/dollyo-chagi.png",
+                "min_age": 8,
+                "max_age": 15,
+                "min_participants": 3,
+                "max_participants": 18,
             },
         )
 
@@ -322,13 +326,17 @@ def test_update_exercise_uses_the_authenticated_trainer(
         description="Kopnięcie okrężne.",
         duration_minutes=15,
         image_url="https://example.com/dollyo-chagi.png",
+        min_age=8,
+        max_age=15,
+        min_participants=3,
+        max_participants=18,
     )
 
 
 def test_update_exercise_rejects_non_editable_fields(
     client, authenticated_trainer
 ) -> None:
-    """Reject configuration and ownership changes outside SCRUM-133's scope."""
+    """Reject ownership changes outside SCRUM-133's scope."""
     with patch(
         "app.api.exercises.exercise_service.update_exercise", new=AsyncMock()
     ) as update_exercise:
@@ -339,6 +347,10 @@ def test_update_exercise_rejects_non_editable_fields(
                 "description": "Kopnięcie frontalne.",
                 "duration_minutes": 10,
                 "min_age": 7,
+                "max_age": 14,
+                "min_participants": 2,
+                "max_participants": 20,
+                "owner_user_id": str(TRAINER_ID),
             },
         )
 
@@ -360,6 +372,10 @@ def test_update_exercise_hides_foreign_or_missing_exercises(
                 "name": "Ap chagi",
                 "description": "Kopnięcie frontalne.",
                 "duration_minutes": 10,
+                "min_age": 7,
+                "max_age": 14,
+                "min_participants": 2,
+                "max_participants": 20,
             },
         )
 
@@ -552,7 +568,7 @@ def test_create_exercise_commits_both_new_rows() -> None:
 
 
 def test_update_exercise_updates_all_its_editable_fields() -> None:
-    """Update basic exercise data without changing trainer configuration."""
+    """Update basic data and trainer configuration of an owned exercise."""
     session = MagicMock()
     session.commit = AsyncMock()
     exercise = _private_exercise()
@@ -562,6 +578,10 @@ def test_update_exercise_updates_all_its_editable_fields() -> None:
         description="Kopnięcie okrężne.",
         duration_minutes=15,
         image_url="https://example.com/dollyo-chagi.png",
+        min_age=8,
+        max_age=15,
+        min_participants=3,
+        max_participants=18,
     )
     with patch(
         "app.db.exercises.get_private_for_trainer",
@@ -579,13 +599,17 @@ def test_update_exercise_updates_all_its_editable_fields() -> None:
         description="Kopnięcie okrężne.",
         duration_minutes=15,
         image_url="https://example.com/dollyo-chagi.png",
+        min_age=8,
+        max_age=15,
+        min_participants=3,
+        max_participants=18,
     )
     assert result == ExerciseResponse(**expected_data)
     assert exercise.image_url == "https://example.com/dollyo-chagi.png"
-    assert (trainer_exercise.min_age, trainer_exercise.max_age) == (7, 14)
+    assert (trainer_exercise.min_age, trainer_exercise.max_age) == (8, 15)
     assert (trainer_exercise.min_participants, trainer_exercise.max_participants) == (
-        2,
-        20,
+        3,
+        18,
     )
     get_private_for_trainer.assert_awaited_once_with(
         session, TRAINER_ID, PRIVATE_EXERCISE_ID

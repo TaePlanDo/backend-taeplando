@@ -68,6 +68,10 @@ async def update_exercise(
     exercise.name = payload.name
     exercise.description = payload.description
     exercise.image_url = str(payload.image_url) if payload.image_url else None
+    trainer_exercise.min_age = payload.min_age
+    trainer_exercise.max_age = payload.max_age
+    trainer_exercise.min_participants = payload.min_participants
+    trainer_exercise.max_participants = payload.max_participants
     trainer_exercise.duration_minutes = payload.duration_minutes
     await session.commit()
     return _to_response_from_models(exercise, trainer_exercise)
