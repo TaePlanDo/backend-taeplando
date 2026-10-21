@@ -352,9 +352,7 @@ def test_replace_group_schema_rejects_unknown_segment_ids() -> None:
 def test_replace_group_schema_raises_when_group_is_missing() -> None:
     """Propagate a uniform not-found outcome for foreign or missing groups."""
     session = MagicMock()
-    payload = GroupSchemaWrite(
-        items=[{"segment_id": 3, "percentage": Decimal("100")}]
-    )
+    payload = GroupSchemaWrite(items=[{"segment_id": 3, "percentage": Decimal("100")}])
     with (
         patch(
             "app.services.training_group_service.training_groups_db.get_for_trainer",

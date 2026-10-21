@@ -30,7 +30,5 @@ async def list_by_ids(
 
 async def list_all(session: AsyncSession) -> list[TrainingSegment]:
     """Return the full seeded training-segment catalog ordered by id."""
-    result = await session.execute(
-        select(TrainingSegment).order_by(TrainingSegment.id)
-    )
+    result = await session.execute(select(TrainingSegment).order_by(TrainingSegment.id))
     return list(result.scalars().all())
