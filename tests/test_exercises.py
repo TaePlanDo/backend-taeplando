@@ -294,15 +294,15 @@ def test_create_exercise_rejects_invalid_payload(client, authenticated_trainer) 
     create_exercise.assert_not_awaited()
 
 
-def test_put_exercise_uses_the_authenticated_trainer(
+def test_update_exercise_uses_the_authenticated_trainer(
     client, authenticated_trainer
 ) -> None:
     """Update only the authenticated trainer's private exercise."""
     response_item = _private_response()
     with patch(
-        "app.api.exercises.exercise_service.put_exercise",
+        "app.api.exercises.exercise_service.update_exercise",
         new=AsyncMock(return_value=response_item),
-    ) as put_exercise:
+    ) as update_exercise:
         response = client.put(
             f"/exercises/{PRIVATE_EXERCISE_ID}",
             json={
@@ -315,8 +315,8 @@ def test_put_exercise_uses_the_authenticated_trainer(
 
     assert response.status_code == 200
     assert response.json() == response_item.model_dump(mode="json")
-    payload = put_exercise.await_args.args[3]
-    assert put_exercise.await_args.args[1:3] == (TRAINER_ID, PRIVATE_EXERCISE_ID)
+    payload = update_exercise.await_args.args[3]
+    assert update_exercise.await_args.args[1:3] == (TRAINER_ID, PRIVATE_EXERCISE_ID)
     assert payload == ExerciseUpdate(
         name="Dollyo chagi",
         description="Kopnięcie okrężne.",
@@ -325,13 +325,13 @@ def test_put_exercise_uses_the_authenticated_trainer(
     )
 
 
-def test_put_exercise_rejects_non_editable_fields(
+def test_update_exercise_rejects_non_editable_fields(
     client, authenticated_trainer
 ) -> None:
     """Reject configuration and ownership changes outside SCRUM-133's scope."""
     with patch(
-        "app.api.exercises.exercise_service.put_exercise", new=AsyncMock()
-    ) as put_exercise:
+        "app.api.exercises.exercise_service.update_exercise", new=AsyncMock()
+    ) as update_exercise:
         response = client.put(
             f"/exercises/{PRIVATE_EXERCISE_ID}",
             json={
@@ -343,15 +343,15 @@ def test_put_exercise_rejects_non_editable_fields(
         )
 
     assert response.status_code == 422
-    put_exercise.assert_not_awaited()
+    update_exercise.assert_not_awaited()
 
 
-def test_put_exercise_hides_foreign_or_missing_exercises(
+def test_update_exercise_hides_foreign_or_missing_exercises(
     client, authenticated_trainer
 ) -> None:
     """Return the same not-found result without exposing exercise ownership."""
     with patch(
-        "app.api.exercises.exercise_service.put_exercise",
+        "app.api.exercises.exercise_service.update_exercise",
         new=AsyncMock(side_effect=exercise_service.ExerciseNotFoundError),
     ):
         response = client.put(
@@ -551,7 +551,7 @@ def test_create_exercise_commits_both_new_rows() -> None:
     session.commit.assert_awaited_once()
 
 
-def test_put_exercise_updates_all_its_editable_fields() -> None:
+def test_update_exercise_updates_all_its_editable_fields() -> None:
     """Update basic exercise data without changing trainer configuration."""
     session = MagicMock()
     session.commit = AsyncMock()
@@ -568,7 +568,7 @@ def test_put_exercise_updates_all_its_editable_fields() -> None:
         new=AsyncMock(return_value=(exercise, trainer_exercise)),
     ) as get_private_for_trainer:
         result = asyncio.run(
-            exercise_service.put_exercise(
+            exercise_service.update_exercise(
                 session, TRAINER_ID, PRIVATE_EXERCISE_ID, payload
             )
         )

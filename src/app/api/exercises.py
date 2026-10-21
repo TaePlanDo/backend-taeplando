@@ -49,7 +49,7 @@ async def create_exercise(
 
 
 @router.put("/{exercise_id}", response_model=ExerciseResponse)
-async def put_exercise(
+async def update_exercise(
     exercise_id: UUID,
     payload: ExerciseUpdate,
     current_trainer: CurrentTrainer,
@@ -57,7 +57,7 @@ async def put_exercise(
 ) -> ExerciseResponse:
     """Replace editable fields of a private exercise owned by the trainer."""
     try:
-        return await exercise_service.put_exercise(
+        return await exercise_service.update_exercise(
             session, current_trainer.id, exercise_id, payload
         )
     except exercise_service.ExerciseNotFoundError as exc:

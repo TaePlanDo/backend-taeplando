@@ -55,7 +55,7 @@ async def create_exercise(
     return _to_response_from_models(exercise, trainer_exercise)
 
 
-async def put_exercise(
+async def update_exercise(
     session: AsyncSession,
     trainer_id: UUID,
     exercise_id: UUID,
