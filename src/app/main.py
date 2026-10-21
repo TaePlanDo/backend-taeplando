@@ -10,6 +10,7 @@ from uvicorn.logging import DefaultFormatter
 
 from app.api.auth import router as auth_router
 from app.api.equipment import router as equipment_router
+from app.api.exercises import router as exercises_router
 from app.api.health import router as health_router
 from app.api.training_groups import router as training_groups_router
 from app.core.config import get_settings
@@ -56,6 +57,7 @@ app.add_middleware(SessionMiddleware, secret_key=settings.session_secret)
 app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(equipment_router)
+app.include_router(exercises_router)
 app.include_router(training_groups_router)
 
 

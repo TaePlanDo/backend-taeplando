@@ -5,18 +5,24 @@ from typing import Annotated
 from pydantic import AfterValidator, BaseModel, Field
 
 
-def _normalize_name(value: str) -> str:
-    """Trim a name and reject whitespace-only values."""
+def _normalize_non_blank(value: str) -> str:
+    """Trim user-entered text and reject whitespace-only values."""
     normalized = value.strip()
     if not normalized:
-        raise ValueError("Name cannot be blank")
+        raise ValueError("Value cannot be blank")
     return normalized
 
 
 Name = Annotated[
     str,
     Field(min_length=1, max_length=255),
-    AfterValidator(_normalize_name),
+    AfterValidator(_normalize_non_blank),
+]
+
+Description = Annotated[
+    str,
+    Field(min_length=1),
+    AfterValidator(_normalize_non_blank),
 ]
 
 
