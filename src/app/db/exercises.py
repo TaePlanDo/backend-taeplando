@@ -97,7 +97,7 @@ async def list_available_to_trainer(
     rows = result.all()
     if rows:
         return ExercisePage(
-            items=[ListedExercise(*row[:12]) for row in rows], total=rows[0][12]
+            items=[ListedExercise(*row[:-1]) for row in rows], total=rows[0][-1]
         )
     if offset == 0:
         return ExercisePage(items=[], total=0)
