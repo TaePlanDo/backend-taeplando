@@ -224,6 +224,27 @@ def test_create_equipment_builds_a_trainer_owned_local_entry() -> None:
     assert equipment.visibility == CatalogVisibility.LOCAL
 
 
+def test_get_local_for_trainer_scopes_by_owner_and_visibility() -> None:
+    """Look up mutable equipment only in the trainer's local catalog."""
+    session = AsyncMock()
+    result = MagicMock()
+    item = _equipment()
+    result.scalar_one_or_none.return_value = item
+    session.execute = AsyncMock(return_value=result)
+
+    found = asyncio.run(
+        equipment_db.get_local_for_trainer(session, TRAINER_ID, EQUIPMENT_ID)
+    )
+
+    assert found is item
+    statement = session.execute.await_args.args[0]
+    assert set(statement.compile().params.values()) == {
+        EQUIPMENT_ID,
+        TRAINER_ID,
+        CatalogVisibility.LOCAL,
+    }
+
+
 def test_create_equipment_commits_the_new_entry() -> None:
     """Add the new entry and commit it in the service layer."""
     session = MagicMock()

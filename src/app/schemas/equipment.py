@@ -10,7 +10,7 @@ from app.schemas.common import Name
 
 
 class EquipmentWrite(BaseModel):
-    """Payload used to create one equipment type."""
+    """Payload used to create or rename one equipment type."""
 
     model_config = ConfigDict(extra="forbid")
 
