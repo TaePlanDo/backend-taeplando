@@ -8,8 +8,8 @@ from app.models.enums import ExerciseScope, TrainerExerciseStatus
 from app.schemas.common import Description, Name
 
 
-class ExerciseEditableFields(BaseModel):
-    """Fields shared by creation and replacement of a private exercise."""
+class ExerciseUpdate(BaseModel):
+    """Editable fields of one trainer-owned exercise."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -19,7 +19,7 @@ class ExerciseEditableFields(BaseModel):
     image_url: HttpUrl | None = None
 
 
-class ExerciseWrite(ExerciseEditableFields):
+class ExerciseWrite(ExerciseUpdate):
     """Payload used to create one trainer-owned exercise."""
 
     min_age: int = Field(default=1, gt=0)
@@ -37,12 +37,6 @@ class ExerciseWrite(ExerciseEditableFields):
                 "max_participants must be greater than or equal to min_participants"
             )
         return self
-
-
-class ExerciseUpdate(ExerciseEditableFields):
-    """Editable fields of one trainer-owned exercise."""
-
-
 class ExerciseResponse(BaseModel):
     """One catalog or trainer-owned exercise available to the trainer."""
 
