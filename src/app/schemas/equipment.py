@@ -3,9 +3,10 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict
 
 from app.models.enums import CatalogVisibility
+from app.schemas.common import Name
 
 
 class EquipmentWrite(BaseModel):
@@ -13,16 +14,7 @@ class EquipmentWrite(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    name: str = Field(min_length=1, max_length=255)
-
-    @field_validator("name")
-    @classmethod
-    def normalize_name(cls, value: str) -> str:
-        """Trim a name and reject whitespace-only values."""
-        normalized = value.strip()
-        if not normalized:
-            raise ValueError("Name cannot be blank")
-        return normalized
+    name: Name
 
 
 class EquipmentResponse(BaseModel):
