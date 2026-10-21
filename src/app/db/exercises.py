@@ -155,4 +155,4 @@ async def get_private_for_trainer(
             TrainerExercise.trainer_id == trainer_id,
         )
     )
-    return result.one_or_none()
+    return result.tuples().one_or_none()
