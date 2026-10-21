@@ -1,8 +1,9 @@
 """Authenticated API for training equipment types."""
 
 from typing import Annotated
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -15,6 +16,13 @@ from app.services import equipment_service
 router = APIRouter(prefix="/equipment", tags=["equipment"])
 
 CurrentTrainer = Annotated[User, Depends(get_current_user)]
+
+
+def _not_found() -> HTTPException:
+    """Use one response for missing, foreign, and global equipment."""
+    return HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND, detail="Equipment not found"
+    )
 
 
 @router.get("", response_model=PaginatedResponse[EquipmentResponse])
@@ -40,3 +48,35 @@ async def create_equipment(
     return await equipment_service.create_equipment(
         session, current_trainer.id, payload
     )
+
+
+@router.put("/{equipment_id}", response_model=EquipmentResponse)
+async def update_equipment(
+    equipment_id: UUID,
+    payload: EquipmentWrite,
+    current_trainer: CurrentTrainer,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> EquipmentResponse:
+    """Rename a local equipment type owned by the authenticated trainer."""
+    try:
+        return await equipment_service.update_equipment(
+            session, current_trainer.id, equipment_id, payload
+        )
+    except equipment_service.EquipmentNotFoundError as exc:
+        raise _not_found() from exc
+
+
+@router.delete("/{equipment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_equipment(
+    equipment_id: UUID,
+    current_trainer: CurrentTrainer,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    """Delete a local equipment type owned by the authenticated trainer."""
+    try:
+        await equipment_service.delete_equipment(
+            session, current_trainer.id, equipment_id
+        )
+    except equipment_service.EquipmentNotFoundError as exc:
+        raise _not_found() from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
