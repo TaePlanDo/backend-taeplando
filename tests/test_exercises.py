@@ -16,7 +16,7 @@ from app.models.enums import (
 from app.models.exercises import Exercise, TrainerExercise
 from app.models.users import User
 from app.schemas.common import PaginatedResponse
-from app.schemas.exercises import ExerciseResponse, ExerciseWrite
+from app.schemas.exercises import ExerciseResponse, ExerciseUpdate, ExerciseWrite
 from app.services import exercise_service
 
 TRAINER_ID = UUID("d9aa16f7-b30a-4887-890b-247f86a2eef5")
@@ -47,6 +47,7 @@ def _private_exercise() -> Exercise:
         scope=ExerciseScope.PRIVATE,
         name="Ap chagi",
         description="Kopnięcie frontalne.",
+        image_url="https://example.com/ap-chagi.png",
     )
 
 
@@ -56,10 +57,10 @@ def _private_configuration() -> TrainerExercise:
         trainer_id=TRAINER_ID,
         exercise_id=PRIVATE_EXERCISE_ID,
         status=TrainerExerciseStatus.ACTIVE,
-        min_age=1,
-        max_age=99,
-        min_participants=1,
-        max_participants=99,
+        min_age=7,
+        max_age=14,
+        min_participants=2,
+        max_participants=20,
         duration_minutes=10,
     )
 
@@ -72,6 +73,11 @@ def _private_response() -> ExerciseResponse:
         scope=ExerciseScope.PRIVATE,
         name="Ap chagi",
         description="Kopnięcie frontalne.",
+        image_url="https://example.com/ap-chagi.png",
+        min_age=7,
+        max_age=14,
+        min_participants=2,
+        max_participants=20,
         duration_minutes=10,
         status=TrainerExerciseStatus.ACTIVE,
     )
@@ -85,6 +91,11 @@ def _private_listed_exercise() -> ListedExercise:
         scope=ExerciseScope.PRIVATE,
         name="Ap chagi",
         description="Kopnięcie frontalne.",
+        image_url="https://example.com/ap-chagi.png",
+        min_age=7,
+        max_age=14,
+        min_participants=2,
+        max_participants=20,
         duration_minutes=10,
         status=TrainerExerciseStatus.ACTIVE,
     )
@@ -98,6 +109,11 @@ def _global_listed_exercise() -> ListedExercise:
         scope=ExerciseScope.GLOBAL,
         name="Dollyo chagi",
         description="Kopnięcie okrężne.",
+        image_url="https://example.com/dollyo-chagi.png",
+        min_age=8,
+        max_age=18,
+        min_participants=3,
+        max_participants=24,
         duration_minutes=15,
         status=TrainerExerciseStatus.ACTIVE,
     )
@@ -141,7 +157,12 @@ def test_create_exercise_uses_the_authenticated_trainer(
             json={
                 "name": "  Ap chagi  ",
                 "description": "  Kopnięcie frontalne.  ",
+                "min_age": 7,
+                "max_age": 14,
+                "min_participants": 2,
+                "max_participants": 20,
                 "duration_minutes": 10,
+                "image_url": "https://example.com/ap-chagi.png",
             },
         )
 
@@ -151,24 +172,82 @@ def test_create_exercise_uses_the_authenticated_trainer(
     assert create_exercise.await_args.args[1] == TRAINER_ID
     assert payload.name == "Ap chagi"
     assert payload.description == "Kopnięcie frontalne."
+    assert str(payload.image_url) == "https://example.com/ap-chagi.png"
+    assert (payload.min_age, payload.max_age) == (7, 14)
+    assert (payload.min_participants, payload.max_participants) == (2, 20)
 
 
 def test_create_exercise_rejects_invalid_payload(client, authenticated_trainer) -> None:
-    """Reject blank text, invalid duration, and fields outside the contract."""
+    """Reject invalid text, URLs, ranges, and fields outside the contract."""
+    configuration = {
+        "min_age": 7,
+        "max_age": 14,
+        "min_participants": 2,
+        "max_participants": 20,
+    }
     with patch(
         "app.api.exercises.exercise_service.create_exercise", new=AsyncMock()
     ) as create_exercise:
         blank_name = client.post(
             "/exercises",
-            json={"name": "   ", "description": "Opis", "duration_minutes": 10},
+            json={
+                "name": "   ",
+                "description": "Opis",
+                "duration_minutes": 10,
+                **configuration,
+            },
         )
         blank_description = client.post(
             "/exercises",
-            json={"name": "Ap chagi", "description": "   ", "duration_minutes": 10},
+            json={
+                "name": "Ap chagi",
+                "description": "   ",
+                "duration_minutes": 10,
+                **configuration,
+            },
         )
         invalid_duration = client.post(
             "/exercises",
-            json={"name": "Ap chagi", "description": "Opis", "duration_minutes": 0},
+            json={
+                "name": "Ap chagi",
+                "description": "Opis",
+                "duration_minutes": 0,
+                **configuration,
+            },
+        )
+        invalid_image_url = client.post(
+            "/exercises",
+            json={
+                "name": "Ap chagi",
+                "description": "Opis",
+                "duration_minutes": 10,
+                "image_url": "not-a-url",
+                **configuration,
+            },
+        )
+        invalid_age_range = client.post(
+            "/exercises",
+            json={
+                "name": "Ap chagi",
+                "description": "Opis",
+                "min_age": 14,
+                "max_age": 7,
+                "min_participants": 2,
+                "max_participants": 20,
+                "duration_minutes": 10,
+            },
+        )
+        invalid_participant_range = client.post(
+            "/exercises",
+            json={
+                "name": "Ap chagi",
+                "description": "Opis",
+                "min_age": 7,
+                "max_age": 14,
+                "min_participants": 20,
+                "max_participants": 2,
+                "duration_minutes": 10,
+            },
         )
         extra_field = client.post(
             "/exercises",
@@ -177,14 +256,118 @@ def test_create_exercise_rejects_invalid_payload(client, authenticated_trainer) 
                 "description": "Opis",
                 "duration_minutes": 10,
                 "owner_user_id": str(TRAINER_ID),
+                **configuration,
             },
         )
 
     assert blank_name.status_code == 422
     assert blank_description.status_code == 422
     assert invalid_duration.status_code == 422
+    assert invalid_image_url.status_code == 422
+    assert invalid_age_range.status_code == 422
+    assert invalid_participant_range.status_code == 422
     assert extra_field.status_code == 422
     create_exercise.assert_not_awaited()
+
+
+def test_put_exercise_uses_the_authenticated_trainer(
+    client, authenticated_trainer
+) -> None:
+    """Update only the authenticated trainer's private exercise."""
+    response_item = _private_response()
+    with patch(
+        "app.api.exercises.exercise_service.put_exercise",
+        new=AsyncMock(return_value=response_item),
+    ) as put_exercise:
+        response = client.put(
+            f"/exercises/{PRIVATE_EXERCISE_ID}",
+            json={
+                "name": "  Dollyo chagi  ",
+                "description": "  Kopnięcie okrężne.  ",
+                "duration_minutes": 15,
+                "image_url": "https://example.com/dollyo-chagi.png",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json() == response_item.model_dump(mode="json")
+    payload = put_exercise.await_args.args[3]
+    assert put_exercise.await_args.args[1:3] == (TRAINER_ID, PRIVATE_EXERCISE_ID)
+    assert payload == ExerciseUpdate(
+        name="Dollyo chagi",
+        description="Kopnięcie okrężne.",
+        duration_minutes=15,
+        image_url="https://example.com/dollyo-chagi.png",
+    )
+
+
+def test_put_exercise_rejects_non_editable_fields(
+    client, authenticated_trainer
+) -> None:
+    """Reject configuration and ownership changes outside SCRUM-133's scope."""
+    with patch(
+        "app.api.exercises.exercise_service.put_exercise", new=AsyncMock()
+    ) as put_exercise:
+        response = client.put(
+            f"/exercises/{PRIVATE_EXERCISE_ID}",
+            json={
+                "name": "Ap chagi",
+                "description": "Kopnięcie frontalne.",
+                "duration_minutes": 10,
+                "min_age": 7,
+            },
+        )
+
+    assert response.status_code == 422
+    put_exercise.assert_not_awaited()
+
+
+def test_put_exercise_hides_foreign_or_missing_exercises(
+    client, authenticated_trainer
+) -> None:
+    """Return the same not-found result without exposing exercise ownership."""
+    with patch(
+        "app.api.exercises.exercise_service.put_exercise",
+        new=AsyncMock(side_effect=exercise_service.ExerciseNotFoundError),
+    ):
+        response = client.put(
+            f"/exercises/{PRIVATE_EXERCISE_ID}",
+            json={
+                "name": "Ap chagi",
+                "description": "Kopnięcie frontalne.",
+                "duration_minutes": 10,
+            },
+        )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Exercise not found"}
+
+
+def test_delete_exercise_marks_an_owned_exercise_inactive(
+    client, authenticated_trainer
+) -> None:
+    """Delegate a logical deletion using only the trainer identity from auth."""
+    with patch(
+        "app.api.exercises.exercise_service.delete_exercise", new=AsyncMock()
+    ) as delete_exercise:
+        response = client.delete(f"/exercises/{PRIVATE_EXERCISE_ID}")
+
+    assert response.status_code == 204
+    delete_exercise.assert_awaited_once_with(ANY, TRAINER_ID, PRIVATE_EXERCISE_ID)
+
+
+def test_delete_exercise_hides_foreign_or_missing_exercises(
+    client, authenticated_trainer
+) -> None:
+    """Use the same not-found response when deletion is not authorized."""
+    with patch(
+        "app.api.exercises.exercise_service.delete_exercise",
+        new=AsyncMock(side_effect=exercise_service.ExerciseNotFoundError),
+    ):
+        response = client.delete(f"/exercises/{PRIVATE_EXERCISE_ID}")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Exercise not found"}
 
 
 def test_list_exercises_maps_a_database_page() -> None:
@@ -214,6 +397,11 @@ def test_list_exercises_maps_a_database_page() -> None:
                 scope=ExerciseScope.GLOBAL,
                 name="Dollyo chagi",
                 description="Kopnięcie okrężne.",
+                image_url="https://example.com/dollyo-chagi.png",
+                min_age=8,
+                max_age=18,
+                min_participants=3,
+                max_participants=24,
                 duration_minutes=15,
                 status=TrainerExerciseStatus.ACTIVE,
             ),
@@ -286,6 +474,11 @@ def test_create_exercise_builds_an_active_private_exercise() -> None:
         TRAINER_ID,
         name="Ap chagi",
         description="Kopnięcie frontalne.",
+        image_url="https://example.com/ap-chagi.png",
+        min_age=7,
+        max_age=14,
+        min_participants=2,
+        max_participants=20,
         duration_minutes=10,
     )
 
@@ -293,14 +486,15 @@ def test_create_exercise_builds_an_active_private_exercise() -> None:
     assert exercise.scope == ExerciseScope.PRIVATE
     assert exercise.name == "Ap chagi"
     assert exercise.description == "Kopnięcie frontalne."
+    assert exercise.image_url == "https://example.com/ap-chagi.png"
     assert trainer_exercise.trainer_id == TRAINER_ID
     assert trainer_exercise.exercise is exercise
     assert trainer_exercise.status == TrainerExerciseStatus.ACTIVE
     assert trainer_exercise.duration_minutes == 10
-    assert (trainer_exercise.min_age, trainer_exercise.max_age) == (1, 99)
+    assert (trainer_exercise.min_age, trainer_exercise.max_age) == (7, 14)
     assert (trainer_exercise.min_participants, trainer_exercise.max_participants) == (
-        1,
-        99,
+        2,
+        20,
     )
 
 
@@ -311,7 +505,14 @@ def test_create_exercise_commits_both_new_rows() -> None:
     exercise = _private_exercise()
     trainer_exercise = _private_configuration()
     payload = ExerciseWrite(
-        name="Ap chagi", description="Kopnięcie frontalne.", duration_minutes=10
+        name="Ap chagi",
+        description="Kopnięcie frontalne.",
+        image_url="https://example.com/ap-chagi.png",
+        min_age=7,
+        max_age=14,
+        min_participants=2,
+        max_participants=20,
+        duration_minutes=10,
     )
     with patch(
         "app.db.exercises.create_for_trainer",
@@ -323,4 +524,65 @@ def test_create_exercise_commits_both_new_rows() -> None:
 
     assert result == _private_response()
     session.add_all.assert_called_once_with((exercise, trainer_exercise))
+    session.commit.assert_awaited_once()
+
+
+def test_put_exercise_updates_all_its_editable_fields() -> None:
+    """Update basic exercise data without changing trainer configuration."""
+    session = MagicMock()
+    session.commit = AsyncMock()
+    exercise = _private_exercise()
+    trainer_exercise = _private_configuration()
+    payload = ExerciseUpdate(
+        name="Dollyo chagi",
+        description="Kopnięcie okrężne.",
+        duration_minutes=15,
+        image_url="https://example.com/dollyo-chagi.png",
+    )
+    with patch(
+        "app.db.exercises.get_private_for_trainer",
+        new=AsyncMock(return_value=(exercise, trainer_exercise)),
+    ) as get_private_for_trainer:
+        result = asyncio.run(
+            exercise_service.put_exercise(
+                session, TRAINER_ID, PRIVATE_EXERCISE_ID, payload
+            )
+        )
+
+    expected_data = _private_response().model_dump()
+    expected_data.update(
+        name="Dollyo chagi",
+        description="Kopnięcie okrężne.",
+        duration_minutes=15,
+        image_url="https://example.com/dollyo-chagi.png",
+    )
+    assert result == ExerciseResponse(**expected_data)
+    assert exercise.image_url == "https://example.com/dollyo-chagi.png"
+    assert (trainer_exercise.min_age, trainer_exercise.max_age) == (7, 14)
+    assert (trainer_exercise.min_participants, trainer_exercise.max_participants) == (
+        2,
+        20,
+    )
+    get_private_for_trainer.assert_awaited_once_with(
+        session, TRAINER_ID, PRIVATE_EXERCISE_ID
+    )
+    session.commit.assert_awaited_once()
+
+
+def test_delete_exercise_marks_the_trainer_configuration_inactive() -> None:
+    """Preserve the exercise row and its historical references on deletion."""
+    session = MagicMock()
+    session.commit = AsyncMock()
+    exercise = _private_exercise()
+    trainer_exercise = _private_configuration()
+    with patch(
+        "app.db.exercises.get_private_for_trainer",
+        new=AsyncMock(return_value=(exercise, trainer_exercise)),
+    ):
+        asyncio.run(
+            exercise_service.delete_exercise(session, TRAINER_ID, PRIVATE_EXERCISE_ID)
+        )
+
+    assert trainer_exercise.status == TrainerExerciseStatus.INACTIVE
+    assert exercise.name == "Ap chagi"
     session.commit.assert_awaited_once()

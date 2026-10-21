@@ -18,6 +18,11 @@ class ListedExercise(NamedTuple):
     scope: ExerciseScope
     name: str
     description: str
+    image_url: str | None
+    min_age: int
+    max_age: int
+    min_participants: int
+    max_participants: int
     duration_minutes: int
     status: TrainerExerciseStatus
 
@@ -40,6 +45,11 @@ async def list_available_to_trainer(
             Exercise.scope,
             Exercise.name,
             Exercise.description,
+            Exercise.image_url,
+            TrainerExercise.min_age,
+            TrainerExercise.max_age,
+            TrainerExercise.min_participants,
+            TrainerExercise.max_participants,
             TrainerExercise.duration_minutes,
             TrainerExercise.status,
         )
@@ -48,6 +58,7 @@ async def list_available_to_trainer(
             Exercise.scope == ExerciseScope.PRIVATE,
             Exercise.owner_user_id == trainer_id,
             TrainerExercise.trainer_id == trainer_id,
+            TrainerExercise.status == TrainerExerciseStatus.ACTIVE,
         )
     )
     global_exercises = (
@@ -57,6 +68,11 @@ async def list_available_to_trainer(
             Exercise.scope,
             ExerciseVersion.name,
             ExerciseVersion.description,
+            ExerciseVersion.image_url,
+            ExerciseVersion.min_age,
+            ExerciseVersion.max_age,
+            ExerciseVersion.min_participants,
+            ExerciseVersion.max_participants,
             ExerciseVersion.duration_minutes,
             literal(
                 TrainerExerciseStatus.ACTIVE,
@@ -81,7 +97,7 @@ async def list_available_to_trainer(
     rows = result.all()
     if rows:
         return ExercisePage(
-            items=[ListedExercise(*row[:7]) for row in rows], total=rows[0][7]
+            items=[ListedExercise(*row[:12]) for row in rows], total=rows[0][12]
         )
     if offset == 0:
         return ExercisePage(items=[], total=0)
@@ -93,7 +109,16 @@ async def list_available_to_trainer(
 
 
 def create_for_trainer(
-    trainer_id: UUID, *, name: str, description: str, duration_minutes: int
+    trainer_id: UUID,
+    *,
+    name: str,
+    description: str,
+    image_url: str | None,
+    min_age: int,
+    max_age: int,
+    min_participants: int,
+    max_participants: int,
+    duration_minutes: int,
 ) -> tuple[Exercise, TrainerExercise]:
     """Build a private exercise and its active trainer configuration."""
     exercise = Exercise(
@@ -101,15 +126,33 @@ def create_for_trainer(
         scope=ExerciseScope.PRIVATE,
         name=name,
         description=description,
+        image_url=image_url,
     )
     trainer_exercise = TrainerExercise(
         trainer_id=trainer_id,
         exercise=exercise,
         status=TrainerExerciseStatus.ACTIVE,
-        min_age=1,
-        max_age=99,
-        min_participants=1,
-        max_participants=99,
+        min_age=min_age,
+        max_age=max_age,
+        min_participants=min_participants,
+        max_participants=max_participants,
         duration_minutes=duration_minutes,
     )
     return exercise, trainer_exercise
+
+
+async def get_private_for_trainer(
+    session: AsyncSession, trainer_id: UUID, exercise_id: UUID
+) -> tuple[Exercise, TrainerExercise] | None:
+    """Find one private exercise together with its owner's configuration."""
+    result = await session.execute(
+        select(Exercise, TrainerExercise)
+        .join(TrainerExercise)
+        .where(
+            Exercise.id == exercise_id,
+            Exercise.scope == ExerciseScope.PRIVATE,
+            Exercise.owner_user_id == trainer_id,
+            TrainerExercise.trainer_id == trainer_id,
+        )
+    )
+    return result.one_or_none()
