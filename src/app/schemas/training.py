@@ -27,6 +27,34 @@ class GroupWrite(BaseModel):
         return self
 
 
+class GroupSchemaItemWrite(BaseModel):
+    """One ordered segment allocation in a schema replace payload."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    segment_id: int = Field(gt=0)
+    percentage: Decimal = Field(gt=0, le=100)
+
+
+class GroupSchemaWrite(BaseModel):
+    """Complete replacement payload for a group's training schema."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[GroupSchemaItemWrite] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_schema_rules(self) -> "GroupSchemaWrite":
+        """Enforce unique segments and percentages that sum to 100%."""
+        segment_ids = [item.segment_id for item in self.items]
+        if len(segment_ids) != len(set(segment_ids)):
+            raise ValueError("Each training segment may appear at most once")
+        total = sum((item.percentage for item in self.items), Decimal("0"))
+        if total != Decimal("100"):
+            raise ValueError("Schema percentages must sum to 100")
+        return self
+
+
 class GroupSchemaItemResponse(BaseModel):
     """One immutable segment allocation in a group's current schema."""
 

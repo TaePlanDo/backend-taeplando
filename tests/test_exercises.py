@@ -2,41 +2,21 @@ import asyncio
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 from uuid import UUID
 
-import pytest
-
 from app.db import exercises as exercises_db
 from app.db.exercises import ExercisePage, ListedExercise
-from app.dependencies.auth import get_current_user
-from app.main import app
 from app.models.enums import (
-    AuthMethod,
     ExerciseScope,
     TrainerExerciseStatus,
 )
 from app.models.exercises import Exercise, TrainerExercise
-from app.models.users import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.exercises import ExerciseResponse, ExerciseWrite
 from app.services import exercise_service
+from constants import TRAINER_ID
 
-TRAINER_ID = UUID("d9aa16f7-b30a-4887-890b-247f86a2eef5")
 CATALOG_OWNER_ID = UUID("3cae14d4-cf8b-4f55-a34d-b169404d2f49")
 PRIVATE_EXERCISE_ID = UUID("0ac590e1-2a46-4cb7-8944-803e364cc46b")
 GLOBAL_EXERCISE_ID = UUID("f48ce3a2-6f43-4127-a420-9e2cb3e7f1ca")
-
-
-@pytest.fixture
-def authenticated_trainer() -> None:
-    """Authenticate exercise route tests without JWT parsing."""
-    app.dependency_overrides[get_current_user] = lambda: User(
-        id=TRAINER_ID,
-        email="trainer@example.com",
-        full_name="Trainer",
-        auth_method=AuthMethod.LOCAL,
-        password_hash="hash",
-    )
-    yield
-    app.dependency_overrides.pop(get_current_user, None)
 
 
 def _private_exercise() -> Exercise:
