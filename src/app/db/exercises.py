@@ -3,7 +3,7 @@
 from typing import NamedTuple
 from uuid import UUID
 
-from sqlalchemy import Select, and_, func, or_, select
+from sqlalchemy import func, literal, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.enums import ExerciseScope, ExerciseVersionStatus, TrainerExerciseStatus
@@ -11,11 +11,15 @@ from app.models.exercises import Exercise, ExerciseVersion, TrainerExercise
 
 
 class ListedExercise(NamedTuple):
-    """Exercise data from either the global catalog or a trainer's own set."""
+    """One normalized exercise row visible in a trainer's catalog."""
 
-    exercise: Exercise
-    trainer_exercise: TrainerExercise | None
-    approved_version: ExerciseVersion | None
+    id: UUID
+    owner_user_id: UUID
+    scope: ExerciseScope
+    name: str
+    description: str
+    duration_minutes: int
+    status: TrainerExerciseStatus
 
 
 class ExercisePage(NamedTuple):
@@ -25,55 +29,65 @@ class ExercisePage(NamedTuple):
     total: int
 
 
-def _visible_query(
-    trainer_id: UUID,
-) -> Select[Exercise, TrainerExercise, ExerciseVersion]:
-    """Build the shared catalog-and-private-exercise query for one trainer."""
-    trainer_exercise_join = and_(
-        TrainerExercise.exercise_id == Exercise.id,
-        TrainerExercise.trainer_id == trainer_id,
-    )
-    approved_version_join = ExerciseVersion.id == Exercise.latest_approved_version_id
-    private_exercise = and_(
-        Exercise.scope == ExerciseScope.PRIVATE,
-        Exercise.owner_user_id == trainer_id,
-        TrainerExercise.id.is_not(None),
-    )
-    global_exercise = and_(
-        Exercise.scope == ExerciseScope.GLOBAL,
-        ExerciseVersion.status == ExerciseVersionStatus.APPROVED,
-    )
-    return (
-        select(Exercise, TrainerExercise, ExerciseVersion)
-        .outerjoin(TrainerExercise, trainer_exercise_join)
-        .outerjoin(ExerciseVersion, approved_version_join)
-        .where(or_(private_exercise, global_exercise))
-    )
-
-
 async def list_available_to_trainer(
     session: AsyncSession, trainer_id: UUID, *, offset: int, limit: int
 ) -> ExercisePage:
     """Return one alphabetically ordered page of available exercises."""
-    visible_query = _visible_query(trainer_id)
+    private_exercises = (
+        select(
+            Exercise.id,
+            Exercise.owner_user_id,
+            Exercise.scope,
+            Exercise.name,
+            Exercise.description,
+            TrainerExercise.duration_minutes,
+            TrainerExercise.status,
+        )
+        .join(TrainerExercise)
+        .where(
+            Exercise.scope == ExerciseScope.PRIVATE,
+            Exercise.owner_user_id == trainer_id,
+            TrainerExercise.trainer_id == trainer_id,
+        )
+    )
+    global_exercises = (
+        select(
+            Exercise.id,
+            Exercise.owner_user_id,
+            Exercise.scope,
+            ExerciseVersion.name,
+            ExerciseVersion.description,
+            ExerciseVersion.duration_minutes,
+            literal(
+                TrainerExerciseStatus.ACTIVE,
+                type_=TrainerExercise.__table__.c.status.type,
+            ).label("status"),
+        )
+        .join(
+            ExerciseVersion, ExerciseVersion.id == Exercise.latest_approved_version_id
+        )
+        .where(
+            Exercise.scope == ExerciseScope.GLOBAL,
+            ExerciseVersion.status == ExerciseVersionStatus.APPROVED,
+        )
+    )
+    visible_exercises = union_all(private_exercises, global_exercises).subquery()
     result = await session.execute(
-        visible_query.add_columns(func.count().over())
-        .order_by(Exercise.name, Exercise.id)
+        select(*visible_exercises.c, func.count().over())
+        .order_by(visible_exercises.c.name, visible_exercises.c.id)
         .offset(offset)
         .limit(limit)
     )
     rows = result.all()
     if rows:
         return ExercisePage(
-            items=[ListedExercise(*row[:3]) for row in rows], total=rows[0][3]
+            items=[ListedExercise(*row[:7]) for row in rows], total=rows[0][7]
         )
     if offset == 0:
         return ExercisePage(items=[], total=0)
 
     total_result = await session.execute(
-        select(func.count()).select_from(
-            visible_query.with_only_columns(Exercise.id).subquery()
-        )
+        select(func.count()).select_from(visible_exercises)
     )
     return ExercisePage(items=[], total=total_result.scalar_one())
 

@@ -6,8 +6,6 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import exercises as exercises_db
-from app.models.enums import ExerciseScope, TrainerExerciseStatus
-from app.models.exercises import Exercise, ExerciseVersion, TrainerExercise
 from app.schemas.common import PaginatedResponse
 from app.schemas.exercises import ExerciseResponse, ExerciseWrite
 
@@ -23,7 +21,7 @@ async def list_exercises(
         limit=page_size,
     )
     return PaginatedResponse(
-        items=[_to_response(*listed_exercise) for listed_exercise in db_page.items],
+        items=[_to_response(listed_exercise) for listed_exercise in db_page.items],
         total=db_page.total,
         page=page if db_page.total else 1,
         page_size=page_size,
@@ -43,30 +41,6 @@ async def create_exercise(
     )
     session.add_all((exercise, trainer_exercise))
     await session.commit()
-    return _to_response(exercise, trainer_exercise, None)
-
-
-def _to_response(
-    exercise: Exercise,
-    trainer_exercise: TrainerExercise | None,
-    approved_version: ExerciseVersion | None,
-) -> ExerciseResponse:
-    """Map either source shape to the public exercise representation."""
-    if exercise.scope == ExerciseScope.GLOBAL:
-        if approved_version is None:
-            raise RuntimeError("Global exercise has no approved version")
-        return ExerciseResponse(
-            id=exercise.id,
-            owner_user_id=exercise.owner_user_id,
-            scope=exercise.scope,
-            name=approved_version.name,
-            description=approved_version.description,
-            duration_minutes=approved_version.duration_minutes,
-            status=TrainerExerciseStatus.ACTIVE,
-        )
-
-    if trainer_exercise is None:
-        raise RuntimeError("Private exercise has no trainer configuration")
     return ExerciseResponse(
         id=exercise.id,
         owner_user_id=exercise.owner_user_id,
@@ -75,4 +49,17 @@ def _to_response(
         description=exercise.description,
         duration_minutes=trainer_exercise.duration_minutes,
         status=trainer_exercise.status,
+    )
+
+
+def _to_response(exercise: exercises_db.ListedExercise) -> ExerciseResponse:
+    """Map a normalized database row to the public exercise representation."""
+    return ExerciseResponse(
+        id=exercise.id,
+        owner_user_id=exercise.owner_user_id,
+        scope=exercise.scope,
+        name=exercise.name,
+        description=exercise.description,
+        duration_minutes=exercise.duration_minutes,
+        status=exercise.status,
     )

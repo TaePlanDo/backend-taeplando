@@ -11,10 +11,9 @@ from app.main import app
 from app.models.enums import (
     AuthMethod,
     ExerciseScope,
-    ExerciseVersionStatus,
     TrainerExerciseStatus,
 )
-from app.models.exercises import Exercise, ExerciseVersion, TrainerExercise
+from app.models.exercises import Exercise, TrainerExercise
 from app.models.users import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.exercises import ExerciseResponse, ExerciseWrite
@@ -65,33 +64,6 @@ def _private_configuration() -> TrainerExercise:
     )
 
 
-def _global_exercise() -> Exercise:
-    """Build a globally shared logical exercise."""
-    return Exercise(
-        id=GLOBAL_EXERCISE_ID,
-        owner_user_id=CATALOG_OWNER_ID,
-        scope=ExerciseScope.GLOBAL,
-        name="Outdated name",
-        description="Outdated description.",
-    )
-
-
-def _approved_version() -> ExerciseVersion:
-    """Build the public catalog version used in a global response."""
-    return ExerciseVersion(
-        exercise_id=GLOBAL_EXERCISE_ID,
-        version_number=1,
-        status=ExerciseVersionStatus.APPROVED,
-        name="Dollyo chagi",
-        description="Kopnięcie okrężne.",
-        min_age=1,
-        max_age=99,
-        min_participants=1,
-        max_participants=99,
-        duration_minutes=15,
-    )
-
-
 def _private_response() -> ExerciseResponse:
     """Build the expected public representation of a private exercise."""
     return ExerciseResponse(
@@ -101,6 +73,32 @@ def _private_response() -> ExerciseResponse:
         name="Ap chagi",
         description="Kopnięcie frontalne.",
         duration_minutes=10,
+        status=TrainerExerciseStatus.ACTIVE,
+    )
+
+
+def _private_listed_exercise() -> ListedExercise:
+    """Build one normalized private row returned by the database layer."""
+    return ListedExercise(
+        id=PRIVATE_EXERCISE_ID,
+        owner_user_id=TRAINER_ID,
+        scope=ExerciseScope.PRIVATE,
+        name="Ap chagi",
+        description="Kopnięcie frontalne.",
+        duration_minutes=10,
+        status=TrainerExerciseStatus.ACTIVE,
+    )
+
+
+def _global_listed_exercise() -> ListedExercise:
+    """Build one normalized global-catalog row returned by the database layer."""
+    return ListedExercise(
+        id=GLOBAL_EXERCISE_ID,
+        owner_user_id=CATALOG_OWNER_ID,
+        scope=ExerciseScope.GLOBAL,
+        name="Dollyo chagi",
+        description="Kopnięcie okrężne.",
+        duration_minutes=15,
         status=TrainerExerciseStatus.ACTIVE,
     )
 
@@ -192,14 +190,10 @@ def test_create_exercise_rejects_invalid_payload(client, authenticated_trainer) 
 def test_list_exercises_maps_a_database_page() -> None:
     """Map a page containing private and global catalog entries."""
     session = AsyncMock()
-    private = _private_exercise()
-    private_configuration = _private_configuration()
-    global_exercise = _global_exercise()
-    approved_version = _approved_version()
     db_page = ExercisePage(
         items=[
-            ListedExercise(private, private_configuration, None),
-            ListedExercise(global_exercise, None, approved_version),
+            _private_listed_exercise(),
+            _global_listed_exercise(),
         ],
         total=21,
     )
@@ -230,6 +224,60 @@ def test_list_exercises_maps_a_database_page() -> None:
         total_pages=2,
     )
     list_available.assert_awaited_once_with(session, TRAINER_ID, offset=20, limit=20)
+
+
+def test_list_available_to_trainer_returns_page_and_total_in_one_query() -> None:
+    """Return the normalized page and its windowed total from one statement."""
+    session = AsyncMock()
+    result = MagicMock()
+    result.all.return_value = [(*_private_listed_exercise(), 7)]
+    session.execute = AsyncMock(return_value=result)
+
+    page = asyncio.run(
+        exercises_db.list_available_to_trainer(session, TRAINER_ID, offset=0, limit=20)
+    )
+
+    assert page.items == [_private_listed_exercise()]
+    assert page.total == 7
+    session.execute.assert_awaited_once()
+    statement = session.execute.await_args.args[0]
+    assert "union all" in str(statement).lower()
+    assert "over ()" in str(statement).lower()
+
+
+def test_list_available_to_trainer_empty_first_page_skips_recount() -> None:
+    """Avoid a second count query when the first page has no visible exercises."""
+    session = AsyncMock()
+    result = MagicMock()
+    result.all.return_value = []
+    session.execute = AsyncMock(return_value=result)
+
+    page = asyncio.run(
+        exercises_db.list_available_to_trainer(session, TRAINER_ID, offset=0, limit=20)
+    )
+
+    assert page == ExercisePage(items=[], total=0)
+    session.execute.assert_awaited_once()
+
+
+def test_list_available_to_trainer_out_of_range_page_recounts_total() -> None:
+    """Keep the real total when a requested page has no rows to carry it."""
+    session = AsyncMock()
+    empty_page = MagicMock()
+    empty_page.all.return_value = []
+    count = MagicMock()
+    count.scalar_one.return_value = 5
+    session.execute = AsyncMock(side_effect=[empty_page, count])
+
+    page = asyncio.run(
+        exercises_db.list_available_to_trainer(session, TRAINER_ID, offset=16, limit=2)
+    )
+
+    assert page == ExercisePage(items=[], total=5)
+    assert session.execute.await_count == 2
+    count_statement = str(session.execute.await_args_list[1].args[0]).lower()
+    assert "count(*)" in count_statement
+    assert "over" not in count_statement
 
 
 def test_create_exercise_builds_an_active_private_exercise() -> None:
