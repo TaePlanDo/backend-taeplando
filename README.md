@@ -88,6 +88,16 @@ letter, a digit, and a special character.
 Refresh cookie path defaults to `/api/auth` (Vite proxy) so both refresh and logout receive it.
 After logout, `/auth/refresh` fails and `/auth/me` still requires a valid (unexpired) access JWT.
 
+## Equipment API (short)
+
+All endpoints below require `Authorization: Bearer <access-token>`. A trainer sees
+global equipment types and types they created themselves.
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| `GET` | `/equipment?page=1&page_size=20` | Return one page of equipment types visible to the trainer. |
+| `POST` | `/equipment` | Create a trainer-owned local equipment type from `{ "name" }`. |
+
 ## Training groups API (short)
 
 All endpoints below require `Authorization: Bearer <access-token>` and operate
