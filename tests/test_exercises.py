@@ -5,7 +5,7 @@ from uuid import UUID
 import pytest
 
 from app.db import exercises as exercises_db
-from app.db.exercises import ListedExercise
+from app.db.exercises import ExercisePage, ListedExercise
 from app.dependencies.auth import get_current_user
 from app.main import app
 from app.models.enums import (
@@ -16,6 +16,7 @@ from app.models.enums import (
 )
 from app.models.exercises import Exercise, ExerciseVersion, TrainerExercise
 from app.models.users import User
+from app.schemas.common import PaginatedResponse
 from app.schemas.exercises import ExerciseResponse, ExerciseWrite
 from app.services import exercise_service
 
@@ -108,16 +109,24 @@ def test_list_exercises_uses_the_authenticated_trainer(
     client, authenticated_trainer
 ) -> None:
     """Derive list ownership from authentication instead of client input."""
-    responses = [_private_response()]
+    responses = PaginatedResponse(
+        items=[_private_response()], total=21, page=2, page_size=20, total_pages=2
+    )
     with patch(
         "app.api.exercises.exercise_service.list_exercises",
         new=AsyncMock(return_value=responses),
     ) as list_exercises:
-        response = client.get("/exercises")
+        response = client.get("/exercises?page=2&page_size=20")
 
     assert response.status_code == 200
-    assert response.json() == [item.model_dump(mode="json") for item in responses]
-    list_exercises.assert_awaited_once_with(ANY, TRAINER_ID)
+    assert response.json() == {
+        "items": [item.model_dump(mode="json") for item in responses.items],
+        "total": 21,
+        "page": 2,
+        "page_size": 20,
+        "total_pages": 2,
+    }
+    list_exercises.assert_awaited_once_with(ANY, TRAINER_ID, page=2, page_size=20)
 
 
 def test_create_exercise_uses_the_authenticated_trainer(
@@ -180,36 +189,47 @@ def test_create_exercise_rejects_invalid_payload(client, authenticated_trainer) 
     create_exercise.assert_not_awaited()
 
 
-def test_list_exercises_maps_private_and_global_catalog_entries() -> None:
-    """Return trainer data for private entries and approved data for global ones."""
+def test_list_exercises_maps_a_database_page() -> None:
+    """Map a page containing private and global catalog entries."""
     session = AsyncMock()
     private = _private_exercise()
     private_configuration = _private_configuration()
     global_exercise = _global_exercise()
     approved_version = _approved_version()
-    listed_exercises = [
-        ListedExercise(private, private_configuration, None),
-        ListedExercise(global_exercise, None, approved_version),
-    ]
+    db_page = ExercisePage(
+        items=[
+            ListedExercise(private, private_configuration, None),
+            ListedExercise(global_exercise, None, approved_version),
+        ],
+        total=21,
+    )
     with patch(
         "app.db.exercises.list_available_to_trainer",
-        new=AsyncMock(return_value=listed_exercises),
+        new=AsyncMock(return_value=db_page),
     ) as list_available:
-        result = asyncio.run(exercise_service.list_exercises(session, TRAINER_ID))
+        result = asyncio.run(
+            exercise_service.list_exercises(session, TRAINER_ID, page=2, page_size=20)
+        )
 
-    assert result == [
-        _private_response(),
-        ExerciseResponse(
-            id=GLOBAL_EXERCISE_ID,
-            owner_user_id=CATALOG_OWNER_ID,
-            scope=ExerciseScope.GLOBAL,
-            name="Dollyo chagi",
-            description="Kopnięcie okrężne.",
-            duration_minutes=15,
-            status=TrainerExerciseStatus.ACTIVE,
-        ),
-    ]
-    list_available.assert_awaited_once_with(session, TRAINER_ID)
+    assert result == PaginatedResponse(
+        items=[
+            _private_response(),
+            ExerciseResponse(
+                id=GLOBAL_EXERCISE_ID,
+                owner_user_id=CATALOG_OWNER_ID,
+                scope=ExerciseScope.GLOBAL,
+                name="Dollyo chagi",
+                description="Kopnięcie okrężne.",
+                duration_minutes=15,
+                status=TrainerExerciseStatus.ACTIVE,
+            ),
+        ],
+        total=21,
+        page=2,
+        page_size=20,
+        total_pages=2,
+    )
+    list_available.assert_awaited_once_with(session, TRAINER_ID, offset=20, limit=20)
 
 
 def test_create_exercise_builds_an_active_private_exercise() -> None:

@@ -1,5 +1,6 @@
 """Business operations for the exercise catalog."""
 
+import math
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,15 +8,27 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import exercises as exercises_db
 from app.models.enums import ExerciseScope, TrainerExerciseStatus
 from app.models.exercises import Exercise, ExerciseVersion, TrainerExercise
+from app.schemas.common import PaginatedResponse
 from app.schemas.exercises import ExerciseResponse, ExerciseWrite
 
 
 async def list_exercises(
-    session: AsyncSession, trainer_id: UUID
-) -> list[ExerciseResponse]:
-    """List global catalog exercises and exercises owned by one trainer."""
-    listed_exercises = await exercises_db.list_available_to_trainer(session, trainer_id)
-    return [_to_response(*listed_exercise) for listed_exercise in listed_exercises]
+    session: AsyncSession, trainer_id: UUID, *, page: int, page_size: int
+) -> PaginatedResponse[ExerciseResponse]:
+    """Return one page of global and trainer-owned exercises."""
+    db_page = await exercises_db.list_available_to_trainer(
+        session,
+        trainer_id,
+        offset=(page - 1) * page_size,
+        limit=page_size,
+    )
+    return PaginatedResponse(
+        items=[_to_response(*listed_exercise) for listed_exercise in db_page.items],
+        total=db_page.total,
+        page=page if db_page.total else 1,
+        page_size=page_size,
+        total_pages=max(1, math.ceil(db_page.total / page_size)),
+    )
 
 
 async def create_exercise(

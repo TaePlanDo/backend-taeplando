@@ -3,7 +3,7 @@
 from typing import NamedTuple
 from uuid import UUID
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import Select, and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.enums import ExerciseScope, ExerciseVersionStatus, TrainerExerciseStatus
@@ -18,10 +18,17 @@ class ListedExercise(NamedTuple):
     approved_version: ExerciseVersion | None
 
 
-async def list_available_to_trainer(
-    session: AsyncSession, trainer_id: UUID
-) -> list[ListedExercise]:
-    """Return alphabetically ordered global and trainer-owned exercises."""
+class ExercisePage(NamedTuple):
+    """One page of exercises and the total number visible to a trainer."""
+
+    items: list[ListedExercise]
+    total: int
+
+
+def _visible_query(
+    trainer_id: UUID,
+) -> Select[Exercise, TrainerExercise, ExerciseVersion]:
+    """Build the shared catalog-and-private-exercise query for one trainer."""
     trainer_exercise_join = and_(
         TrainerExercise.exercise_id == Exercise.id,
         TrainerExercise.trainer_id == trainer_id,
@@ -36,14 +43,39 @@ async def list_available_to_trainer(
         Exercise.scope == ExerciseScope.GLOBAL,
         ExerciseVersion.status == ExerciseVersionStatus.APPROVED,
     )
-    result = await session.execute(
+    return (
         select(Exercise, TrainerExercise, ExerciseVersion)
         .outerjoin(TrainerExercise, trainer_exercise_join)
         .outerjoin(ExerciseVersion, approved_version_join)
         .where(or_(private_exercise, global_exercise))
-        .order_by(Exercise.name, Exercise.id)
     )
-    return [ListedExercise(*row) for row in result.all()]
+
+
+async def list_available_to_trainer(
+    session: AsyncSession, trainer_id: UUID, *, offset: int, limit: int
+) -> ExercisePage:
+    """Return one alphabetically ordered page of available exercises."""
+    visible_query = _visible_query(trainer_id)
+    result = await session.execute(
+        visible_query.add_columns(func.count().over())
+        .order_by(Exercise.name, Exercise.id)
+        .offset(offset)
+        .limit(limit)
+    )
+    rows = result.all()
+    if rows:
+        return ExercisePage(
+            items=[ListedExercise(*row[:3]) for row in rows], total=rows[0][3]
+        )
+    if offset == 0:
+        return ExercisePage(items=[], total=0)
+
+    total_result = await session.execute(
+        select(func.count()).select_from(
+            visible_query.with_only_columns(Exercise.id).subquery()
+        )
+    )
+    return ExercisePage(items=[], total=total_result.scalar_one())
 
 
 def create_for_trainer(
