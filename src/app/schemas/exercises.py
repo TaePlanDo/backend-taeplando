@@ -8,19 +8,24 @@ from app.models.enums import ExerciseScope, TrainerExerciseStatus
 from app.schemas.common import Description, Name
 
 
-class ExerciseWrite(BaseModel):
-    """Payload used to create one trainer-owned exercise."""
+class ExerciseEditableFields(BaseModel):
+    """Fields shared by creation and replacement of a private exercise."""
 
     model_config = ConfigDict(extra="forbid")
 
     name: Name
     description: Description
+    duration_minutes: int = Field(gt=0)
+    image_url: HttpUrl | None = None
+
+
+class ExerciseWrite(ExerciseEditableFields):
+    """Payload used to create one trainer-owned exercise."""
+
     min_age: int = Field(default=1, gt=0)
     max_age: int = Field(default=99, gt=0)
     min_participants: int = Field(default=1, gt=0)
     max_participants: int = Field(default=99, gt=0)
-    duration_minutes: int = Field(gt=0)
-    image_url: HttpUrl | None = None
 
     @model_validator(mode="after")
     def validate_ranges(self) -> "ExerciseWrite":
@@ -34,15 +39,8 @@ class ExerciseWrite(BaseModel):
         return self
 
 
-class ExerciseUpdate(BaseModel):
+class ExerciseUpdate(ExerciseEditableFields):
     """Editable fields of one trainer-owned exercise."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    name: Name
-    description: Description
-    duration_minutes: int = Field(gt=0)
-    image_url: HttpUrl | None = None
 
 
 class ExerciseResponse(BaseModel):
