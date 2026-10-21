@@ -15,10 +15,10 @@ class ExerciseWrite(BaseModel):
 
     name: Name
     description: Description
-    min_age: int = Field(gt=0)
-    max_age: int = Field(gt=0)
-    min_participants: int = Field(gt=0)
-    max_participants: int = Field(gt=0)
+    min_age: int = Field(default=1, gt=0)
+    max_age: int = Field(default=99, gt=0)
+    min_participants: int = Field(default=1, gt=0)
+    max_participants: int = Field(default=99, gt=0)
     duration_minutes: int = Field(gt=0)
     image_url: HttpUrl | None = None
 

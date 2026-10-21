@@ -177,6 +177,30 @@ def test_create_exercise_uses_the_authenticated_trainer(
     assert (payload.min_participants, payload.max_participants) == (2, 20)
 
 
+def test_create_exercise_uses_default_trainer_configuration(
+    client, authenticated_trainer
+) -> None:
+    """Use the agreed range defaults when a trainer leaves them out."""
+    response_item = _private_response()
+    with patch(
+        "app.api.exercises.exercise_service.create_exercise",
+        new=AsyncMock(return_value=response_item),
+    ) as create_exercise:
+        response = client.post(
+            "/exercises",
+            json={
+                "name": "Ap chagi",
+                "description": "Kopnięcie frontalne.",
+                "duration_minutes": 10,
+            },
+        )
+
+    assert response.status_code == 201
+    payload = create_exercise.await_args.args[2]
+    assert (payload.min_age, payload.max_age) == (1, 99)
+    assert (payload.min_participants, payload.max_participants) == (1, 99)
+
+
 def test_create_exercise_rejects_invalid_payload(client, authenticated_trainer) -> None:
     """Reject invalid text, URLs, ranges, and fields outside the contract."""
     configuration = {
