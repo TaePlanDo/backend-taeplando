@@ -266,6 +266,21 @@ def test_create_exercise_uses_default_trainer_configuration(
     assert (payload.min_participants, payload.max_participants) == (1, 99)
 
 
+def test_create_exercise_allows_an_empty_equipment_configuration(
+    client, authenticated_trainer
+) -> None:
+    """Allow exercises without equipment while still requiring types and segments."""
+    response_item = _private_response()
+    with patch(
+        "app.api.exercises.exercise_service.create_exercise",
+        new=AsyncMock(return_value=response_item),
+    ) as create_exercise:
+        response = client.post("/exercises", json=_exercise_payload(equipment_ids=[]))
+
+    assert response.status_code == 201
+    assert create_exercise.await_args.args[2].equipment_ids == []
+
+
 def test_create_exercise_rejects_invalid_payload(client, authenticated_trainer) -> None:
     """Reject invalid text, URLs, ranges, and fields outside the contract."""
     with patch(

@@ -56,6 +56,25 @@ async def list_visible_to_trainer[Entry: CatalogEntryMixin](
     )
 
 
+async def list_visible_by_ids[Entry: CatalogEntryMixin](
+    session: AsyncSession,
+    trainer_id: UUID,
+    *,
+    catalog: type[Entry],
+    ids: list[UUID],
+) -> list[Entry]:
+    """Return requested entries only when they are visible to the trainer."""
+    if not ids:
+        return []
+    result = await session.scalars(
+        select(catalog).where(
+            catalog.id.in_(ids),
+            _visible_to_trainer(catalog, trainer_id),
+        )
+    )
+    return list(result)
+
+
 async def _count_visible_to_trainer[Entry: CatalogEntryMixin](
     session: AsyncSession,
     catalog: type[Entry],

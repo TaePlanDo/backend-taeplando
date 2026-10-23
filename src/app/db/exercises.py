@@ -3,18 +3,14 @@
 from typing import NamedTuple
 from uuid import UUID
 
-from sqlalchemy import func, literal, or_, select, union_all
+from sqlalchemy import func, literal, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.interfaces import LoaderOption
 
+from app.db import catalogs as catalogs_db
 from app.models.catalogs import Equipment, TrainingSegment, TrainingType
-from app.models.enums import (
-    CatalogVisibility,
-    ExerciseScope,
-    ExerciseVersionStatus,
-    TrainerExerciseStatus,
-)
+from app.models.enums import ExerciseScope, ExerciseVersionStatus, TrainerExerciseStatus
 from app.models.exercises import Exercise, ExerciseVersion, TrainerExercise
 
 
@@ -139,9 +135,17 @@ async def resolve_configuration(
     segment_ids: list[int],
 ) -> ExerciseConfiguration | None:
     """Return catalog values visible to the trainer or reject an unavailable ID."""
-    equipment = await _visible_equipment(session, trainer_id, equipment_ids)
-    training_types = await _visible_training_types(
-        session, trainer_id, training_type_ids
+    equipment = await catalogs_db.list_visible_by_ids(
+        session,
+        trainer_id,
+        catalog=Equipment,
+        ids=equipment_ids,
+    )
+    training_types = await catalogs_db.list_visible_by_ids(
+        session,
+        trainer_id,
+        catalog=TrainingType,
+        ids=training_type_ids,
     )
     segments = await _segments_by_id(session, segment_ids)
     if (
@@ -190,40 +194,6 @@ async def list_configurations(
                     versions[exercise.version_id]
                 )
     return configurations
-
-
-async def _visible_equipment(
-    session: AsyncSession, trainer_id: UUID, equipment_ids: list[UUID]
-) -> list[Equipment]:
-    """Load equipment that is global or belongs to the authenticated trainer."""
-    if not equipment_ids:
-        return []
-    result = await session.scalars(
-        select(Equipment).where(
-            Equipment.id.in_(equipment_ids),
-            or_(
-                Equipment.visibility == CatalogVisibility.GLOBAL,
-                Equipment.owner_user_id == trainer_id,
-            ),
-        )
-    )
-    return list(result)
-
-
-async def _visible_training_types(
-    session: AsyncSession, trainer_id: UUID, training_type_ids: list[UUID]
-) -> list[TrainingType]:
-    """Load training types that are global or belong to the authenticated trainer."""
-    result = await session.scalars(
-        select(TrainingType).where(
-            TrainingType.id.in_(training_type_ids),
-            or_(
-                TrainingType.visibility == CatalogVisibility.GLOBAL,
-                TrainingType.owner_user_id == trainer_id,
-            ),
-        )
-    )
-    return list(result)
 
 
 async def _segments_by_id(
