@@ -8,10 +8,44 @@ from app.models.enums import ExerciseScope, TrainerExerciseStatus
 from app.schemas.common import Description, Name
 
 
-class ExerciseUpdate(BaseModel):
-    """Editable fields of one trainer-owned exercise."""
+class CatalogReference(BaseModel):
+    """One named catalog item assigned to an exercise."""
+
+    id: UUID
+    name: str
+
+
+class TrainingSegmentResponse(BaseModel):
+    """One fixed training segment assigned to an exercise."""
+
+    id: int
+    code: str
+    name: str
+
+
+class ExerciseConfigurationWrite(BaseModel):
+    """The complete trainer-managed classification of an exercise."""
 
     model_config = ConfigDict(extra="forbid")
+
+    equipment_ids: list[UUID] = Field(default_factory=list)
+    training_type_ids: list[UUID] = Field(min_length=1)
+    segment_ids: list[int] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_unique_ids(self) -> "ExerciseConfigurationWrite":
+        """Reject duplicate catalog entries before resolving their visibility."""
+        fields = ("equipment_ids", "training_type_ids", "segment_ids")
+        if any(
+            len(getattr(self, field)) != len(set(getattr(self, field)))
+            for field in fields
+        ):
+            raise ValueError("configuration identifiers must not contain duplicates")
+        return self
+
+
+class ExerciseUpdate(ExerciseConfigurationWrite):
+    """Editable fields of one trainer-owned exercise."""
 
     name: Name
     description: Description
@@ -58,3 +92,6 @@ class ExerciseResponse(BaseModel):
     max_participants: int
     duration_minutes: int
     status: TrainerExerciseStatus
+    equipment: list[CatalogReference]
+    training_types: list[CatalogReference]
+    segments: list[TrainingSegmentResponse]

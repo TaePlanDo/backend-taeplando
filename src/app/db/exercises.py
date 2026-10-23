@@ -5,7 +5,11 @@ from uuid import UUID
 
 from sqlalchemy import func, literal, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.interfaces import LoaderOption
 
+from app.db import catalogs as catalogs_db
+from app.models.catalogs import Equipment, TrainingSegment, TrainingType
 from app.models.enums import ExerciseScope, ExerciseVersionStatus, TrainerExerciseStatus
 from app.models.exercises import Exercise, ExerciseVersion, TrainerExercise
 
@@ -25,6 +29,15 @@ class ListedExercise(NamedTuple):
     max_participants: int
     duration_minutes: int
     status: TrainerExerciseStatus
+    version_id: UUID | None
+
+
+class ExerciseConfiguration(NamedTuple):
+    """Resolved catalog values assigned to one exercise configuration."""
+
+    equipment: list[Equipment]
+    training_types: list[TrainingType]
+    segments: list[TrainingSegment]
 
 
 class ExercisePage(NamedTuple):
@@ -52,6 +65,10 @@ async def list_available_to_trainer(
             TrainerExercise.max_participants,
             TrainerExercise.duration_minutes,
             TrainerExercise.status,
+            literal(
+                None,
+                type_=Exercise.__table__.c.latest_approved_version_id.type,
+            ).label("version_id"),
         )
         .join(TrainerExercise)
         .where(
@@ -78,6 +95,7 @@ async def list_available_to_trainer(
                 TrainerExerciseStatus.ACTIVE,
                 type_=TrainerExercise.__table__.c.status.type,
             ).label("status"),
+            Exercise.latest_approved_version_id.label("version_id"),
         )
         .join(
             ExerciseVersion, ExerciseVersion.id == Exercise.latest_approved_version_id
@@ -106,6 +124,117 @@ async def list_available_to_trainer(
         select(func.count()).select_from(visible_exercises)
     )
     return ExercisePage(items=[], total=total_result.scalar_one())
+
+
+async def resolve_configuration(
+    session: AsyncSession,
+    trainer_id: UUID,
+    *,
+    equipment_ids: list[UUID],
+    training_type_ids: list[UUID],
+    segment_ids: list[int],
+) -> ExerciseConfiguration | None:
+    """Return catalog values visible to the trainer or reject an unavailable ID."""
+    equipment = await catalogs_db.list_visible_by_ids(
+        session,
+        trainer_id,
+        catalog=Equipment,
+        ids=equipment_ids,
+    )
+    training_types = await catalogs_db.list_visible_by_ids(
+        session,
+        trainer_id,
+        catalog=TrainingType,
+        ids=training_type_ids,
+    )
+    segments = await _segments_by_id(session, segment_ids)
+    if (
+        len(equipment) != len(equipment_ids)
+        or len(training_types) != len(training_type_ids)
+        or len(segments) != len(segment_ids)
+    ):
+        return None
+    return _configuration(equipment, training_types, segments)
+
+
+async def list_configurations(
+    session: AsyncSession, trainer_id: UUID, exercises: list[ListedExercise]
+) -> dict[UUID, ExerciseConfiguration]:
+    """Load configuration for a mixed page of private and global exercises."""
+    private_exercise_ids = [
+        exercise.id for exercise in exercises if exercise.scope == ExerciseScope.PRIVATE
+    ]
+    global_version_ids = [
+        exercise.version_id for exercise in exercises if exercise.version_id is not None
+    ]
+    configurations: dict[UUID, ExerciseConfiguration] = {}
+    if private_exercise_ids:
+        private_result = await session.scalars(
+            select(TrainerExercise)
+            .where(
+                TrainerExercise.exercise_id.in_(private_exercise_ids),
+                TrainerExercise.trainer_id == trainer_id,
+            )
+            .options(*_configuration_loader_options(TrainerExercise))
+        )
+        for trainer_exercise in private_result:
+            configurations[trainer_exercise.exercise_id] = _configuration_from(
+                trainer_exercise
+            )
+    if global_version_ids:
+        global_result = await session.scalars(
+            select(ExerciseVersion)
+            .where(ExerciseVersion.id.in_(global_version_ids))
+            .options(*_configuration_loader_options(ExerciseVersion))
+        )
+        versions = {version.id: version for version in global_result}
+        for exercise in exercises:
+            if exercise.version_id is not None:
+                configurations[exercise.id] = _configuration_from(
+                    versions[exercise.version_id]
+                )
+    return configurations
+
+
+async def _segments_by_id(
+    session: AsyncSession, segment_ids: list[int]
+) -> list[TrainingSegment]:
+    """Load entries from the fixed training-segment dictionary."""
+    result = await session.scalars(
+        select(TrainingSegment).where(TrainingSegment.id.in_(segment_ids))
+    )
+    return list(result)
+
+
+def _configuration_loader_options(
+    model: type[TrainerExercise] | type[ExerciseVersion],
+) -> tuple[LoaderOption, ...]:
+    """Return eager loaders shared by private and published configurations."""
+    return (
+        selectinload(model.equipment),
+        selectinload(model.training_types),
+        selectinload(model.segments),
+    )
+
+
+def _configuration_from(
+    source: TrainerExercise | ExerciseVersion,
+) -> ExerciseConfiguration:
+    """Map ORM relationships to the shared configuration value object."""
+    return _configuration(source.equipment, source.training_types, source.segments)
+
+
+def _configuration(
+    equipment: list[Equipment],
+    training_types: list[TrainingType],
+    segments: list[TrainingSegment],
+) -> ExerciseConfiguration:
+    """Normalize catalog ordering in every public exercise configuration."""
+    return ExerciseConfiguration(
+        equipment=sorted(equipment, key=lambda item: (item.name, item.id)),
+        training_types=sorted(training_types, key=lambda item: (item.name, item.id)),
+        segments=sorted(segments, key=lambda item: item.id),
+    )
 
 
 def create_for_trainer(
@@ -154,5 +283,6 @@ async def get_private_for_trainer(
             Exercise.owner_user_id == trainer_id,
             TrainerExercise.trainer_id == trainer_id,
         )
+        .options(*_configuration_loader_options(TrainerExercise))
     )
     return result.tuples().one_or_none()

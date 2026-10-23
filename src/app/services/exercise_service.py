@@ -1,19 +1,31 @@
 """Business operations for the exercise catalog."""
 
-import math
+from collections.abc import Sequence
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import exercises as exercises_db
+from app.models.catalogs import Equipment, TrainingType
 from app.models.enums import TrainerExerciseStatus
 from app.models.exercises import Exercise, TrainerExercise
-from app.schemas.common import PaginatedResponse
-from app.schemas.exercises import ExerciseResponse, ExerciseUpdate, ExerciseWrite
+from app.schemas.common import PaginatedResponse, paginate
+from app.schemas.exercises import (
+    CatalogReference,
+    ExerciseConfigurationWrite,
+    ExerciseResponse,
+    ExerciseUpdate,
+    ExerciseWrite,
+    TrainingSegmentResponse,
+)
 
 
 class ExerciseNotFoundError(Exception):
     """Raised when a private exercise is absent or owned by another trainer."""
+
+
+class InvalidExerciseConfigurationError(Exception):
+    """Raised when a selected catalog value is unavailable to the trainer."""
 
 
 async def list_exercises(
@@ -26,12 +38,17 @@ async def list_exercises(
         offset=(page - 1) * page_size,
         limit=page_size,
     )
-    return PaginatedResponse(
-        items=[_to_response(listed_exercise) for listed_exercise in db_page.items],
+    configurations = await exercises_db.list_configurations(
+        session, trainer_id, db_page.items
+    )
+    return paginate(
+        items=[
+            _to_response(listed_exercise, configurations[listed_exercise.id])
+            for listed_exercise in db_page.items
+        ],
         total=db_page.total,
-        page=page if db_page.total else 1,
+        page=page,
         page_size=page_size,
-        total_pages=max(1, math.ceil(db_page.total / page_size)),
     )
 
 
@@ -39,6 +56,7 @@ async def create_exercise(
     session: AsyncSession, trainer_id: UUID, payload: ExerciseWrite
 ) -> ExerciseResponse:
     """Create an active private exercise owned by the authenticated trainer."""
+    configuration = await _resolve_configuration_or_raise(session, trainer_id, payload)
     exercise, trainer_exercise = exercises_db.create_for_trainer(
         trainer_id,
         name=payload.name,
@@ -50,9 +68,10 @@ async def create_exercise(
         max_participants=payload.max_participants,
         duration_minutes=payload.duration_minutes,
     )
+    _replace_configuration(trainer_exercise, configuration)
     session.add_all((exercise, trainer_exercise))
     await session.commit()
-    return _to_response_from_models(exercise, trainer_exercise)
+    return _to_response_from_models(exercise, trainer_exercise, configuration)
 
 
 async def update_exercise(
@@ -65,6 +84,7 @@ async def update_exercise(
     exercise, trainer_exercise = await _get_owned_private_exercise_or_raise(
         session, trainer_id, exercise_id
     )
+    configuration = await _resolve_configuration_or_raise(session, trainer_id, payload)
     exercise.name = payload.name
     exercise.description = payload.description
     exercise.image_url = str(payload.image_url) if payload.image_url else None
@@ -73,8 +93,9 @@ async def update_exercise(
     trainer_exercise.min_participants = payload.min_participants
     trainer_exercise.max_participants = payload.max_participants
     trainer_exercise.duration_minutes = payload.duration_minutes
+    _replace_configuration(trainer_exercise, configuration)
     await session.commit()
-    return _to_response_from_models(exercise, trainer_exercise)
+    return _to_response_from_models(exercise, trainer_exercise, configuration)
 
 
 async def delete_exercise(
@@ -88,7 +109,10 @@ async def delete_exercise(
     await session.commit()
 
 
-def _to_response(exercise: exercises_db.ListedExercise) -> ExerciseResponse:
+def _to_response(
+    exercise: exercises_db.ListedExercise,
+    configuration: exercises_db.ExerciseConfiguration,
+) -> ExerciseResponse:
     """Map a normalized database row to the public exercise representation."""
     return ExerciseResponse(
         id=exercise.id,
@@ -103,6 +127,9 @@ def _to_response(exercise: exercises_db.ListedExercise) -> ExerciseResponse:
         max_participants=exercise.max_participants,
         duration_minutes=exercise.duration_minutes,
         status=exercise.status,
+        equipment=_catalog_references(configuration.equipment),
+        training_types=_catalog_references(configuration.training_types),
+        segments=_segment_response(configuration),
     )
 
 
@@ -119,7 +146,9 @@ async def _get_owned_private_exercise_or_raise(
 
 
 def _to_response_from_models(
-    exercise: Exercise, trainer_exercise: TrainerExercise
+    exercise: Exercise,
+    trainer_exercise: TrainerExercise,
+    configuration: exercises_db.ExerciseConfiguration,
 ) -> ExerciseResponse:
     """Map an owned private exercise and its configuration to the API contract."""
     return ExerciseResponse(
@@ -135,4 +164,52 @@ def _to_response_from_models(
         max_participants=trainer_exercise.max_participants,
         duration_minutes=trainer_exercise.duration_minutes,
         status=trainer_exercise.status,
+        equipment=_catalog_references(configuration.equipment),
+        training_types=_catalog_references(configuration.training_types),
+        segments=_segment_response(configuration),
     )
+
+
+async def _resolve_configuration_or_raise(
+    session: AsyncSession,
+    trainer_id: UUID,
+    payload: ExerciseConfigurationWrite,
+) -> exercises_db.ExerciseConfiguration:
+    """Resolve visible catalog IDs supplied with a complete exercise payload."""
+    configuration = await exercises_db.resolve_configuration(
+        session,
+        trainer_id,
+        equipment_ids=payload.equipment_ids,
+        training_type_ids=payload.training_type_ids,
+        segment_ids=payload.segment_ids,
+    )
+    if configuration is None:
+        raise InvalidExerciseConfigurationError
+    return configuration
+
+
+def _replace_configuration(
+    trainer_exercise: TrainerExercise,
+    configuration: exercises_db.ExerciseConfiguration,
+) -> None:
+    """Replace all mutable catalog relationships of one local configuration."""
+    trainer_exercise.equipment = configuration.equipment
+    trainer_exercise.training_types = configuration.training_types
+    trainer_exercise.segments = configuration.segments
+
+
+def _catalog_references(
+    items: Sequence[Equipment | TrainingType],
+) -> list[CatalogReference]:
+    """Serialize equipment or training types with their common public shape."""
+    return [CatalogReference(id=item.id, name=item.name) for item in items]
+
+
+def _segment_response(
+    configuration: exercises_db.ExerciseConfiguration,
+) -> list[TrainingSegmentResponse]:
+    """Serialize training segments from one exercise configuration."""
+    return [
+        TrainingSegmentResponse(id=item.id, code=item.code, name=item.name)
+        for item in configuration.segments
+    ]

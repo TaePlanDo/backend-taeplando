@@ -3,20 +3,33 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 from uuid import UUID
 
 from app.db import exercises as exercises_db
-from app.db.exercises import ExercisePage, ListedExercise
+from app.db.exercises import ExerciseConfiguration, ExercisePage, ListedExercise
+from app.models.catalogs import Equipment, TrainingSegment, TrainingType
 from app.models.enums import (
+    CatalogVisibility,
     ExerciseScope,
     TrainerExerciseStatus,
 )
 from app.models.exercises import Exercise, TrainerExercise
 from app.schemas.common import PaginatedResponse
-from app.schemas.exercises import ExerciseResponse, ExerciseUpdate, ExerciseWrite
+from app.schemas.exercises import (
+    CatalogReference,
+    ExerciseResponse,
+    ExerciseUpdate,
+    ExerciseWrite,
+    TrainingSegmentResponse,
+)
 from app.services import exercise_service
 from constants import TRAINER_ID
 
 CATALOG_OWNER_ID = UUID("3cae14d4-cf8b-4f55-a34d-b169404d2f49")
 PRIVATE_EXERCISE_ID = UUID("0ac590e1-2a46-4cb7-8944-803e364cc46b")
 GLOBAL_EXERCISE_ID = UUID("f48ce3a2-6f43-4127-a420-9e2cb3e7f1ca")
+TRAINER_EXERCISE_ID = UUID("99bcecb1-5da4-48dd-9d91-df41c8e6f579")
+GLOBAL_VERSION_ID = UUID("e5a3ed0d-f8e3-405e-ab66-060642a15df7")
+EQUIPMENT_ID = UUID("410327de-b35a-4dcf-8b99-5249e159ce06")
+TRAINING_TYPE_ID = UUID("2894e3b8-d31a-42a3-89df-fbff1dfb1fb2")
+SEGMENT_ID = 3
 
 
 def _private_exercise() -> Exercise:
@@ -34,6 +47,7 @@ def _private_exercise() -> Exercise:
 def _private_configuration() -> TrainerExercise:
     """Build the private exercise's local trainer configuration."""
     return TrainerExercise(
+        id=TRAINER_EXERCISE_ID,
         trainer_id=TRAINER_ID,
         exercise_id=PRIVATE_EXERCISE_ID,
         status=TrainerExerciseStatus.ACTIVE,
@@ -42,6 +56,59 @@ def _private_configuration() -> TrainerExercise:
         min_participants=2,
         max_participants=20,
         duration_minutes=10,
+    )
+
+
+def _configuration_payload() -> dict[str, list[str] | list[int]]:
+    """Build a complete exercise configuration request body."""
+    return {
+        "equipment_ids": [str(EQUIPMENT_ID)],
+        "training_type_ids": [str(TRAINING_TYPE_ID)],
+        "segment_ids": [SEGMENT_ID],
+    }
+
+
+def _exercise_payload(
+    *, include_ranges: bool = True, **overrides: object
+) -> dict[str, object]:
+    """Build a valid exercise request body with focused per-test overrides."""
+    payload: dict[str, object] = {
+        "name": "Ap chagi",
+        "description": "Kopnięcie frontalne.",
+        "duration_minutes": 10,
+        **_configuration_payload(),
+    }
+    if include_ranges:
+        payload.update(
+            min_age=7,
+            max_age=14,
+            min_participants=2,
+            max_participants=20,
+        )
+    payload.update(overrides)
+    return payload
+
+
+def _configuration() -> ExerciseConfiguration:
+    """Build resolved catalog rows for an exercise configuration."""
+    return ExerciseConfiguration(
+        equipment=[
+            Equipment(
+                id=EQUIPMENT_ID,
+                owner_user_id=TRAINER_ID,
+                name="Tarcza",
+                visibility=CatalogVisibility.LOCAL,
+            )
+        ],
+        training_types=[
+            TrainingType(
+                id=TRAINING_TYPE_ID,
+                owner_user_id=TRAINER_ID,
+                name="Techniczny",
+                visibility=CatalogVisibility.LOCAL,
+            )
+        ],
+        segments=[TrainingSegment(id=SEGMENT_ID, code="MAIN", name="Część główna")],
     )
 
 
@@ -60,6 +127,11 @@ def _private_response() -> ExerciseResponse:
         max_participants=20,
         duration_minutes=10,
         status=TrainerExerciseStatus.ACTIVE,
+        equipment=[CatalogReference(id=EQUIPMENT_ID, name="Tarcza")],
+        training_types=[CatalogReference(id=TRAINING_TYPE_ID, name="Techniczny")],
+        segments=[
+            TrainingSegmentResponse(id=SEGMENT_ID, code="MAIN", name="Część główna")
+        ],
     )
 
 
@@ -78,6 +150,7 @@ def _private_listed_exercise() -> ListedExercise:
         max_participants=20,
         duration_minutes=10,
         status=TrainerExerciseStatus.ACTIVE,
+        version_id=None,
     )
 
 
@@ -96,6 +169,7 @@ def _global_listed_exercise() -> ListedExercise:
         max_participants=24,
         duration_minutes=15,
         status=TrainerExerciseStatus.ACTIVE,
+        version_id=GLOBAL_VERSION_ID,
     )
 
 
@@ -134,16 +208,11 @@ def test_create_exercise_uses_the_authenticated_trainer(
     ) as create_exercise:
         response = client.post(
             "/exercises",
-            json={
-                "name": "  Ap chagi  ",
-                "description": "  Kopnięcie frontalne.  ",
-                "min_age": 7,
-                "max_age": 14,
-                "min_participants": 2,
-                "max_participants": 20,
-                "duration_minutes": 10,
-                "image_url": "https://example.com/ap-chagi.png",
-            },
+            json=_exercise_payload(
+                name="  Ap chagi  ",
+                description="  Kopnięcie frontalne.  ",
+                image_url="https://example.com/ap-chagi.png",
+            ),
         )
 
     assert response.status_code == 201
@@ -168,11 +237,7 @@ def test_create_exercise_uses_default_trainer_configuration(
     ) as create_exercise:
         response = client.post(
             "/exercises",
-            json={
-                "name": "Ap chagi",
-                "description": "Kopnięcie frontalne.",
-                "duration_minutes": 10,
-            },
+            json=_exercise_payload(include_ranges=False),
         )
 
     assert response.status_code == 201
@@ -181,87 +246,55 @@ def test_create_exercise_uses_default_trainer_configuration(
     assert (payload.min_participants, payload.max_participants) == (1, 99)
 
 
+def test_create_exercise_allows_an_empty_equipment_configuration(
+    client, authenticated_trainer
+) -> None:
+    """Allow exercises without equipment while still requiring types and segments."""
+    response_item = _private_response()
+    with patch(
+        "app.api.exercises.exercise_service.create_exercise",
+        new=AsyncMock(return_value=response_item),
+    ) as create_exercise:
+        response = client.post("/exercises", json=_exercise_payload(equipment_ids=[]))
+
+    assert response.status_code == 201
+    assert create_exercise.await_args.args[2].equipment_ids == []
+
+
 def test_create_exercise_rejects_invalid_payload(client, authenticated_trainer) -> None:
     """Reject invalid text, URLs, ranges, and fields outside the contract."""
-    configuration = {
-        "min_age": 7,
-        "max_age": 14,
-        "min_participants": 2,
-        "max_participants": 20,
-    }
     with patch(
         "app.api.exercises.exercise_service.create_exercise", new=AsyncMock()
     ) as create_exercise:
         blank_name = client.post(
             "/exercises",
-            json={
-                "name": "   ",
-                "description": "Opis",
-                "duration_minutes": 10,
-                **configuration,
-            },
+            json=_exercise_payload(name="   ", description="Opis"),
         )
         blank_description = client.post(
             "/exercises",
-            json={
-                "name": "Ap chagi",
-                "description": "   ",
-                "duration_minutes": 10,
-                **configuration,
-            },
+            json=_exercise_payload(description="   "),
         )
         invalid_duration = client.post(
             "/exercises",
-            json={
-                "name": "Ap chagi",
-                "description": "Opis",
-                "duration_minutes": 0,
-                **configuration,
-            },
+            json=_exercise_payload(description="Opis", duration_minutes=0),
         )
         invalid_image_url = client.post(
             "/exercises",
-            json={
-                "name": "Ap chagi",
-                "description": "Opis",
-                "duration_minutes": 10,
-                "image_url": "not-a-url",
-                **configuration,
-            },
+            json=_exercise_payload(description="Opis", image_url="not-a-url"),
         )
         invalid_age_range = client.post(
             "/exercises",
-            json={
-                "name": "Ap chagi",
-                "description": "Opis",
-                "min_age": 14,
-                "max_age": 7,
-                "min_participants": 2,
-                "max_participants": 20,
-                "duration_minutes": 10,
-            },
+            json=_exercise_payload(description="Opis", min_age=14, max_age=7),
         )
         invalid_participant_range = client.post(
             "/exercises",
-            json={
-                "name": "Ap chagi",
-                "description": "Opis",
-                "min_age": 7,
-                "max_age": 14,
-                "min_participants": 20,
-                "max_participants": 2,
-                "duration_minutes": 10,
-            },
+            json=_exercise_payload(
+                description="Opis", min_participants=20, max_participants=2
+            ),
         )
         extra_field = client.post(
             "/exercises",
-            json={
-                "name": "Ap chagi",
-                "description": "Opis",
-                "duration_minutes": 10,
-                "owner_user_id": str(TRAINER_ID),
-                **configuration,
-            },
+            json=_exercise_payload(description="Opis", owner_user_id=str(TRAINER_ID)),
         )
 
     assert blank_name.status_code == 422
@@ -272,6 +305,49 @@ def test_create_exercise_rejects_invalid_payload(client, authenticated_trainer) 
     assert invalid_participant_range.status_code == 422
     assert extra_field.status_code == 422
     create_exercise.assert_not_awaited()
+
+
+def test_create_exercise_rejects_duplicate_configuration_ids(
+    client, authenticated_trainer
+) -> None:
+    """Reject duplicate catalog selections before entering the service layer."""
+    with patch(
+        "app.api.exercises.exercise_service.create_exercise", new=AsyncMock()
+    ) as create_exercise:
+        response = client.post(
+            "/exercises",
+            json=_exercise_payload(
+                training_type_ids=[str(TRAINING_TYPE_ID), str(TRAINING_TYPE_ID)],
+                segment_ids=[SEGMENT_ID],
+            ),
+        )
+
+    assert response.status_code == 422
+    create_exercise.assert_not_awaited()
+
+
+def test_create_exercise_hides_unavailable_configuration_entries(
+    client, authenticated_trainer
+) -> None:
+    """Use one validation result for missing, foreign, and non-visible catalog IDs."""
+    with patch(
+        "app.api.exercises.exercise_service.create_exercise",
+        new=AsyncMock(side_effect=exercise_service.InvalidExerciseConfigurationError),
+    ):
+        response = client.post(
+            "/exercises",
+            json={
+                "name": "Ap chagi",
+                "description": "Kopnięcie frontalne.",
+                "duration_minutes": 10,
+                **_configuration_payload(),
+            },
+        )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": "Exercise configuration contains unavailable catalog entries"
+    }
 
 
 def test_update_exercise_uses_the_authenticated_trainer(
@@ -294,6 +370,7 @@ def test_update_exercise_uses_the_authenticated_trainer(
                 "max_age": 15,
                 "min_participants": 3,
                 "max_participants": 18,
+                **_configuration_payload(),
             },
         )
 
@@ -310,6 +387,9 @@ def test_update_exercise_uses_the_authenticated_trainer(
         max_age=15,
         min_participants=3,
         max_participants=18,
+        equipment_ids=[EQUIPMENT_ID],
+        training_type_ids=[TRAINING_TYPE_ID],
+        segment_ids=[SEGMENT_ID],
     )
 
 
@@ -331,6 +411,7 @@ def test_update_exercise_rejects_non_editable_fields(
                 "min_participants": 2,
                 "max_participants": 20,
                 "owner_user_id": str(TRAINER_ID),
+                **_configuration_payload(),
             },
         )
 
@@ -356,6 +437,7 @@ def test_update_exercise_hides_foreign_or_missing_exercises(
                 "max_age": 14,
                 "min_participants": 2,
                 "max_participants": 20,
+                **_configuration_payload(),
             },
         )
 
@@ -400,10 +482,21 @@ def test_list_exercises_maps_a_database_page() -> None:
         ],
         total=21,
     )
-    with patch(
-        "app.db.exercises.list_available_to_trainer",
-        new=AsyncMock(return_value=db_page),
-    ) as list_available:
+    with (
+        patch(
+            "app.db.exercises.list_available_to_trainer",
+            new=AsyncMock(return_value=db_page),
+        ) as list_available,
+        patch(
+            "app.db.exercises.list_configurations",
+            new=AsyncMock(
+                return_value={
+                    PRIVATE_EXERCISE_ID: _configuration(),
+                    GLOBAL_EXERCISE_ID: _configuration(),
+                }
+            ),
+        ) as list_configurations,
+    ):
         result = asyncio.run(
             exercise_service.list_exercises(session, TRAINER_ID, page=2, page_size=20)
         )
@@ -424,6 +517,9 @@ def test_list_exercises_maps_a_database_page() -> None:
                 max_participants=24,
                 duration_minutes=15,
                 status=TrainerExerciseStatus.ACTIVE,
+                equipment=_private_response().equipment,
+                training_types=_private_response().training_types,
+                segments=_private_response().segments,
             ),
         ],
         total=21,
@@ -432,6 +528,7 @@ def test_list_exercises_maps_a_database_page() -> None:
         total_pages=2,
     )
     list_available.assert_awaited_once_with(session, TRAINER_ID, offset=20, limit=20)
+    list_configurations.assert_awaited_once_with(session, TRAINER_ID, db_page.items)
 
 
 def test_list_available_to_trainer_returns_page_and_total_in_one_query() -> None:
@@ -533,16 +630,28 @@ def test_create_exercise_commits_both_new_rows() -> None:
         min_participants=2,
         max_participants=20,
         duration_minutes=10,
+        equipment_ids=[EQUIPMENT_ID],
+        training_type_ids=[TRAINING_TYPE_ID],
+        segment_ids=[SEGMENT_ID],
     )
-    with patch(
-        "app.db.exercises.create_for_trainer",
-        return_value=(exercise, trainer_exercise),
+    with (
+        patch(
+            "app.db.exercises.create_for_trainer",
+            return_value=(exercise, trainer_exercise),
+        ),
+        patch(
+            "app.db.exercises.resolve_configuration",
+            new=AsyncMock(return_value=_configuration()),
+        ),
     ):
         result = asyncio.run(
             exercise_service.create_exercise(session, TRAINER_ID, payload)
         )
 
     assert result == _private_response()
+    assert [item.id for item in trainer_exercise.equipment] == [EQUIPMENT_ID]
+    assert [item.id for item in trainer_exercise.training_types] == [TRAINING_TYPE_ID]
+    assert [item.id for item in trainer_exercise.segments] == [SEGMENT_ID]
     session.add_all.assert_called_once_with((exercise, trainer_exercise))
     session.commit.assert_awaited_once()
 
@@ -562,11 +671,20 @@ def test_update_exercise_updates_all_its_editable_fields() -> None:
         max_age=15,
         min_participants=3,
         max_participants=18,
+        equipment_ids=[EQUIPMENT_ID],
+        training_type_ids=[TRAINING_TYPE_ID],
+        segment_ids=[SEGMENT_ID],
     )
-    with patch(
-        "app.db.exercises.get_private_for_trainer",
-        new=AsyncMock(return_value=(exercise, trainer_exercise)),
-    ) as get_private_for_trainer:
+    with (
+        patch(
+            "app.db.exercises.get_private_for_trainer",
+            new=AsyncMock(return_value=(exercise, trainer_exercise)),
+        ) as get_private_for_trainer,
+        patch(
+            "app.db.exercises.resolve_configuration",
+            new=AsyncMock(return_value=_configuration()),
+        ),
+    ):
         result = asyncio.run(
             exercise_service.update_exercise(
                 session, TRAINER_ID, PRIVATE_EXERCISE_ID, payload
@@ -591,10 +709,39 @@ def test_update_exercise_updates_all_its_editable_fields() -> None:
         3,
         18,
     )
+    assert [item.id for item in trainer_exercise.equipment] == [EQUIPMENT_ID]
+    assert [item.id for item in trainer_exercise.training_types] == [TRAINING_TYPE_ID]
+    assert [item.id for item in trainer_exercise.segments] == [SEGMENT_ID]
     get_private_for_trainer.assert_awaited_once_with(
         session, TRAINER_ID, PRIVATE_EXERCISE_ID
     )
     session.commit.assert_awaited_once()
+
+
+def test_resolve_configuration_rejects_catalog_entries_unavailable_to_trainer() -> None:
+    """Reject a configuration with a catalog ID unavailable to its owner."""
+    session = AsyncMock()
+    configuration = _configuration()
+    session.scalars = AsyncMock(
+        side_effect=[configuration.equipment, [], configuration.segments]
+    )
+
+    result = asyncio.run(
+        exercises_db.resolve_configuration(
+            session,
+            TRAINER_ID,
+            equipment_ids=[EQUIPMENT_ID],
+            training_type_ids=[TRAINING_TYPE_ID],
+            segment_ids=[SEGMENT_ID],
+        )
+    )
+
+    assert result is None
+    assert session.scalars.await_count == 3
+    equipment_statement = str(session.scalars.await_args_list[0].args[0]).lower()
+    type_statement = str(session.scalars.await_args_list[1].args[0]).lower()
+    assert "equipment.visibility" in equipment_statement
+    assert "training_types.visibility" in type_statement
 
 
 def test_delete_exercise_marks_the_trainer_configuration_inactive() -> None:

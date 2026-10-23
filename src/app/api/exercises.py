@@ -25,6 +25,14 @@ def _not_found() -> HTTPException:
     )
 
 
+def _invalid_configuration() -> HTTPException:
+    """Avoid disclosing whether an unavailable catalog entry exists."""
+    return HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        detail="Exercise configuration contains unavailable catalog entries",
+    )
+
+
 @router.get("", response_model=PaginatedResponse[ExerciseResponse])
 async def list_exercises(
     current_trainer: CurrentTrainer,
@@ -45,7 +53,12 @@ async def create_exercise(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> ExerciseResponse:
     """Create an active private exercise owned by the authenticated trainer."""
-    return await exercise_service.create_exercise(session, current_trainer.id, payload)
+    try:
+        return await exercise_service.create_exercise(
+            session, current_trainer.id, payload
+        )
+    except exercise_service.InvalidExerciseConfigurationError as exc:
+        raise _invalid_configuration() from exc
 
 
 @router.put("/{exercise_id}", response_model=ExerciseResponse)
@@ -62,6 +75,8 @@ async def update_exercise(
         )
     except exercise_service.ExerciseNotFoundError as exc:
         raise _not_found() from exc
+    except exercise_service.InvalidExerciseConfigurationError as exc:
+        raise _invalid_configuration() from exc
 
 
 @router.delete("/{exercise_id}", status_code=status.HTTP_204_NO_CONTENT)

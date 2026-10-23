@@ -4,7 +4,7 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 from uuid import UUID
 
 from app.db import equipment as equipment_db
-from app.db.equipment import EquipmentPage
+from app.db.catalogs import CatalogPage
 from app.models.catalogs import Equipment
 from app.models.enums import CatalogVisibility
 from app.schemas.common import PaginatedResponse
@@ -175,9 +175,9 @@ def test_list_equipment_maps_a_database_page() -> None:
     """Map paginated equipment from the database to the public API shape."""
     session = AsyncMock()
     item = _equipment()
-    db_page = EquipmentPage(items=[item], total=21)
+    db_page = CatalogPage(items=[item], total=21)
     with patch(
-        "app.db.equipment.list_visible_to_trainer",
+        "app.db.catalogs.list_visible_to_trainer",
         new=AsyncMock(return_value=db_page),
     ) as list_visible_to_trainer:
         result = asyncio.run(
@@ -192,7 +192,7 @@ def test_list_equipment_maps_a_database_page() -> None:
         total_pages=2,
     )
     list_visible_to_trainer.assert_awaited_once_with(
-        session, TRAINER_ID, offset=20, limit=20
+        session, TRAINER_ID, catalog=Equipment, offset=20, limit=20
     )
 
 
