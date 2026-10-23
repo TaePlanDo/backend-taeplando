@@ -161,9 +161,7 @@ async def list_configurations(
         exercise.id for exercise in exercises if exercise.scope == ExerciseScope.PRIVATE
     ]
     global_version_ids = [
-        exercise.version_id
-        for exercise in exercises
-        if exercise.version_id is not None
+        exercise.version_id for exercise in exercises if exercise.version_id is not None
     ]
     configurations: dict[UUID, ExerciseConfiguration] = {}
     if private_exercise_ids:

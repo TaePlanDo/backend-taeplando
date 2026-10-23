@@ -299,9 +299,7 @@ def test_create_exercise_rejects_invalid_payload(client, authenticated_trainer) 
         )
         extra_field = client.post(
             "/exercises",
-            json=_exercise_payload(
-                description="Opis", owner_user_id=str(TRAINER_ID)
-            ),
+            json=_exercise_payload(description="Opis", owner_user_id=str(TRAINER_ID)),
         )
 
     assert blank_name.status_code == 422
