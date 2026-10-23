@@ -1,6 +1,5 @@
 """Business operations for training equipment types."""
 
-import math
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import catalogs as catalogs_db
 from app.db import equipment as equipment_db
 from app.models.catalogs import Equipment
-from app.schemas.common import PaginatedResponse
+from app.schemas.common import PaginatedResponse, paginate
 from app.schemas.equipment import EquipmentResponse, EquipmentWrite
 
 
@@ -23,12 +22,11 @@ async def list_equipment(
         offset=(page - 1) * page_size,
         limit=page_size,
     )
-    return PaginatedResponse(
+    return paginate(
         items=[_to_response(equipment) for equipment in db_page.items],
         total=db_page.total,
-        page=page if db_page.total else 1,
+        page=page,
         page_size=page_size,
-        total_pages=max(1, math.ceil(db_page.total / page_size)),
     )
 
 

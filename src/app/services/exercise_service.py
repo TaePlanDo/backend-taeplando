@@ -1,6 +1,5 @@
 """Business operations for the exercise catalog."""
 
-import math
 from collections.abc import Sequence
 from uuid import UUID
 
@@ -10,7 +9,7 @@ from app.db import exercises as exercises_db
 from app.models.catalogs import Equipment, TrainingType
 from app.models.enums import TrainerExerciseStatus
 from app.models.exercises import Exercise, TrainerExercise
-from app.schemas.common import PaginatedResponse
+from app.schemas.common import PaginatedResponse, paginate
 from app.schemas.exercises import (
     CatalogReference,
     ExerciseConfigurationWrite,
@@ -42,15 +41,14 @@ async def list_exercises(
     configurations = await exercises_db.list_configurations(
         session, trainer_id, db_page.items
     )
-    return PaginatedResponse(
+    return paginate(
         items=[
             _to_response(listed_exercise, configurations[listed_exercise.id])
             for listed_exercise in db_page.items
         ],
         total=db_page.total,
-        page=page if db_page.total else 1,
+        page=page,
         page_size=page_size,
-        total_pages=max(1, math.ceil(db_page.total / page_size)),
     )
 
 
