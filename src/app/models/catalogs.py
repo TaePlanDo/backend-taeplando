@@ -28,18 +28,8 @@ if TYPE_CHECKING:
     from app.models.users import User
 
 
-class Equipment(Base):
-    """A local, pending, or global equipment catalog entry."""
-
-    __tablename__ = "equipment"
-    __table_args__ = (
-        Index(
-            "uq_equipment_global_name_ci",
-            text("lower(name)"),
-            unique=True,
-            postgresql_where=text("visibility = 'GLOBAL'"),
-        ),
-    )
+class CatalogEntryMixin:
+    """Columns shared by trainer-owned equipment and training-type catalogs."""
 
     id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4
@@ -51,6 +41,20 @@ class Equipment(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now
+    )
+
+
+class Equipment(CatalogEntryMixin, Base):
+    """A local, pending, or global equipment catalog entry."""
+
+    __tablename__ = "equipment"
+    __table_args__ = (
+        Index(
+            "uq_equipment_global_name_ci",
+            text("lower(name)"),
+            unique=True,
+            postgresql_where=text("visibility = 'GLOBAL'"),
+        ),
     )
 
     owner: Mapped[User | None] = relationship("User", back_populates="owned_equipment")
@@ -66,7 +70,7 @@ class Equipment(Base):
     )
 
 
-class TrainingType(Base):
+class TrainingType(CatalogEntryMixin, Base):
     """A local, pending, or global training-type catalog entry."""
 
     __tablename__ = "training_types"
@@ -77,18 +81,6 @@ class TrainingType(Base):
             unique=True,
             postgresql_where=text("visibility = 'GLOBAL'"),
         ),
-    )
-
-    id: Mapped[UUID] = mapped_column(
-        PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4
-    )
-    owner_user_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"))
-    name: Mapped[str] = mapped_column(String(255))
-    visibility: Mapped[CatalogVisibility] = mapped_column(
-        SqlEnum(CatalogVisibility, name="catalog_visibility")
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utc_now
     )
 
     owner: Mapped[User | None] = relationship(

@@ -5,9 +5,9 @@ from uuid import UUID
 
 import pytest
 
-from app.db import training_types as training_types_db
+from app.db import catalogs as catalogs_db
+from app.db.catalogs import CatalogPage
 from app.db.seed import SYSTEM_TRAINING_TYPES
-from app.db.training_types import TrainingTypePage
 from app.dependencies.auth import get_current_user
 from app.main import app
 from app.models.catalogs import TrainingType
@@ -86,9 +86,9 @@ def test_list_training_types_maps_a_database_page() -> None:
     """Map paginated training types from the database to the public API shape."""
     session = AsyncMock()
     item = _training_type()
-    db_page = TrainingTypePage(items=[item], total=21)
+    db_page = CatalogPage(items=[item], total=21)
     with patch(
-        "app.db.training_types.list_visible_to_trainer",
+        "app.db.catalogs.list_visible_to_trainer",
         new=AsyncMock(return_value=db_page),
     ) as list_visible_to_trainer:
         result = asyncio.run(
@@ -101,7 +101,7 @@ def test_list_training_types_maps_a_database_page() -> None:
         items=[_response()], total=21, page=2, page_size=20, total_pages=2
     )
     list_visible_to_trainer.assert_awaited_once_with(
-        session, TRAINER_ID, offset=20, limit=20
+        session, TRAINER_ID, catalog=TrainingType, offset=20, limit=20
     )
 
 
@@ -114,12 +114,12 @@ def test_list_training_types_filters_to_global_and_owned_entries() -> None:
     session.execute = AsyncMock(return_value=result)
 
     page = asyncio.run(
-        training_types_db.list_visible_to_trainer(
-            session, TRAINER_ID, offset=0, limit=20
+        catalogs_db.list_visible_to_trainer(
+            session, TRAINER_ID, catalog=TrainingType, offset=0, limit=20
         )
     )
 
-    assert page == TrainingTypePage(items=[item], total=1)
+    assert page == CatalogPage(items=[item], total=1)
     statement = str(session.execute.await_args.args[0]).lower()
     assert "training_types.visibility" in statement
     assert "training_types.owner_user_id" in statement

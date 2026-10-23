@@ -5,7 +5,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import training_types as training_types_db
+from app.db import catalogs as catalogs_db
 from app.models.catalogs import TrainingType
 from app.schemas.common import PaginatedResponse
 from app.schemas.training_types import TrainingTypeResponse
@@ -15,9 +15,10 @@ async def list_training_types(
     session: AsyncSession, trainer_id: UUID, *, page: int, page_size: int
 ) -> PaginatedResponse[TrainingTypeResponse]:
     """Return one page of training types visible to a trainer."""
-    db_page = await training_types_db.list_visible_to_trainer(
+    db_page = await catalogs_db.list_visible_to_trainer(
         session,
         trainer_id,
+        catalog=TrainingType,
         offset=(page - 1) * page_size,
         limit=page_size,
     )
