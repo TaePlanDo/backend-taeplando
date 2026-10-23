@@ -1,21 +1,22 @@
 """Business operations for the exercise catalog."""
 
 import math
+from collections.abc import Sequence
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import exercises as exercises_db
+from app.models.catalogs import Equipment, TrainingType
 from app.models.enums import TrainerExerciseStatus
 from app.models.exercises import Exercise, TrainerExercise
 from app.schemas.common import PaginatedResponse
 from app.schemas.exercises import (
-    EquipmentReference,
+    CatalogReference,
     ExerciseResponse,
     ExerciseUpdate,
     ExerciseWrite,
     TrainingSegmentResponse,
-    TrainingTypeResponse,
 )
 
 
@@ -127,8 +128,8 @@ def _to_response(
         max_participants=exercise.max_participants,
         duration_minutes=exercise.duration_minutes,
         status=exercise.status,
-        equipment=_equipment_response(configuration),
-        training_types=_training_type_response(configuration),
+        equipment=_catalog_references(configuration.equipment),
+        training_types=_catalog_references(configuration.training_types),
         segments=_segment_response(configuration),
     )
 
@@ -164,8 +165,8 @@ def _to_response_from_models(
         max_participants=trainer_exercise.max_participants,
         duration_minutes=trainer_exercise.duration_minutes,
         status=trainer_exercise.status,
-        equipment=_equipment_response(configuration),
-        training_types=_training_type_response(configuration),
+        equipment=_catalog_references(configuration.equipment),
+        training_types=_catalog_references(configuration.training_types),
         segments=_segment_response(configuration),
     )
 
@@ -198,24 +199,11 @@ def _replace_configuration(
     trainer_exercise.segments = configuration.segments
 
 
-def _equipment_response(
-    configuration: exercises_db.ExerciseConfiguration,
-) -> list[EquipmentReference]:
-    """Serialize required equipment from one exercise configuration."""
-    return [
-        EquipmentReference(id=item.id, name=item.name)
-        for item in configuration.equipment
-    ]
-
-
-def _training_type_response(
-    configuration: exercises_db.ExerciseConfiguration,
-) -> list[TrainingTypeResponse]:
-    """Serialize training types from one exercise configuration."""
-    return [
-        TrainingTypeResponse(id=item.id, name=item.name)
-        for item in configuration.training_types
-    ]
+def _catalog_references(
+    items: Sequence[Equipment | TrainingType],
+) -> list[CatalogReference]:
+    """Serialize equipment or training types with their common public shape."""
+    return [CatalogReference(id=item.id, name=item.name) for item in items]
 
 
 def _segment_response(

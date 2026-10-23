@@ -8,15 +8,8 @@ from app.models.enums import ExerciseScope, TrainerExerciseStatus
 from app.schemas.common import Description, Name
 
 
-class EquipmentReference(BaseModel):
-    """One equipment item assigned to an exercise."""
-
-    id: UUID
-    name: str
-
-
-class TrainingTypeResponse(BaseModel):
-    """One training type assigned to an exercise."""
+class CatalogReference(BaseModel):
+    """One named catalog item assigned to an exercise."""
 
     id: UUID
     name: str
@@ -99,6 +92,6 @@ class ExerciseResponse(BaseModel):
     max_participants: int
     duration_minutes: int
     status: TrainerExerciseStatus
-    equipment: list[EquipmentReference]
-    training_types: list[TrainingTypeResponse]
+    equipment: list[CatalogReference]
+    training_types: list[CatalogReference]
     segments: list[TrainingSegmentResponse]

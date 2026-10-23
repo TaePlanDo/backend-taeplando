@@ -150,7 +150,7 @@ async def resolve_configuration(
         or len(segments) != len(segment_ids)
     ):
         return None
-    return ExerciseConfiguration(equipment, training_types, segments)
+    return _configuration(equipment, training_types, segments)
 
 
 async def list_configurations(
@@ -253,12 +253,19 @@ def _configuration_from(
     source: TrainerExercise | ExerciseVersion,
 ) -> ExerciseConfiguration:
     """Map ORM relationships to the shared configuration value object."""
+    return _configuration(source.equipment, source.training_types, source.segments)
+
+
+def _configuration(
+    equipment: list[Equipment],
+    training_types: list[TrainingType],
+    segments: list[TrainingSegment],
+) -> ExerciseConfiguration:
+    """Normalize catalog ordering in every public exercise configuration."""
     return ExerciseConfiguration(
-        equipment=sorted(source.equipment, key=lambda item: (item.name, item.id)),
-        training_types=sorted(
-            source.training_types, key=lambda item: (item.name, item.id)
-        ),
-        segments=sorted(source.segments, key=lambda item: item.id),
+        equipment=sorted(equipment, key=lambda item: (item.name, item.id)),
+        training_types=sorted(training_types, key=lambda item: (item.name, item.id)),
+        segments=sorted(segments, key=lambda item: item.id),
     )
 
 

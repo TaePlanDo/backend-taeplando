@@ -19,12 +19,11 @@ from app.models.exercises import Exercise, TrainerExercise
 from app.models.users import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.exercises import (
-    EquipmentReference,
+    CatalogReference,
     ExerciseResponse,
     ExerciseUpdate,
     ExerciseWrite,
     TrainingSegmentResponse,
-    TrainingTypeResponse,
 )
 from app.services import exercise_service
 
@@ -127,8 +126,8 @@ def _private_response() -> ExerciseResponse:
         max_participants=20,
         duration_minutes=10,
         status=TrainerExerciseStatus.ACTIVE,
-        equipment=[EquipmentReference(id=EQUIPMENT_ID, name="Tarcza")],
-        training_types=[TrainingTypeResponse(id=TRAINING_TYPE_ID, name="Techniczny")],
+        equipment=[CatalogReference(id=EQUIPMENT_ID, name="Tarcza")],
+        training_types=[CatalogReference(id=TRAINING_TYPE_ID, name="Techniczny")],
         segments=[
             TrainingSegmentResponse(id=SEGMENT_ID, code="MAIN", name="Część główna")
         ],
