@@ -116,6 +116,80 @@ def test_create_equipment_rejects_invalid_payload(
     create_equipment.assert_not_awaited()
 
 
+def test_update_equipment_uses_the_authenticated_trainer(
+    client, authenticated_trainer
+) -> None:
+    """Rename only equipment owned by the authenticated trainer."""
+    response_item = _equipment_response()
+    with patch(
+        "app.api.equipment.equipment_service.update_equipment",
+        new=AsyncMock(return_value=response_item),
+    ) as update_equipment:
+        response = client.put(f"/equipment/{EQUIPMENT_ID}", json={"name": "  Tarcza  "})
+
+    assert response.status_code == 200
+    assert response.json() == response_item.model_dump(mode="json")
+    assert update_equipment.await_args.args[1:3] == (TRAINER_ID, EQUIPMENT_ID)
+    assert update_equipment.await_args.args[3] == EquipmentWrite(name="Tarcza")
+
+
+def test_update_equipment_rejects_non_editable_fields(
+    client, authenticated_trainer
+) -> None:
+    """Reject ownership and visibility changes outside the API contract."""
+    with patch(
+        "app.api.equipment.equipment_service.update_equipment", new=AsyncMock()
+    ) as update_equipment:
+        response = client.put(
+            f"/equipment/{EQUIPMENT_ID}",
+            json={"name": "Tarcza", "visibility": "GLOBAL"},
+        )
+
+    assert response.status_code == 422
+    update_equipment.assert_not_awaited()
+
+
+def test_update_equipment_hides_foreign_or_global_equipment(
+    client, authenticated_trainer
+) -> None:
+    """Use one not-found response for equipment that cannot be changed."""
+    with patch(
+        "app.api.equipment.equipment_service.update_equipment",
+        new=AsyncMock(side_effect=equipment_service.EquipmentNotFoundError),
+    ):
+        response = client.put(f"/equipment/{EQUIPMENT_ID}", json={"name": "Tarcza"})
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Equipment not found"}
+
+
+def test_delete_equipment_uses_the_authenticated_trainer(
+    client, authenticated_trainer
+) -> None:
+    """Delete only equipment owned by the authenticated trainer."""
+    with patch(
+        "app.api.equipment.equipment_service.delete_equipment", new=AsyncMock()
+    ) as delete_equipment:
+        response = client.delete(f"/equipment/{EQUIPMENT_ID}")
+
+    assert response.status_code == 204
+    delete_equipment.assert_awaited_once_with(ANY, TRAINER_ID, EQUIPMENT_ID)
+
+
+def test_delete_equipment_hides_foreign_or_global_equipment(
+    client, authenticated_trainer
+) -> None:
+    """Use one not-found response for equipment that cannot be deleted."""
+    with patch(
+        "app.api.equipment.equipment_service.delete_equipment",
+        new=AsyncMock(side_effect=equipment_service.EquipmentNotFoundError),
+    ):
+        response = client.delete(f"/equipment/{EQUIPMENT_ID}")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Equipment not found"}
+
+
 def test_list_equipment_maps_a_database_page() -> None:
     """Map paginated equipment from the database to the public API shape."""
     session = AsyncMock()
@@ -150,6 +224,27 @@ def test_create_equipment_builds_a_trainer_owned_local_entry() -> None:
     assert equipment.visibility == CatalogVisibility.LOCAL
 
 
+def test_get_local_for_trainer_scopes_by_owner_and_visibility() -> None:
+    """Look up mutable equipment only in the trainer's local catalog."""
+    session = AsyncMock()
+    result = MagicMock()
+    item = _equipment()
+    result.scalar_one_or_none.return_value = item
+    session.execute = AsyncMock(return_value=result)
+
+    found = asyncio.run(
+        equipment_db.get_local_for_trainer(session, TRAINER_ID, EQUIPMENT_ID)
+    )
+
+    assert found is item
+    statement = session.execute.await_args.args[0]
+    assert set(statement.compile().params.values()) == {
+        EQUIPMENT_ID,
+        TRAINER_ID,
+        CatalogVisibility.LOCAL,
+    }
+
+
 def test_create_equipment_commits_the_new_entry() -> None:
     """Add the new entry and commit it in the service layer."""
     session = MagicMock()
@@ -163,4 +258,47 @@ def test_create_equipment_commits_the_new_entry() -> None:
 
     assert result == _equipment_response()
     session.add.assert_called_once_with(item)
+    session.commit.assert_awaited_once()
+
+
+def test_update_equipment_renames_an_owned_local_entry() -> None:
+    """Persist a new name only for the trainer's local equipment."""
+    session = MagicMock()
+    session.commit = AsyncMock()
+    item = _equipment()
+    with patch(
+        "app.db.equipment.get_local_for_trainer",
+        new=AsyncMock(return_value=item),
+    ) as get_local_for_trainer:
+        result = asyncio.run(
+            equipment_service.update_equipment(
+                session, TRAINER_ID, EQUIPMENT_ID, EquipmentWrite(name="Tarcza")
+            )
+        )
+
+    assert result == EquipmentResponse(
+        id=EQUIPMENT_ID,
+        name="Tarcza",
+        visibility=CatalogVisibility.LOCAL,
+        created_at=CREATED_AT,
+    )
+    get_local_for_trainer.assert_awaited_once_with(session, TRAINER_ID, EQUIPMENT_ID)
+    session.commit.assert_awaited_once()
+
+
+def test_delete_equipment_removes_an_owned_local_entry() -> None:
+    """Delete the local equipment row in the service layer."""
+    session = MagicMock()
+    session.delete = AsyncMock()
+    session.commit = AsyncMock()
+    item = _equipment()
+    with patch(
+        "app.db.equipment.get_local_for_trainer",
+        new=AsyncMock(return_value=item),
+    ):
+        asyncio.run(
+            equipment_service.delete_equipment(session, TRAINER_ID, EQUIPMENT_ID)
+        )
+
+    session.delete.assert_awaited_once_with(item)
     session.commit.assert_awaited_once()

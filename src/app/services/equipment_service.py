@@ -11,6 +11,10 @@ from app.schemas.common import PaginatedResponse, paginate
 from app.schemas.equipment import EquipmentResponse, EquipmentWrite
 
 
+class EquipmentNotFoundError(Exception):
+    """Raised when local equipment is absent or belongs to another trainer."""
+
+
 async def list_equipment(
     session: AsyncSession, trainer_id: UUID, *, page: int, page_size: int
 ) -> PaginatedResponse[EquipmentResponse]:
@@ -38,6 +42,44 @@ async def create_equipment(
     session.add(equipment)
     await session.commit()
     return _to_response(equipment)
+
+
+async def update_equipment(
+    session: AsyncSession,
+    trainer_id: UUID,
+    equipment_id: UUID,
+    payload: EquipmentWrite,
+) -> EquipmentResponse:
+    """Rename one trainer-owned local equipment type."""
+    equipment = await _get_owned_local_equipment_or_raise(
+        session, trainer_id, equipment_id
+    )
+    equipment.name = payload.name
+    await session.commit()
+    return _to_response(equipment)
+
+
+async def delete_equipment(
+    session: AsyncSession, trainer_id: UUID, equipment_id: UUID
+) -> None:
+    """Delete one trainer-owned local equipment type."""
+    equipment = await _get_owned_local_equipment_or_raise(
+        session, trainer_id, equipment_id
+    )
+    await session.delete(equipment)
+    await session.commit()
+
+
+async def _get_owned_local_equipment_or_raise(
+    session: AsyncSession, trainer_id: UUID, equipment_id: UUID
+) -> Equipment:
+    """Return mutable equipment without revealing foreign or global entries."""
+    equipment = await equipment_db.get_local_for_trainer(
+        session, trainer_id, equipment_id
+    )
+    if equipment is None:
+        raise EquipmentNotFoundError
+    return equipment
 
 
 def _to_response(equipment: Equipment) -> EquipmentResponse:
