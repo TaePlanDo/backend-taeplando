@@ -49,6 +49,13 @@ class TrainingSegmentSeed(TypedDict):
     name: str
 
 
+class TrainingTypeSeed(TypedDict):
+    """One immutable entry of the system training-type catalog."""
+
+    id: UUID
+    name: str
+
+
 class LocalUserSeed(TypedDict):
     """One local user created by the development seed."""
 
@@ -63,6 +70,16 @@ SYSTEM_TRAINING_SEGMENTS: Sequence[TrainingSegmentSeed] = (
     {"id": 2, "code": "GAME", "name": "Zabawa"},
     {"id": 3, "code": "MAIN", "name": "Część główna"},
     {"id": 4, "code": "COOLDOWN", "name": "Wyciszenie"},
+)
+
+SYSTEM_TRAINING_TYPES: Sequence[TrainingTypeSeed] = (
+    {"id": UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a12"), "name": "Technika"},
+    {"id": UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a13"), "name": "Poomsae"},
+    {
+        "id": UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a14"),
+        "name": "Walka sportowa",
+    },
+    {"id": UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a15"), "name": "Samoobrona"},
 )
 
 # Fixed identifiers make repeated seed runs idempotent and preserve relations.
@@ -98,6 +115,31 @@ async def seed_training_segments(session: AsyncSession) -> None:
             set_={
                 "code": statement.excluded.code,
                 "name": statement.excluded.name,
+            },
+        )
+    )
+
+
+async def seed_training_types(session: AsyncSession) -> None:
+    """Insert or restore the fixed global training-type catalog."""
+    logger.info("Seeding %d global training types", len(SYSTEM_TRAINING_TYPES))
+    statement = insert(TrainingType).values(
+        [
+            {
+                **training_type,
+                "owner_user_id": None,
+                "visibility": CatalogVisibility.GLOBAL,
+            }
+            for training_type in SYSTEM_TRAINING_TYPES
+        ]
+    )
+    await session.execute(
+        statement.on_conflict_do_update(
+            index_elements=[TrainingType.id],
+            set_={
+                "owner_user_id": None,
+                "name": statement.excluded.name,
+                "visibility": CatalogVisibility.GLOBAL,
             },
         )
     )
@@ -320,6 +362,7 @@ async def seed_system_data() -> None:
     async with get_session_factory()() as session:
         async with session.begin():
             await seed_training_segments(session)
+            await seed_training_types(session)
             await seed_demo_data(session)
     logger.info("System-data seed transaction completed")
 
