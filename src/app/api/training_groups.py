@@ -12,6 +12,7 @@ from app.models.users import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.training import (
     GroupResponse,
+    GroupSchemaWrite,
     GroupWrite,
 )
 from app.services import training_group_service
@@ -97,6 +98,26 @@ async def put_group(
         )
     except training_group_service.GroupNotFoundError as exc:
         raise _not_found() from exc
+
+
+@router.put("/{group_id}/schema", response_model=GroupResponse)
+async def put_group_schema(
+    group_id: UUID,
+    payload: GroupSchemaWrite,
+    current_trainer: CurrentTrainer,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> GroupResponse:
+    """Replace the full training schema of an owned group."""
+    try:
+        return await training_group_service.replace_group_schema(
+            session, current_trainer.id, group_id, payload
+        )
+    except training_group_service.GroupNotFoundError as exc:
+        raise _not_found() from exc
+    except training_group_service.InvalidSchemaError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=exc.detail
+        ) from exc
 
 
 @router.delete("/trainer", status_code=status.HTTP_204_NO_CONTENT)

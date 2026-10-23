@@ -3,36 +3,17 @@ from datetime import UTC, datetime
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 from uuid import UUID
 
-import pytest
-
 from app.db import equipment as equipment_db
 from app.db.equipment import EquipmentPage
-from app.dependencies.auth import get_current_user
-from app.main import app
 from app.models.catalogs import Equipment
-from app.models.enums import AuthMethod, CatalogVisibility
-from app.models.users import User
+from app.models.enums import CatalogVisibility
 from app.schemas.common import PaginatedResponse
 from app.schemas.equipment import EquipmentResponse, EquipmentWrite
 from app.services import equipment_service
+from constants import TRAINER_ID
 
-TRAINER_ID = UUID("d9aa16f7-b30a-4887-890b-247f86a2eef5")
 EQUIPMENT_ID = UUID("0ac590e1-2a46-4cb7-8944-803e364cc46b")
 CREATED_AT = datetime(2026, 10, 21, 12, 0, tzinfo=UTC)
-
-
-@pytest.fixture
-def authenticated_trainer() -> None:
-    """Authenticate equipment route tests without JWT parsing."""
-    app.dependency_overrides[get_current_user] = lambda: User(
-        id=TRAINER_ID,
-        email="trainer@example.com",
-        full_name="Trainer",
-        auth_method=AuthMethod.LOCAL,
-        password_hash="hash",
-    )
-    yield
-    app.dependency_overrides.pop(get_current_user, None)
 
 
 def _equipment_response() -> EquipmentResponse:
