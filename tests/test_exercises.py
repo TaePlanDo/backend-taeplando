@@ -88,6 +88,27 @@ def _configuration_payload() -> dict[str, list[str] | list[int]]:
     }
 
 
+def _exercise_payload(
+    *, include_ranges: bool = True, **overrides: object
+) -> dict[str, object]:
+    """Build a valid exercise request body with focused per-test overrides."""
+    payload: dict[str, object] = {
+        "name": "Ap chagi",
+        "description": "Kopnięcie frontalne.",
+        "duration_minutes": 10,
+        **_configuration_payload(),
+    }
+    if include_ranges:
+        payload.update(
+            min_age=7,
+            max_age=14,
+            min_participants=2,
+            max_participants=20,
+        )
+    payload.update(overrides)
+    return payload
+
+
 def _configuration() -> ExerciseConfiguration:
     """Build resolved catalog rows for an exercise configuration."""
     return ExerciseConfiguration(
@@ -207,17 +228,11 @@ def test_create_exercise_uses_the_authenticated_trainer(
     ) as create_exercise:
         response = client.post(
             "/exercises",
-            json={
-                "name": "  Ap chagi  ",
-                "description": "  Kopnięcie frontalne.  ",
-                "min_age": 7,
-                "max_age": 14,
-                "min_participants": 2,
-                "max_participants": 20,
-                "duration_minutes": 10,
-                "image_url": "https://example.com/ap-chagi.png",
-                **_configuration_payload(),
-            },
+            json=_exercise_payload(
+                name="  Ap chagi  ",
+                description="  Kopnięcie frontalne.  ",
+                image_url="https://example.com/ap-chagi.png",
+            ),
         )
 
     assert response.status_code == 201
@@ -242,12 +257,7 @@ def test_create_exercise_uses_default_trainer_configuration(
     ) as create_exercise:
         response = client.post(
             "/exercises",
-            json={
-                "name": "Ap chagi",
-                "description": "Kopnięcie frontalne.",
-                "duration_minutes": 10,
-                **_configuration_payload(),
-            },
+            json=_exercise_payload(include_ranges=False),
         )
 
     assert response.status_code == 201
@@ -258,88 +268,40 @@ def test_create_exercise_uses_default_trainer_configuration(
 
 def test_create_exercise_rejects_invalid_payload(client, authenticated_trainer) -> None:
     """Reject invalid text, URLs, ranges, and fields outside the contract."""
-    configuration = {
-        "min_age": 7,
-        "max_age": 14,
-        "min_participants": 2,
-        "max_participants": 20,
-        **_configuration_payload(),
-    }
     with patch(
         "app.api.exercises.exercise_service.create_exercise", new=AsyncMock()
     ) as create_exercise:
         blank_name = client.post(
             "/exercises",
-            json={
-                "name": "   ",
-                "description": "Opis",
-                "duration_minutes": 10,
-                **configuration,
-            },
+            json=_exercise_payload(name="   ", description="Opis"),
         )
         blank_description = client.post(
             "/exercises",
-            json={
-                "name": "Ap chagi",
-                "description": "   ",
-                "duration_minutes": 10,
-                **configuration,
-            },
+            json=_exercise_payload(description="   "),
         )
         invalid_duration = client.post(
             "/exercises",
-            json={
-                "name": "Ap chagi",
-                "description": "Opis",
-                "duration_minutes": 0,
-                **configuration,
-            },
+            json=_exercise_payload(description="Opis", duration_minutes=0),
         )
         invalid_image_url = client.post(
             "/exercises",
-            json={
-                "name": "Ap chagi",
-                "description": "Opis",
-                "duration_minutes": 10,
-                "image_url": "not-a-url",
-                **configuration,
-            },
+            json=_exercise_payload(description="Opis", image_url="not-a-url"),
         )
         invalid_age_range = client.post(
             "/exercises",
-            json={
-                "name": "Ap chagi",
-                "description": "Opis",
-                "min_age": 14,
-                "max_age": 7,
-                "min_participants": 2,
-                "max_participants": 20,
-                "duration_minutes": 10,
-                **_configuration_payload(),
-            },
+            json=_exercise_payload(description="Opis", min_age=14, max_age=7),
         )
         invalid_participant_range = client.post(
             "/exercises",
-            json={
-                "name": "Ap chagi",
-                "description": "Opis",
-                "min_age": 7,
-                "max_age": 14,
-                "min_participants": 20,
-                "max_participants": 2,
-                "duration_minutes": 10,
-                **_configuration_payload(),
-            },
+            json=_exercise_payload(
+                description="Opis", min_participants=20, max_participants=2
+            ),
         )
         extra_field = client.post(
             "/exercises",
-            json={
-                "name": "Ap chagi",
-                "description": "Opis",
-                "duration_minutes": 10,
-                "owner_user_id": str(TRAINER_ID),
-                **configuration,
-            },
+            json=_exercise_payload(
+                description="Opis", owner_user_id=str(TRAINER_ID)
+            ),
         )
 
     assert blank_name.status_code == 422
@@ -361,13 +323,10 @@ def test_create_exercise_rejects_duplicate_configuration_ids(
     ) as create_exercise:
         response = client.post(
             "/exercises",
-            json={
-                "name": "Ap chagi",
-                "description": "Kopnięcie frontalne.",
-                "duration_minutes": 10,
-                "training_type_ids": [str(TRAINING_TYPE_ID), str(TRAINING_TYPE_ID)],
-                "segment_ids": [SEGMENT_ID],
-            },
+            json=_exercise_payload(
+                training_type_ids=[str(TRAINING_TYPE_ID), str(TRAINING_TYPE_ID)],
+                segment_ids=[SEGMENT_ID],
+            ),
         )
 
     assert response.status_code == 422
