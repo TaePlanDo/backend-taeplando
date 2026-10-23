@@ -13,6 +13,7 @@ from app.models.exercises import Exercise, TrainerExercise
 from app.schemas.common import PaginatedResponse
 from app.schemas.exercises import (
     CatalogReference,
+    ExerciseConfigurationWrite,
     ExerciseResponse,
     ExerciseUpdate,
     ExerciseWrite,
@@ -174,7 +175,7 @@ def _to_response_from_models(
 async def _resolve_configuration_or_raise(
     session: AsyncSession,
     trainer_id: UUID,
-    payload: ExerciseUpdate,
+    payload: ExerciseConfigurationWrite,
 ) -> exercises_db.ExerciseConfiguration:
     """Resolve visible catalog IDs supplied with a complete exercise payload."""
     configuration = await exercises_db.resolve_configuration(
