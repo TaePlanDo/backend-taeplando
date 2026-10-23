@@ -5,12 +5,14 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import training_groups as training_groups_db
+from app.db import training_segments as training_segments_db
 from app.models.catalogs import TrainingSegment
 from app.models.training import TrainingGroup, TrainingGroupSchemaItem
 from app.schemas.common import PaginatedResponse, paginate
 from app.schemas.training import (
     GroupResponse,
     GroupSchemaItemResponse,
+    GroupSchemaWrite,
     GroupWrite,
 )
 
@@ -19,6 +21,14 @@ MAIN_SEGMENT_CODE = "MAIN"
 
 class GroupNotFoundError(Exception):
     """Raised when a group is absent or belongs to another trainer."""
+
+
+class InvalidSchemaError(Exception):
+    """Raised when a schema payload references unknown catalog segments."""
+
+    def __init__(self, detail: str = "Unknown training segment id(s)") -> None:
+        self.detail = detail
+        super().__init__(detail)
 
 
 async def list_groups(
@@ -95,6 +105,36 @@ async def put_group(
     return _to_response(group)
 
 
+async def replace_group_schema(
+    session: AsyncSession,
+    trainer_id: UUID,
+    group_id: UUID,
+    payload: GroupSchemaWrite,
+) -> GroupResponse:
+    """Replace the full training schema of an owned group in one transaction."""
+    group = await _get_owned_group_or_raise(session, trainer_id, group_id)
+    segment_ids = [item.segment_id for item in payload.items]
+    segments = await training_segments_db.list_by_ids(session, segment_ids)
+    segments_by_id = {segment.id: segment for segment in segments}
+    if set(segment_ids) - segments_by_id.keys():
+        raise InvalidSchemaError
+
+    # Flush deletes before inserts so reused (group, position) pairs do not
+    # collide on the unique constraint within the same transaction.
+    group.schema_items.clear()
+    await session.flush()
+    for position, item in enumerate(payload.items, start=1):
+        group.schema_items.append(
+            TrainingGroupSchemaItem(
+                segment=segments_by_id[item.segment_id],
+                percentage=item.percentage,
+                position=position,
+            )
+        )
+    await session.commit()
+    return _to_response(group)
+
+
 async def delete_group(session: AsyncSession, trainer_id: UUID, group_id: UUID) -> None:
     """Delete an owned group together with its dependent historical plans."""
     group = await training_groups_db.get_for_deletion(session, trainer_id, group_id)
@@ -124,9 +164,7 @@ async def _get_owned_group_or_raise(
 
 async def _get_main_segment(session: AsyncSession) -> TrainingSegment:
     """Resolve the fixed dictionary item used by every new group's schema."""
-    segment = await training_groups_db.get_training_segment_by_code(
-        session, MAIN_SEGMENT_CODE
-    )
+    segment = await training_segments_db.get_by_code(session, MAIN_SEGMENT_CODE)
     if segment is None:
         raise RuntimeError("The MAIN training segment has not been seeded")
     return segment

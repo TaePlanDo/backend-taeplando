@@ -7,7 +7,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
 from app.db.session import get_db
+from app.dependencies.auth import get_current_user
 from app.main import app
+from app.models.enums import AuthMethod
+from app.models.users import User
+from constants import TRAINER_ID
+
+
+@pytest.fixture
+def authenticated_trainer() -> Iterator[None]:
+    """Authenticate route tests without involving JWT parsing."""
+    app.dependency_overrides[get_current_user] = lambda: User(
+        id=TRAINER_ID,
+        email="trainer@example.com",
+        full_name="Trainer",
+        auth_method=AuthMethod.LOCAL,
+        password_hash="hash",
+    )
+    yield
+    app.dependency_overrides.pop(get_current_user, None)
 
 
 @pytest.fixture(autouse=True)

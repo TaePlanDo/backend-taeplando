@@ -98,6 +98,15 @@ global equipment types and types they created themselves.
 | `GET` | `/equipment?page=1&page_size=20` | Return one page of equipment types visible to the trainer. |
 | `POST` | `/equipment` | Create a trainer-owned local equipment type from `{ "name" }`. |
 
+## Training segments API (short)
+
+All endpoints below require `Authorization: Bearer <access-token>`. Segments are
+a fixed system catalog (seeded; not trainer-owned CRUD).
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| `GET` | `/training-segments` | Return all training segments (`id`, `code`, `name`) for schema editing. |
+
 ## Training groups API (short)
 
 All endpoints below require `Authorization: Bearer <access-token>` and operate
@@ -105,12 +114,18 @@ only on groups owned by that trainer.
 
 | Method   | Path                                                                            | Notes                                                                                                         |
 | -------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `GET`    | `/training-groups?duration_minutes=60&min_age=7&max_age=14&page=1&page_size=20` | List one page of the trainer's groups, including `plan_ids`; ages default to `0`–`99`.                        |
+| `GET`    | `/training-groups?duration_minutes=60&min_age=7&max_age=14&page=1&page_size=20` | List one page of the trainer's groups, including `plan_ids` and `schema`; ages default to `0`–`99`.           |
 | `POST`   | `/training-groups`                                                              | Create a group from `name`, `min_age`, `max_age`, and `duration_minutes`; its starting schema is 100% `MAIN`. |
-| `GET`    | `/training-groups/{group_id}`                                                   | Return one owned group, including its `plan_ids`.                                                             |
+| `GET`    | `/training-groups/{group_id}`                                                   | Return one owned group, including its `plan_ids` and `schema`.                                                |
 | `PUT`    | `/training-groups/{group_id}`                                                   | Replace all editable group fields; the body never accepts `id` or `trainer_id`.                               |
+| `PUT`    | `/training-groups/{group_id}/schema`                                            | Replace the group's full training schema (ordered parts); see payload below.                                  |
 | `DELETE` | `/training-groups/{group_id}`                                                   | Delete a group together with its plans and plan exercises.                                                    |
 | `DELETE` | `/training-groups/trainer`                                                      | Delete all groups of the OAuth-authenticated trainer.                                                         |
+
+Schema replace rules: each `segment_id` at most once, percentages sum to `100`,
+each percentage in `(0, 100]`, array order becomes `position` `1..n`, and every
+`segment_id` must exist in `/training-segments`. Unknown group → `404`; invalid
+schema → `422`.
 
 Example list response:
 
@@ -153,6 +168,18 @@ Example creation payload:
   "min_age": 7,
   "max_age": 14,
   "duration_minutes": 60
+}
+```
+
+Example schema replace payload (`PUT /training-groups/{group_id}/schema`):
+
+```json
+{
+  "items": [
+    { "segment_id": 1, "percentage": 20 },
+    { "segment_id": 3, "percentage": 70 },
+    { "segment_id": 4, "percentage": 10 }
+  ]
 }
 ```
 

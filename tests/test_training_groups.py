@@ -8,16 +8,12 @@ import pytest
 
 from app.db import training_groups as training_groups_db
 from app.db.training_groups import GroupPage
-from app.dependencies.auth import get_current_user
-from app.main import app
 from app.models.catalogs import TrainingSegment
-from app.models.enums import AuthMethod
 from app.models.training import (
     TrainingGroup,
     TrainingGroupSchemaItem,
     TrainingPlan,
 )
-from app.models.users import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.training import (
     GroupResponse,
@@ -26,26 +22,12 @@ from app.schemas.training import (
 )
 from app.services import training_group_service
 from app.services.training_group_service import GroupNotFoundError
+from constants import TRAINER_ID
 
-TRAINER_ID = UUID("d9aa16f7-b30a-4887-890b-247f86a2eef5")
 GROUP_ID = UUID("0ac590e1-2a46-4cb7-8944-803e364cc46b")
 PLAN_ID = UUID("88fa8385-5b07-4346-9ddb-02806890ae4b")
 CREATED_AT = datetime(2026, 10, 11, 12, 0, tzinfo=UTC)
 UPDATED_AT = datetime(2026, 10, 11, 13, 0, tzinfo=UTC)
-
-
-@pytest.fixture
-def authenticated_trainer() -> None:
-    """Authenticate route tests without involving JWT parsing."""
-    app.dependency_overrides[get_current_user] = lambda: User(
-        id=TRAINER_ID,
-        email="trainer@example.com",
-        full_name="Trainer",
-        auth_method=AuthMethod.LOCAL,
-        password_hash="hash",
-    )
-    yield
-    app.dependency_overrides.pop(get_current_user, None)
 
 
 def _group_response() -> GroupResponse:
@@ -371,7 +353,7 @@ def test_create_group_builds_the_default_main_schema() -> None:
     payload = GroupWrite(name="Młodzież", min_age=7, max_age=14, duration_minutes=60)
     with (
         patch(
-            "app.db.training_groups.get_training_segment_by_code",
+            "app.services.training_group_service.training_segments_db.get_by_code",
             new=AsyncMock(return_value=main_segment),
         ) as get_segment,
         patch.object(
