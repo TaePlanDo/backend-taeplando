@@ -150,7 +150,7 @@ def _private_listed_exercise() -> ListedExercise:
         max_participants=20,
         duration_minutes=10,
         status=TrainerExerciseStatus.ACTIVE,
-        configuration_id=TRAINER_EXERCISE_ID,
+        version_id=None,
     )
 
 
@@ -169,7 +169,7 @@ def _global_listed_exercise() -> ListedExercise:
         max_participants=24,
         duration_minutes=15,
         status=TrainerExerciseStatus.ACTIVE,
-        configuration_id=GLOBAL_VERSION_ID,
+        version_id=GLOBAL_VERSION_ID,
     )
 
 

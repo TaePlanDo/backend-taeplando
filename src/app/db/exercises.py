@@ -33,7 +33,7 @@ class ListedExercise(NamedTuple):
     max_participants: int
     duration_minutes: int
     status: TrainerExerciseStatus
-    configuration_id: UUID
+    version_id: UUID | None
 
 
 class ExerciseConfiguration(NamedTuple):
@@ -69,7 +69,10 @@ async def list_available_to_trainer(
             TrainerExercise.max_participants,
             TrainerExercise.duration_minutes,
             TrainerExercise.status,
-            TrainerExercise.id.label("configuration_id"),
+            literal(
+                None,
+                type_=Exercise.__table__.c.latest_approved_version_id.type,
+            ).label("version_id"),
         )
         .join(TrainerExercise)
         .where(
@@ -96,7 +99,7 @@ async def list_available_to_trainer(
                 TrainerExerciseStatus.ACTIVE,
                 type_=TrainerExercise.__table__.c.status.type,
             ).label("status"),
-            Exercise.latest_approved_version_id.label("configuration_id"),
+            Exercise.latest_approved_version_id.label("version_id"),
         )
         .join(
             ExerciseVersion, ExerciseVersion.id == Exercise.latest_approved_version_id
@@ -157,10 +160,10 @@ async def list_configurations(
     private_exercise_ids = [
         exercise.id for exercise in exercises if exercise.scope == ExerciseScope.PRIVATE
     ]
-    global_configuration_ids = [
-        exercise.configuration_id
+    global_version_ids = [
+        exercise.version_id
         for exercise in exercises
-        if exercise.scope == ExerciseScope.GLOBAL
+        if exercise.version_id is not None
     ]
     configurations: dict[UUID, ExerciseConfiguration] = {}
     if private_exercise_ids:
@@ -176,17 +179,17 @@ async def list_configurations(
             configurations[trainer_exercise.exercise_id] = _configuration_from(
                 trainer_exercise
             )
-    if global_configuration_ids:
+    if global_version_ids:
         global_result = await session.scalars(
             select(ExerciseVersion)
-            .where(ExerciseVersion.id.in_(global_configuration_ids))
+            .where(ExerciseVersion.id.in_(global_version_ids))
             .options(*_configuration_loader_options(ExerciseVersion))
         )
         versions = {version.id: version for version in global_result}
         for exercise in exercises:
-            if exercise.scope == ExerciseScope.GLOBAL:
+            if exercise.version_id is not None:
                 configurations[exercise.id] = _configuration_from(
-                    versions[exercise.configuration_id]
+                    versions[exercise.version_id]
                 )
     return configurations
 
