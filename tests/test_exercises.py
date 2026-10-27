@@ -12,16 +12,16 @@ from app.models.enums import (
 )
 from app.models.exercises import Exercise, TrainerExercise
 from app.schemas.common import PaginatedResponse
+from app.schemas.exercise_list_filters import (
+    EMPTY_EXERCISE_LIST_FILTERS,
+    ExerciseListFilters,
+)
 from app.schemas.exercises import (
     CatalogReference,
     ExerciseResponse,
     ExerciseUpdate,
     ExerciseWrite,
     TrainingSegmentResponse,
-)
-from app.schemas.exercise_list_filters import (
-    EMPTY_EXERCISE_LIST_FILTERS,
-    ExerciseListFilters,
 )
 from app.services import exercise_service
 from constants import TRAINER_ID
