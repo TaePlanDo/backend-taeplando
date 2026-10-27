@@ -10,6 +10,10 @@ from app.models.catalogs import Equipment, TrainingType
 from app.models.enums import TrainerExerciseStatus
 from app.models.exercises import Exercise, TrainerExercise
 from app.schemas.common import PaginatedResponse, paginate
+from app.schemas.exercise_list_filters import (
+    EMPTY_EXERCISE_LIST_FILTERS,
+    ExerciseListFilters,
+)
 from app.schemas.exercises import (
     CatalogReference,
     ExerciseConfigurationWrite,
@@ -29,7 +33,12 @@ class InvalidExerciseConfigurationError(Exception):
 
 
 async def list_exercises(
-    session: AsyncSession, trainer_id: UUID, *, page: int, page_size: int
+    session: AsyncSession,
+    trainer_id: UUID,
+    *,
+    page: int,
+    page_size: int,
+    filters: ExerciseListFilters = EMPTY_EXERCISE_LIST_FILTERS,
 ) -> PaginatedResponse[ExerciseResponse]:
     """Return one page of global and trainer-owned exercises."""
     db_page = await exercises_db.list_available_to_trainer(
@@ -37,6 +46,7 @@ async def list_exercises(
         trainer_id,
         offset=(page - 1) * page_size,
         limit=page_size,
+        filters=filters,
     )
     configurations = await exercises_db.list_configurations(
         session, trainer_id, db_page.items
