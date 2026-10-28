@@ -3,7 +3,15 @@
 from typing import NamedTuple
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, exists, func, literal, select, union_all
+from sqlalchemy import (
+    ColumnElement,
+    SQLColumnExpression,
+    exists,
+    func,
+    literal,
+    select,
+    union_all,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.interfaces import LoaderOption
@@ -62,18 +70,18 @@ class ExercisePage(NamedTuple):
 class _BranchColumns(NamedTuple):
     """Column/association map for one side of the private ∪ global union."""
 
-    name: ColumnElement[str]
-    min_age: ColumnElement[int]
-    max_age: ColumnElement[int]
-    min_participants: ColumnElement[int]
-    max_participants: ColumnElement[int]
-    owner_id: ColumnElement[UUID]
-    equipment_owner_fk: ColumnElement[UUID]
-    equipment_value: ColumnElement[UUID]
-    training_types_owner_fk: ColumnElement[UUID]
-    training_types_value: ColumnElement[UUID]
-    segments_owner_fk: ColumnElement[UUID]
-    segments_value: ColumnElement[int]
+    name: SQLColumnExpression[str]
+    min_age: SQLColumnExpression[int]
+    max_age: SQLColumnExpression[int]
+    min_participants: SQLColumnExpression[int]
+    max_participants: SQLColumnExpression[int]
+    owner_id: SQLColumnExpression[UUID]
+    equipment_owner_fk: SQLColumnExpression[UUID]
+    equipment_value: SQLColumnExpression[UUID]
+    training_types_owner_fk: SQLColumnExpression[UUID]
+    training_types_value: SQLColumnExpression[UUID]
+    segments_owner_fk: SQLColumnExpression[UUID]
+    segments_value: SQLColumnExpression[int]
 
 
 _PRIVATE_BRANCH = _BranchColumns(
@@ -230,7 +238,9 @@ def _filters_for_branch(
     return predicates
 
 
-def _ilike_contains(column: ColumnElement[str], value: str) -> ColumnElement[bool]:
+def _ilike_contains(
+    column: SQLColumnExpression[str], value: str
+) -> ColumnElement[bool]:
     """Case-insensitive substring match with LIKE metacharacters escaped."""
     escaped = value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     return column.ilike(f"%{escaped}%", escape="\\")
