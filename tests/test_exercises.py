@@ -12,6 +12,10 @@ from app.models.enums import (
 )
 from app.models.exercises import Exercise, TrainerExercise
 from app.schemas.common import PaginatedResponse
+from app.schemas.exercise_list_filters import (
+    EMPTY_EXERCISE_LIST_FILTERS,
+    ExerciseListFilters,
+)
 from app.schemas.exercises import (
     CatalogReference,
     ExerciseResponse,
@@ -194,7 +198,87 @@ def test_list_exercises_uses_the_authenticated_trainer(
         "page_size": 20,
         "total_pages": 2,
     }
-    list_exercises.assert_awaited_once_with(ANY, TRAINER_ID, page=2, page_size=20)
+    list_exercises.assert_awaited_once_with(
+        ANY,
+        TRAINER_ID,
+        filters=EMPTY_EXERCISE_LIST_FILTERS,
+        page=2,
+        page_size=20,
+    )
+
+
+def test_list_exercises_forwards_combined_filters(
+    client, authenticated_trainer
+) -> None:
+    """Parse and forward every supported list filter to the service."""
+    empty = PaginatedResponse(items=[], total=0, page=1, page_size=20, total_pages=1)
+    with patch(
+        "app.api.exercises.exercise_service.list_exercises",
+        new=AsyncMock(return_value=empty),
+    ) as list_exercises:
+        response = client.get(
+            "/exercises"
+            f"?name=chagi"
+            f"&min_age=7&max_age=14"
+            f"&min_participants=2&max_participants=20"
+            f"&equipment_ids={EQUIPMENT_ID}"
+            f"&training_type_ids={TRAINING_TYPE_ID}"
+            f"&segment_ids={SEGMENT_ID},1"
+        )
+
+    assert response.status_code == 200
+    list_exercises.assert_awaited_once_with(
+        ANY,
+        TRAINER_ID,
+        filters=ExerciseListFilters(
+            name="chagi",
+            min_age=7,
+            max_age=14,
+            min_participants=2,
+            max_participants=20,
+            equipment_ids=[EQUIPMENT_ID],
+            training_type_ids=[TRAINING_TYPE_ID],
+            segment_ids=[SEGMENT_ID, 1],
+        ),
+        page=1,
+        page_size=20,
+    )
+
+
+def test_list_exercises_rejects_inverted_age_range(
+    client, authenticated_trainer
+) -> None:
+    """Reject impossible inclusive age-filter ranges."""
+    response = client.get("/exercises?min_age=15&max_age=14")
+
+    assert response.status_code == 422
+
+
+def test_list_exercises_rejects_inverted_participants_range(
+    client, authenticated_trainer
+) -> None:
+    """Reject impossible inclusive participant-filter ranges."""
+    response = client.get("/exercises?min_participants=10&max_participants=2")
+
+    assert response.status_code == 422
+
+
+def test_list_exercises_rejects_invalid_equipment_csv(
+    client, authenticated_trainer
+) -> None:
+    """Reject malformed UUID lists instead of silently ignoring them."""
+    response = client.get("/exercises?equipment_ids=not-a-uuid")
+
+    assert response.status_code == 422
+
+
+def test_list_exercises_rejects_invalid_segment_csv(
+    client, authenticated_trainer
+) -> None:
+    """Reject malformed segment id lists instead of silently ignoring them."""
+    response = client.get("/exercises?segment_ids=1,abc")
+
+    assert response.status_code == 422
 
 
 def test_create_exercise_uses_the_authenticated_trainer(
@@ -527,8 +611,57 @@ def test_list_exercises_maps_a_database_page() -> None:
         page_size=20,
         total_pages=2,
     )
-    list_available.assert_awaited_once_with(session, TRAINER_ID, offset=20, limit=20)
+    list_available.assert_awaited_once_with(
+        session,
+        TRAINER_ID,
+        offset=20,
+        limit=20,
+        filters=EMPTY_EXERCISE_LIST_FILTERS,
+    )
     list_configurations.assert_awaited_once_with(session, TRAINER_ID, db_page.items)
+
+
+def test_list_exercises_service_forwards_filters_to_the_database() -> None:
+    """Pass the filter object through to the listing query unchanged."""
+    session = AsyncMock()
+    db_page = ExercisePage(items=[], total=0)
+    filters = ExerciseListFilters(
+        name="ap",
+        min_age=7,
+        max_age=14,
+        min_participants=2,
+        max_participants=20,
+        equipment_ids=[EQUIPMENT_ID],
+        training_type_ids=[TRAINING_TYPE_ID],
+        segment_ids=[SEGMENT_ID],
+    )
+    with (
+        patch(
+            "app.db.exercises.list_available_to_trainer",
+            new=AsyncMock(return_value=db_page),
+        ) as list_available,
+        patch(
+            "app.db.exercises.list_configurations",
+            new=AsyncMock(return_value={}),
+        ),
+    ):
+        asyncio.run(
+            exercise_service.list_exercises(
+                session,
+                TRAINER_ID,
+                page=1,
+                page_size=6,
+                filters=filters,
+            )
+        )
+
+    list_available.assert_awaited_once_with(
+        session,
+        TRAINER_ID,
+        offset=0,
+        limit=6,
+        filters=filters,
+    )
 
 
 def test_list_available_to_trainer_returns_page_and_total_in_one_query() -> None:
@@ -548,6 +681,45 @@ def test_list_available_to_trainer_returns_page_and_total_in_one_query() -> None
     statement = session.execute.await_args.args[0]
     assert "union all" in str(statement).lower()
     assert "over ()" in str(statement).lower()
+
+
+def test_list_available_to_trainer_applies_scalar_and_catalog_filters() -> None:
+    """Embed name, range-overlap, and M2M EXISTS predicates in both union branches."""
+    session = AsyncMock()
+    result = MagicMock()
+    result.all.return_value = []
+    session.execute = AsyncMock(return_value=result)
+
+    asyncio.run(
+        exercises_db.list_available_to_trainer(
+            session,
+            TRAINER_ID,
+            offset=0,
+            limit=20,
+            filters=ExerciseListFilters(
+                name="chagi_%",
+                min_age=7,
+                max_age=14,
+                min_participants=2,
+                max_participants=20,
+                equipment_ids=[EQUIPMENT_ID],
+                training_type_ids=[TRAINING_TYPE_ID],
+                segment_ids=[SEGMENT_ID],
+            ),
+        )
+    )
+
+    statement = str(session.execute.await_args.args[0]).lower()
+    assert "lower(exercises.name) like lower" in statement
+    assert "lower(exercise_versions.name) like lower" in statement
+    assert "escape" in statement
+    assert "exists" in statement
+    assert "trainer_exercise_equipment" in statement
+    assert "exercise_version_equipment" in statement
+    assert "trainer_exercise_training_types" in statement
+    assert "exercise_version_training_types" in statement
+    assert "trainer_exercise_segments" in statement
+    assert "exercise_version_segments" in statement
 
 
 def test_list_available_to_trainer_empty_first_page_skips_recount() -> None:

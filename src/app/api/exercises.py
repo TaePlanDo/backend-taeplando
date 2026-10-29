@@ -6,16 +6,19 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.exercise_list_filters import get_exercise_list_filters
 from app.db.session import get_db
 from app.dependencies.auth import get_current_user
 from app.models.users import User
 from app.schemas.common import PaginatedResponse
+from app.schemas.exercise_list_filters import ExerciseListFilters
 from app.schemas.exercises import ExerciseResponse, ExerciseUpdate, ExerciseWrite
 from app.services import exercise_service
 
 router = APIRouter(prefix="/exercises", tags=["exercises"])
 
 CurrentTrainer = Annotated[User, Depends(get_current_user)]
+ExerciseFilters = Annotated[ExerciseListFilters, Depends(get_exercise_list_filters)]
 
 
 def _not_found() -> HTTPException:
@@ -37,12 +40,17 @@ def _invalid_configuration() -> HTTPException:
 async def list_exercises(
     current_trainer: CurrentTrainer,
     session: Annotated[AsyncSession, Depends(get_db)],
+    filters: ExerciseFilters,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> PaginatedResponse[ExerciseResponse]:
     """List one page of global catalog and trainer-owned exercises."""
     return await exercise_service.list_exercises(
-        session, current_trainer.id, page=page, page_size=page_size
+        session,
+        current_trainer.id,
+        filters=filters,
+        page=page,
+        page_size=page_size,
     )
 
 
