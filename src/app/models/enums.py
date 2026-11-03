@@ -32,6 +32,13 @@ class TrainerExerciseStatus(StrEnum):
     HIDDEN = "HIDDEN"
 
 
+class EquipmentRequirementMode(StrEnum):
+    """How a trainer's available equipment satisfies an exercise requirement."""
+
+    ALL = "ALL"
+    ANY = "ANY"
+
+
 class CatalogVisibility(StrEnum):
     """Publication state of equipment and training-type catalog entries."""
 

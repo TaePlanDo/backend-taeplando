@@ -12,6 +12,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
@@ -35,6 +36,7 @@ from app.models.base import Base, utc_now
 from app.models.enums import (
     ExerciseScope,
     ExerciseVersionStatus,
+    EquipmentRequirementMode,
     TrainerExerciseStatus,
 )
 
@@ -111,6 +113,23 @@ class ExerciseVersion(Base):
         CheckConstraint(
             "duration_minutes > 0", name="ck_exercise_versions_duration_minutes"
         ),
+        CheckConstraint(
+            "physical_difficulty BETWEEN 1 AND 5",
+            name="ck_exercise_versions_physical_difficulty",
+        ),
+        CheckConstraint(
+            "technical_difficulty BETWEEN 1 AND 5",
+            name="ck_exercise_versions_technical_difficulty",
+        ),
+        CheckConstraint(
+            "upper_body_load BETWEEN 1 AND 5",
+            name="ck_exercise_versions_upper_body_load",
+        ),
+        CheckConstraint(
+            "lower_body_load BETWEEN 1 AND 5",
+            name="ck_exercise_versions_lower_body_load",
+        ),
+        CheckConstraint("core_load BETWEEN 1 AND 5", name="ck_exercise_versions_core_load"),
         Index(
             "uq_exercise_versions_pending",
             "exercise_id",
@@ -135,6 +154,26 @@ class ExerciseVersion(Base):
     min_participants: Mapped[int] = mapped_column(Integer)
     max_participants: Mapped[int] = mapped_column(Integer)
     duration_minutes: Mapped[int] = mapped_column(Integer)
+    equipment_requirement_mode: Mapped[EquipmentRequirementMode] = mapped_column(
+        SqlEnum(EquipmentRequirementMode, name="equipment_requirement_mode"),
+        default=EquipmentRequirementMode.ALL,
+        server_default=EquipmentRequirementMode.ALL.value,
+    )
+    physical_difficulty: Mapped[int] = mapped_column(
+        SmallInteger, default=3, server_default="3"
+    )
+    technical_difficulty: Mapped[int] = mapped_column(
+        SmallInteger, default=3, server_default="3"
+    )
+    upper_body_load: Mapped[int] = mapped_column(
+        SmallInteger, default=3, server_default="3"
+    )
+    lower_body_load: Mapped[int] = mapped_column(
+        SmallInteger, default=3, server_default="3"
+    )
+    core_load: Mapped[int] = mapped_column(
+        SmallInteger, default=3, server_default="3"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now
     )
@@ -178,6 +217,23 @@ class TrainerExercise(Base):
         CheckConstraint(
             "duration_minutes > 0", name="ck_trainer_exercises_duration_minutes"
         ),
+        CheckConstraint(
+            "physical_difficulty BETWEEN 1 AND 5",
+            name="ck_trainer_exercises_physical_difficulty",
+        ),
+        CheckConstraint(
+            "technical_difficulty BETWEEN 1 AND 5",
+            name="ck_trainer_exercises_technical_difficulty",
+        ),
+        CheckConstraint(
+            "upper_body_load BETWEEN 1 AND 5",
+            name="ck_trainer_exercises_upper_body_load",
+        ),
+        CheckConstraint(
+            "lower_body_load BETWEEN 1 AND 5",
+            name="ck_trainer_exercises_lower_body_load",
+        ),
+        CheckConstraint("core_load BETWEEN 1 AND 5", name="ck_trainer_exercises_core_load"),
     )
 
     id: Mapped[UUID] = mapped_column(
@@ -196,6 +252,26 @@ class TrainerExercise(Base):
     min_participants: Mapped[int] = mapped_column(Integer)
     max_participants: Mapped[int] = mapped_column(Integer)
     duration_minutes: Mapped[int] = mapped_column(Integer)
+    equipment_requirement_mode: Mapped[EquipmentRequirementMode] = mapped_column(
+        SqlEnum(EquipmentRequirementMode, name="equipment_requirement_mode"),
+        default=EquipmentRequirementMode.ALL,
+        server_default=EquipmentRequirementMode.ALL.value,
+    )
+    physical_difficulty: Mapped[int] = mapped_column(
+        SmallInteger, default=3, server_default="3"
+    )
+    technical_difficulty: Mapped[int] = mapped_column(
+        SmallInteger, default=3, server_default="3"
+    )
+    upper_body_load: Mapped[int] = mapped_column(
+        SmallInteger, default=3, server_default="3"
+    )
+    lower_body_load: Mapped[int] = mapped_column(
+        SmallInteger, default=3, server_default="3"
+    )
+    core_load: Mapped[int] = mapped_column(
+        SmallInteger, default=3, server_default="3"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now
     )
