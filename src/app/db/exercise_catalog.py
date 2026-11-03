@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import cache
 
-from app.db.exercise_catalog_source import EXERCISE_SOURCE_ROWS
+from app.db.exercise_catalog_source import EXERCISE_SOURCE_ROWS, ExerciseSourceRow
 from app.db.training_catalog import SEGMENT_CODE_BY_NAME
 from app.models.enums import EquipmentRequirementMode
 
@@ -87,7 +88,7 @@ def _number(
     raise ValueError(f"Missing {column} for catalog exercise {source_id}")
 
 
-def _row_to_exercise(row: tuple[str, ...]) -> SeedExercise:
+def _row_to_exercise(row: ExerciseSourceRow) -> SeedExercise:
     (
         source_id,
         name,
@@ -140,6 +141,7 @@ def _row_to_exercise(row: tuple[str, ...]) -> SeedExercise:
     )
 
 
+@cache
 def load_exercise_catalog() -> tuple[SeedExercise, ...]:
     """Return every source exercise embedded in application code."""
 

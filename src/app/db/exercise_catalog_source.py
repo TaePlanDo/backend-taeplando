@@ -4,7 +4,12 @@ from __future__ import annotations
 
 # ruff: noqa: E501
 # fmt: off
-EXERCISE_SOURCE_ROWS: tuple[tuple[str, ...], ...] = (
+type ExerciseSourceRow = tuple[
+    str, str, str, str, str, str, str, str,
+    str, str, str, str, str, str, str, str,
+]
+
+EXERCISE_SOURCE_ROWS: tuple[ExerciseSourceRow, ...] = (
     ('1', 'Bieg między liniami', 'Bieg od linii do linii; powrót truchtem.', '3', '99', 'Brak', '1', '30', '6', 'Kondycja', 'Rozgrzewka', '3', '2', '2', '5', '3'),
     ('2', 'Bieg z dotykaniem ścian', 'Na komendę zawodnicy dotykają wskazanej ściany dłonią i wracają.', '3', '13', 'Brak', '3', '30', '3', 'Reakcja', 'Rozgrzewka', '3', '2', '2', '5', '3'),
     ('3', 'Krok dostawny między liniami', 'Ruch bokiem bez krzyżowania nóg; zmiana strony co przejście.', '3', '99', 'Brak', '1', '30', '1', 'Koordynacja', 'Rozgrzewka', '2', '1', '2', '4', '2'),
