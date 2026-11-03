@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from typing import TypedDict
 from uuid import UUID
 
 from app.db.exercise_catalog import SeedExercise
@@ -13,10 +14,16 @@ from app.db.exercise_catalog import SeedExercise
 class GroupSchemaSeed:
     """One segment allocation in a demo training-group schema."""
 
-    segment_id: int
+    code: str
+    percentage: int
+
+
+class SegmentSnapshot(TypedDict):
+    """The system segment fields stored with an immutable training plan."""
+
+    id: int
     code: str
     name: str
-    percentage: int
 
 
 @dataclass(frozen=True)
@@ -52,14 +59,14 @@ class DemoTrainingContext:
     seed_id: Callable[[str, str | int], UUID]
     equipment_ids: Mapping[str, UUID]
     training_type_ids: Mapping[str, UUID]
-    segment_snapshots: Mapping[str, Mapping[str, object]]
+    segment_snapshots: Mapping[str, SegmentSnapshot]
     current_version_ids: Mapping[int, UUID]
 
 
-_WARMUP = GroupSchemaSeed(1, "WARMUP", "Rozgrzewka", 20)
-_GAME = GroupSchemaSeed(2, "GAME", "Zabawa", 20)
-_MAIN = GroupSchemaSeed(3, "MAIN", "Ćwiczenia", 50)
-_COOLDOWN = GroupSchemaSeed(4, "COOLDOWN", "Rozciąganie", 10)
+_WARMUP = GroupSchemaSeed("WARMUP", 20)
+_GAME = GroupSchemaSeed("GAME", 20)
+_MAIN = GroupSchemaSeed("MAIN", 50)
+_COOLDOWN = GroupSchemaSeed("COOLDOWN", 10)
 
 DEMO_TRAINING_GROUPS = (
     TrainingGroupSeed(
@@ -80,7 +87,7 @@ DEMO_TRAINING_GROUPS = (
         participant_count=14,
         schema=(
             _WARMUP,
-            GroupSchemaSeed(3, "MAIN", "Ćwiczenia", 70),
+            GroupSchemaSeed("MAIN", 70),
             _COOLDOWN,
         ),
     ),
@@ -92,8 +99,8 @@ DEMO_TRAINING_GROUPS = (
         duration_minutes=75,
         participant_count=16,
         schema=(
-            GroupSchemaSeed(1, "WARMUP", "Rozgrzewka", 15),
-            GroupSchemaSeed(3, "MAIN", "Ćwiczenia", 75),
+            GroupSchemaSeed("WARMUP", 15),
+            GroupSchemaSeed("MAIN", 75),
             _COOLDOWN,
         ),
     ),
@@ -126,6 +133,22 @@ def _plan_exercise(
     return candidates[selection_offset % len(candidates)]
 
 
+def _schema_snapshot(
+    position: int,
+    schema_item: GroupSchemaSeed,
+    segment: SegmentSnapshot,
+) -> dict[str, object]:
+    """Build one persisted schema snapshot from the canonical segment catalog."""
+
+    return {
+        "position": position,
+        "segment_id": segment["id"],
+        "code": segment["code"],
+        "name": segment["name"],
+        "percentage": schema_item.percentage,
+    }
+
+
 def build_demo_training_rows(
     exercises: tuple[SeedExercise, ...],
     context: DemoTrainingContext,
@@ -155,11 +178,12 @@ def build_demo_training_rows(
     for group_index, group in enumerate(DEMO_TRAINING_GROUPS):
         group_id = group_ids[group.key]
         for position, schema_item in enumerate(group.schema, start=1):
+            segment = context.segment_snapshots[schema_item.code]
             group_schema_rows.append(
                 {
                     "id": context.seed_id("group-schema", f"{group.key}:{position}"),
                     "training_group_id": group_id,
-                    "segment_id": schema_item.segment_id,
+                    "segment_id": segment["id"],
                     "percentage": schema_item.percentage,
                     "position": position,
                 }
@@ -212,13 +236,11 @@ def build_demo_training_rows(
                         for name in used_training_types
                     ],
                     "schema_snapshot": [
-                        {
-                            "position": position,
-                            "segment_id": schema_item.segment_id,
-                            "code": schema_item.code,
-                            "name": schema_item.name,
-                            "percentage": schema_item.percentage,
-                        }
+                        _schema_snapshot(
+                            position,
+                            schema_item,
+                            context.segment_snapshots[schema_item.code],
+                        )
                         for position, schema_item in enumerate(group.schema, start=1)
                     ],
                 }

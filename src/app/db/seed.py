@@ -17,6 +17,7 @@ from sqlalchemy.sql import FromClause
 from app.core.security import hash_password
 from app.db.demo_training_plans import (
     DemoTrainingContext,
+    SegmentSnapshot,
     build_demo_training_rows,
 )
 from app.db.exercise_catalog import SeedExercise, equipment_names, load_exercise_catalog
@@ -576,7 +577,7 @@ async def seed_training_groups_and_plans(
         training_type["name"]: training_type["id"]
         for training_type in SYSTEM_TRAINING_TYPES
     }
-    segment_snapshots = {
+    segment_snapshots: dict[str, SegmentSnapshot] = {
         segment["code"]: {
             "id": segment["id"],
             "code": segment["code"],
