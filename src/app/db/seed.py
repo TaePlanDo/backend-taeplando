@@ -138,8 +138,12 @@ def _version_id(source_id: int, version_number: int) -> UUID:
     return _seed_id("exercise-version", f"{source_id}:{version_number}")
 
 
-def _current_version_number(exercise: SeedExercise) -> int:
-    return 2 if exercise.source_id in HISTORICAL_VERSION_SOURCE_IDS else 1
+def _version_numbers(exercise: SeedExercise) -> tuple[int, ...]:
+    """Return every version seeded for one source exercise in chronological order."""
+
+    if exercise.source_id in HISTORICAL_VERSION_SOURCE_IDS:
+        return (1, 2)
+    return (1,)
 
 
 def _planning_attributes(exercise: SeedExercise) -> dict[str, object]:
@@ -415,16 +419,14 @@ async def seed_exercises(
     trainer_segment_rows: list[dict[str, object]] = []
 
     for exercise in exercises:
-        version_numbers = (
-            (1, 2) if exercise.source_id in HISTORICAL_VERSION_SOURCE_IDS else (1,)
-        )
+        version_numbers = _version_numbers(exercise)
         for version_number in version_numbers:
             version_id = _version_id(exercise.source_id, version_number)
             version_rows.append(
                 _exercise_version_row(
                     exercise,
                     version_number=version_number,
-                    archived=version_number == 1 and len(version_numbers) > 1,
+                    archived=version_number != version_numbers[-1],
                 )
             )
             version_equipment_rows.extend(
@@ -449,9 +451,7 @@ async def seed_exercises(
                 for code in exercise.segment_codes
             )
 
-        current_version_id = _version_id(
-            exercise.source_id, _current_version_number(exercise)
-        )
+        current_version_id = _version_id(exercise.source_id, version_numbers[-1])
         current_version_ids[exercise.source_id] = current_version_id
         trainer_exercise_id = _seed_id("trainer-exercise", exercise.source_id)
         trainer_rows.append(
