@@ -5,16 +5,17 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Sequence
-from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, TypedDict
+from typing import TypedDict, cast
 from uuid import UUID, uuid5
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import Table, delete, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import FromClause
 
 from app.core.security import hash_password
+from app.db.demo_training_plans import build_demo_training_rows
 from app.db.exercise_catalog import SeedExercise, equipment_names, load_exercise_catalog
 from app.db.session import dispose_engine, get_session_factory
 from app.models.associations import (
@@ -75,29 +76,6 @@ class LocalUserSeed(TypedDict):
     password: str
 
 
-@dataclass(frozen=True)
-class GroupSchemaSeed:
-    """One segment allocation in a demo training-group schema."""
-
-    segment_id: int
-    code: str
-    name: str
-    percentage: int
-
-
-@dataclass(frozen=True)
-class TrainingGroupSeed:
-    """One group and the five historical plans shown for it."""
-
-    key: str
-    name: str
-    min_age: int
-    max_age: int
-    duration_minutes: int
-    participant_count: int
-    schema: tuple[GroupSchemaSeed, ...]
-
-
 SYSTEM_TRAINING_SEGMENTS: Sequence[TrainingSegmentSeed] = (
     {"id": 1, "code": "WARMUP", "name": "Rozgrzewka"},
     {"id": 2, "code": "GAME", "name": "Zabawa"},
@@ -151,49 +129,6 @@ DEMO_LOCAL_USERS: Sequence[LocalUserSeed] = (
     },
 )
 
-_WARMUP = GroupSchemaSeed(1, "WARMUP", "Rozgrzewka", 20)
-_GAME = GroupSchemaSeed(2, "GAME", "Zabawa", 20)
-_MAIN = GroupSchemaSeed(3, "MAIN", "Ćwiczenia", 50)
-_COOLDOWN = GroupSchemaSeed(4, "COOLDOWN", "Rozciąganie", 10)
-
-DEMO_TRAINING_GROUPS = (
-    TrainingGroupSeed(
-        key="children",
-        name="Dzieci początkujące",
-        min_age=6,
-        max_age=8,
-        duration_minutes=45,
-        participant_count=10,
-        schema=(_WARMUP, _GAME, _MAIN, _COOLDOWN),
-    ),
-    TrainingGroupSeed(
-        key="youth",
-        name="Młodzicy",
-        min_age=9,
-        max_age=12,
-        duration_minutes=60,
-        participant_count=14,
-        schema=(
-            _WARMUP,
-            GroupSchemaSeed(3, "MAIN", "Ćwiczenia", 70),
-            _COOLDOWN,
-        ),
-    ),
-    TrainingGroupSeed(
-        key="teens",
-        name="Młodzież zaawansowana",
-        min_age=13,
-        max_age=16,
-        duration_minutes=75,
-        participant_count=16,
-        schema=(
-            GroupSchemaSeed(1, "WARMUP", "Rozgrzewka", 15),
-            GroupSchemaSeed(3, "MAIN", "Ćwiczenia", 75),
-            _COOLDOWN,
-        ),
-    ),
-)
-
 
 def _version_id(source_id: int, version_number: int) -> UUID:
     return _seed_id("exercise-version", f"{source_id}:{version_number}")
@@ -236,13 +171,14 @@ def _exercise_version_row(
 
 async def _upsert_by_id(
     session: AsyncSession,
-    table: Any,
+    table: FromClause,
     rows: list[dict[str, object]],
     update_columns: tuple[str, ...],
 ) -> None:
     if not rows:
         return
-    statement = insert(table).values(rows)
+    writable_table = cast(Table, table)
+    statement = insert(writable_table).values(rows)
     await session.execute(
         statement.on_conflict_do_update(
             index_elements=[table.c.id],
@@ -253,15 +189,20 @@ async def _upsert_by_id(
 
 async def _replace_associations(
     session: AsyncSession,
-    table: Any,
+    table: FromClause,
     owner_column: str,
     owner_ids: list[UUID],
     rows: list[dict[str, object]],
 ) -> None:
+    writable_table = cast(Table, table)
     if owner_ids:
-        await session.execute(delete(table).where(table.c[owner_column].in_(owner_ids)))
+        await session.execute(
+            delete(writable_table).where(writable_table.c[owner_column].in_(owner_ids))
+        )
     if rows:
-        await session.execute(insert(table).values(rows).on_conflict_do_nothing())
+        await session.execute(
+            insert(writable_table).values(rows).on_conflict_do_nothing()
+        )
 
 
 async def seed_training_segments(session: AsyncSession) -> None:
@@ -279,32 +220,43 @@ async def seed_training_segments(session: AsyncSession) -> None:
     )
 
 
-async def _replace_global_catalog(
-    session: AsyncSession, model: Any, association_tables: tuple[Any, ...]
-) -> None:
-    global_catalog_ids = select(model.id).where(
-        model.visibility == CatalogVisibility.GLOBAL
+async def _clear_global_training_types(session: AsyncSession) -> None:
+    global_training_type_ids = select(TrainingType.id).where(
+        TrainingType.visibility == CatalogVisibility.GLOBAL
     )
-    foreign_key = "equipment_id" if model is Equipment else "training_type_id"
-    for association_table in association_tables:
+    for association_table in (
+        exercise_version_training_types,
+        trainer_exercise_training_types,
+    ):
         await session.execute(
             delete(association_table).where(
-                association_table.c[foreign_key].in_(global_catalog_ids)
+                association_table.c.training_type_id.in_(global_training_type_ids)
             )
         )
     await session.execute(
-        delete(model).where(model.visibility == CatalogVisibility.GLOBAL)
+        delete(TrainingType).where(TrainingType.visibility == CatalogVisibility.GLOBAL)
+    )
+
+
+async def _clear_global_equipment(session: AsyncSession) -> None:
+    global_equipment_ids = select(Equipment.id).where(
+        Equipment.visibility == CatalogVisibility.GLOBAL
+    )
+    for association_table in (exercise_version_equipment, trainer_exercise_equipment):
+        await session.execute(
+            delete(association_table).where(
+                association_table.c.equipment_id.in_(global_equipment_ids)
+            )
+        )
+    await session.execute(
+        delete(Equipment).where(Equipment.visibility == CatalogVisibility.GLOBAL)
     )
 
 
 async def seed_training_types(session: AsyncSession) -> None:
     """Replace the global training-type dictionary with the source catalog."""
 
-    await _replace_global_catalog(
-        session,
-        TrainingType,
-        (exercise_version_training_types, trainer_exercise_training_types),
-    )
+    await _clear_global_training_types(session)
     await session.execute(
         insert(TrainingType).values(
             [
@@ -324,11 +276,7 @@ async def seed_equipment(
 ) -> dict[str, UUID]:
     """Replace global equipment with the normalized values used by source exercises."""
 
-    await _replace_global_catalog(
-        session,
-        Equipment,
-        (exercise_version_equipment, trainer_exercise_equipment),
-    )
+    await _clear_global_equipment(session)
     names = equipment_names(exercises)
     equipment_ids = {name: _seed_id("equipment", name) for name in names}
     await session.execute(
@@ -613,209 +561,64 @@ async def seed_exercises(
     return current_version_ids
 
 
-def _plan_exercise(
-    exercises: tuple[SeedExercise, ...],
-    group: TrainingGroupSeed,
-    schema_item: GroupSchemaSeed,
-    selection_offset: int,
-) -> SeedExercise:
-    eligible = [
-        exercise
-        for exercise in exercises
-        if schema_item.code in exercise.segment_codes
-        and exercise.max_age >= group.min_age
-        and exercise.min_age <= group.max_age
-    ]
-    segment_minutes = group.duration_minutes * schema_item.percentage // 100
-    within_duration = [
-        exercise
-        for exercise in eligible
-        if exercise.duration_minutes <= max(segment_minutes, 1)
-    ]
-    candidates = within_duration or eligible
-    if not candidates:
-        raise ValueError(f"No {schema_item.code} exercise for {group.name}")
-    return candidates[selection_offset % len(candidates)]
-
-
-def _segment_snapshot(segment_code: str) -> dict[str, object]:
-    return next(
-        {
-            "id": segment["id"],
-            "code": segment["code"],
-            "name": segment["name"],
-        }
-        for segment in SYSTEM_TRAINING_SEGMENTS
-        if segment["code"] == segment_code
-    )
-
-
 async def seed_training_groups_and_plans(
     session: AsyncSession,
     exercises: tuple[SeedExercise, ...],
     equipment_ids: dict[str, UUID],
     current_version_ids: dict[int, UUID],
 ) -> None:
-    """Create three groups with five historical plans each."""
+    """Persist the deterministic presentation groups and their plan snapshots."""
 
     training_type_ids = {
         training_type["name"]: training_type["id"]
         for training_type in SYSTEM_TRAINING_TYPES
     }
-    group_ids = {
-        group.key: _seed_id("training-group", group.key)
-        for group in DEMO_TRAINING_GROUPS
-    }
-    group_rows = [
-        {
-            "id": group_ids[group.key],
-            "trainer_id": DEMO_TRAINER_ID,
-            "name": group.name,
-            "min_age": group.min_age,
-            "max_age": group.max_age,
-            "duration_minutes": group.duration_minutes,
+    segment_snapshots = {
+        segment["code"]: {
+            "id": segment["id"],
+            "code": segment["code"],
+            "name": segment["name"],
         }
-        for group in DEMO_TRAINING_GROUPS
-    ]
+        for segment in SYSTEM_TRAINING_SEGMENTS
+    }
+    rows = build_demo_training_rows(
+        exercises,
+        trainer_id=DEMO_TRAINER_ID,
+        seed_id=_seed_id,
+        equipment_ids=equipment_ids,
+        training_type_ids=training_type_ids,
+        segment_snapshots=segment_snapshots,
+        current_version_ids=current_version_ids,
+    )
     await _upsert_by_id(
         session,
         TrainingGroup.__table__,
-        group_rows,
+        rows.group_rows,
         ("trainer_id", "name", "min_age", "max_age", "duration_minutes"),
     )
-
-    group_schema_rows: list[dict[str, object]] = []
-    plan_rows: list[dict[str, object]] = []
-    plan_exercise_rows: list[dict[str, object]] = []
-    plan_ids: list[UUID] = []
-    for group_index, group in enumerate(DEMO_TRAINING_GROUPS):
-        group_id = group_ids[group.key]
-        for position, schema_item in enumerate(group.schema, start=1):
-            group_schema_rows.append(
-                {
-                    "id": _seed_id("group-schema", f"{group.key}:{position}"),
-                    "training_group_id": group_id,
-                    "segment_id": schema_item.segment_id,
-                    "percentage": schema_item.percentage,
-                    "position": position,
-                }
-            )
-        for plan_number in range(1, 6):
-            plan_id = _seed_id("training-plan", f"{group.key}:{plan_number}")
-            plan_ids.append(plan_id)
-            selected = [
-                _plan_exercise(
-                    exercises,
-                    group,
-                    schema_item,
-                    group_index * 47 + plan_number * 11 + position * 7,
-                )
-                for position, schema_item in enumerate(group.schema, start=1)
-            ]
-            used_equipment = tuple(
-                sorted(
-                    {name for exercise in selected for name in exercise.equipment_names}
-                )
-            )
-            used_training_types = tuple(
-                sorted(
-                    {
-                        name
-                        for exercise in selected
-                        for name in exercise.training_type_names
-                    }
-                )
-            )
-            plan_rows.append(
-                {
-                    "id": plan_id,
-                    "trainer_id": DEMO_TRAINER_ID,
-                    "training_group_id": group_id,
-                    "participant_count": group.participant_count + plan_number - 1,
-                    "name": f"{group.name} – trening {plan_number}",
-                    "group_name_snapshot": group.name,
-                    "group_min_age_snapshot": group.min_age,
-                    "group_max_age_snapshot": group.max_age,
-                    "training_duration_snapshot": group.duration_minutes,
-                    "available_equipment_snapshot": [
-                        {"id": str(equipment_ids[name]), "name": name}
-                        for name in used_equipment
-                    ],
-                    "training_types_snapshot": [
-                        {"id": str(training_type_ids[name]), "name": name}
-                        for name in used_training_types
-                    ],
-                    "schema_snapshot": [
-                        {
-                            "position": position,
-                            "segment_id": schema_item.segment_id,
-                            "code": schema_item.code,
-                            "name": schema_item.name,
-                            "percentage": schema_item.percentage,
-                        }
-                        for position, schema_item in enumerate(group.schema, start=1)
-                    ],
-                }
-            )
-            for position, (_schema_item, exercise) in enumerate(
-                zip(group.schema, selected, strict=True), start=1
-            ):
-                plan_exercise_rows.append(
-                    {
-                        "id": _seed_id(
-                            "training-plan-exercise",
-                            f"{group.key}:{plan_number}:{position}",
-                        ),
-                        "training_plan_id": plan_id,
-                        "trainer_exercise_id": _seed_id(
-                            "trainer-exercise", exercise.source_id
-                        ),
-                        "exercise_id": _seed_id("exercise", exercise.source_id),
-                        "exercise_version_id": current_version_ids[exercise.source_id],
-                        "position": position,
-                        "schema_position": position,
-                        "name_snapshot": exercise.name,
-                        "description_snapshot": exercise.description,
-                        "min_age_snapshot": exercise.min_age,
-                        "max_age_snapshot": exercise.max_age,
-                        "min_participants_snapshot": exercise.min_participants,
-                        "max_participants_snapshot": exercise.max_participants,
-                        "duration_minutes_snapshot": exercise.duration_minutes,
-                        "equipment_snapshot": [
-                            {"id": str(equipment_ids[name]), "name": name}
-                            for name in exercise.equipment_names
-                        ],
-                        "training_types_snapshot": [
-                            {"id": str(training_type_ids[name]), "name": name}
-                            for name in exercise.training_type_names
-                        ],
-                        "segments_snapshot": [
-                            _segment_snapshot(segment_code)
-                            for segment_code in exercise.segment_codes
-                        ],
-                    }
-                )
     await _replace_associations(
         session,
         TrainingGroupSchemaItem.__table__,
         "training_group_id",
-        list(group_ids.values()),
-        group_schema_rows,
+        list(rows.group_ids.values()),
+        rows.group_schema_rows,
     )
     await session.execute(
         delete(TrainingPlanExercise).where(
-            TrainingPlanExercise.training_plan_id.in_(plan_ids)
+            TrainingPlanExercise.training_plan_id.in_(rows.plan_ids)
         )
     )
     await _upsert_by_id(
         session,
         TrainingPlan.__table__,
-        plan_rows,
+        rows.plan_rows,
         tuple(
-            column for column in plan_rows[0] if column not in {"id", "generated_at"}
+            column
+            for column in rows.plan_rows[0]
+            if column not in {"id", "generated_at"}
         ),
     )
-    await session.execute(insert(TrainingPlanExercise).values(plan_exercise_rows))
+    await session.execute(insert(TrainingPlanExercise).values(rows.plan_exercise_rows))
 
 
 async def seed_demo_data(session: AsyncSession) -> None:
