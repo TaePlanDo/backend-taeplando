@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from typing import TypedDict, cast
 from uuid import UUID, uuid5
 
-from sqlalchemy import Table, delete, select, update
+from sqlalchemy import Table, case, delete, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import FromClause
@@ -556,12 +556,20 @@ async def seed_exercises(
         trainer_ids,
         trainer_segment_rows,
     )
-    for source_id, version_id in current_version_ids.items():
-        await session.execute(
-            update(Exercise)
-            .where(Exercise.id == _seed_id("exercise", source_id))
-            .values(latest_approved_version_id=version_id)
+    current_versions_by_exercise = {
+        _seed_id("exercise", source_id): version_id
+        for source_id, version_id in current_version_ids.items()
+    }
+    await session.execute(
+        update(Exercise)
+        .where(Exercise.id.in_(current_versions_by_exercise))
+        .values(
+            latest_approved_version_id=case(
+                current_versions_by_exercise,
+                value=Exercise.id,
+            )
         )
+    )
     return current_version_ids
 
 
