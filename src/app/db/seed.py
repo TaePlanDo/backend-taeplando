@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Sequence
-from datetime import UTC, datetime
 from typing import TypedDict, cast
 from uuid import UUID, uuid5
 
@@ -15,6 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import FromClause
 
 from app.core.security import hash_password
+from app.db.demo_exercise_rows import (
+    DemoExerciseSeedContext,
+    build_demo_exercise_rows,
+)
 from app.db.demo_training_plans import (
     DemoTrainingContext,
     SegmentSnapshot,
@@ -34,9 +37,6 @@ from app.models.catalogs import Equipment, TrainingSegment, TrainingType
 from app.models.enums import (
     AuthMethod,
     CatalogVisibility,
-    ExerciseScope,
-    ExerciseVersionStatus,
-    TrainerExerciseStatus,
 )
 from app.models.exercises import Exercise, ExerciseVersion, TrainerExercise
 from app.models.training import (
@@ -53,7 +53,6 @@ SEED_NAMESPACE = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a00")
 DEMO_TRAINER_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a01")
 DEMO_TRAINER_EMAIL = "demo.trener@gmail.com"
 DEMO_TRAINER_PASSWORD = "Demo123!"
-HISTORICAL_VERSION_SOURCE_IDS = frozenset({1, 48, 96, 144, 192, 240, 288, 318})
 
 
 class TrainingSegmentSeed(TypedDict):
@@ -132,57 +131,6 @@ DEMO_LOCAL_USERS: Sequence[LocalUserSeed] = (
         "password": DEMO_TRAINER_PASSWORD,
     },
 )
-
-
-def _version_id(source_id: int, version_number: int) -> UUID:
-    return _seed_id("exercise-version", f"{source_id}:{version_number}")
-
-
-def _version_numbers(exercise: SeedExercise) -> tuple[int, ...]:
-    """Return every version seeded for one source exercise in chronological order."""
-
-    if exercise.source_id in HISTORICAL_VERSION_SOURCE_IDS:
-        return (1, 2)
-    return (1,)
-
-
-def _planning_attributes(exercise: SeedExercise) -> dict[str, object]:
-    """Map the fields shared by global versions and trainer configurations."""
-
-    return {
-        "min_age": exercise.min_age,
-        "max_age": exercise.max_age,
-        "min_participants": exercise.min_participants,
-        "max_participants": exercise.max_participants,
-        "duration_minutes": exercise.duration_minutes,
-        "equipment_requirement_mode": exercise.equipment_requirement_mode,
-        "physical_difficulty": exercise.physical_difficulty,
-        "technical_difficulty": exercise.technical_difficulty,
-        "upper_body_load": exercise.upper_body_load,
-        "lower_body_load": exercise.lower_body_load,
-        "core_load": exercise.core_load,
-    }
-
-
-def _exercise_version_row(
-    exercise: SeedExercise,
-    *,
-    version_number: int,
-    archived: bool,
-) -> dict[str, object]:
-    description = exercise.description
-    if archived:
-        description = f"{description}\n\nWersja archiwalna katalogu."
-    return {
-        "id": _version_id(exercise.source_id, version_number),
-        "exercise_id": _seed_id("exercise", exercise.source_id),
-        "version_number": version_number,
-        "status": ExerciseVersionStatus.APPROVED,
-        "name": exercise.name,
-        "description": description,
-        **_planning_attributes(exercise),
-        "approved_at": datetime(2026, 10, version_number, tzinfo=UTC),
-    }
 
 
 async def _upsert_by_id(
@@ -289,17 +237,16 @@ async def seed_training_types(session: AsyncSession) -> None:
 
 async def seed_equipment(
     session: AsyncSession, exercises: tuple[SeedExercise, ...]
-) -> dict[str, UUID]:
+) -> None:
     """Replace global equipment with the normalized values used by source exercises."""
 
     await _clear_global_equipment(session)
     names = equipment_names(exercises)
-    equipment_ids = {name: _seed_id("equipment", name) for name in names}
     await session.execute(
         insert(Equipment).values(
             [
                 {
-                    "id": equipment_ids[name],
+                    "id": _seed_id("equipment", name),
                     "owner_user_id": None,
                     "name": name,
                     "visibility": CatalogVisibility.GLOBAL,
@@ -308,7 +255,6 @@ async def seed_equipment(
             ]
         )
     )
-    return equipment_ids
 
 
 async def upsert_local_user(session: AsyncSession, user: LocalUserSeed) -> None:
@@ -386,189 +332,97 @@ async def _remove_previous_demo_data(session: AsyncSession) -> None:
 async def seed_exercises(
     session: AsyncSession,
     exercises: tuple[SeedExercise, ...],
-    equipment_ids: dict[str, UUID],
 ) -> dict[int, UUID]:
     """Seed global exercises, their current configurations, and version history."""
 
-    training_type_ids = {
-        training_type["name"]: training_type["id"]
-        for training_type in SYSTEM_TRAINING_TYPES
-    }
-    segment_ids = {
-        segment["code"]: segment["id"] for segment in SYSTEM_TRAINING_SEGMENTS
-    }
-    exercise_rows: list[dict[str, object]] = [
-        {
-            "id": _seed_id("exercise", exercise.source_id),
-            "owner_user_id": DEMO_TRAINER_ID,
-            "scope": ExerciseScope.GLOBAL,
-            "name": exercise.name,
-            "description": exercise.description,
-            "latest_approved_version_id": None,
-        }
-        for exercise in exercises
-    ]
-    version_rows: list[dict[str, object]] = []
-    current_version_ids: dict[int, UUID] = {}
-    version_equipment_rows: list[dict[str, object]] = []
-    version_training_type_rows: list[dict[str, object]] = []
-    version_segment_rows: list[dict[str, object]] = []
-    trainer_rows: list[dict[str, object]] = []
-    trainer_equipment_rows: list[dict[str, object]] = []
-    trainer_training_type_rows: list[dict[str, object]] = []
-    trainer_segment_rows: list[dict[str, object]] = []
-
-    for exercise in exercises:
-        version_numbers = _version_numbers(exercise)
-        for version_number in version_numbers:
-            version_id = _version_id(exercise.source_id, version_number)
-            version_rows.append(
-                _exercise_version_row(
-                    exercise,
-                    version_number=version_number,
-                    archived=version_number != version_numbers[-1],
-                )
-            )
-            version_equipment_rows.extend(
-                {
-                    "exercise_version_id": version_id,
-                    "equipment_id": equipment_ids[name],
-                }
-                for name in exercise.equipment_names
-            )
-            version_training_type_rows.extend(
-                {
-                    "exercise_version_id": version_id,
-                    "training_type_id": training_type_ids[name],
-                }
-                for name in exercise.training_type_names
-            )
-            version_segment_rows.extend(
-                {
-                    "exercise_version_id": version_id,
-                    "segment_id": segment_ids[code],
-                }
-                for code in exercise.segment_codes
-            )
-
-        current_version_id = _version_id(exercise.source_id, version_numbers[-1])
-        current_version_ids[exercise.source_id] = current_version_id
-        trainer_exercise_id = _seed_id("trainer-exercise", exercise.source_id)
-        trainer_rows.append(
-            {
-                "id": trainer_exercise_id,
-                "trainer_id": DEMO_TRAINER_ID,
-                "exercise_id": _seed_id("exercise", exercise.source_id),
-                "source_version_id": current_version_id,
-                "status": TrainerExerciseStatus.ACTIVE,
-                **_planning_attributes(exercise),
-            }
-        )
-        trainer_equipment_rows.extend(
-            {
-                "trainer_exercise_id": trainer_exercise_id,
-                "equipment_id": equipment_ids[name],
-            }
-            for name in exercise.equipment_names
-        )
-        trainer_training_type_rows.extend(
-            {
-                "trainer_exercise_id": trainer_exercise_id,
-                "training_type_id": training_type_ids[name],
-            }
-            for name in exercise.training_type_names
-        )
-        trainer_segment_rows.extend(
-            {
-                "trainer_exercise_id": trainer_exercise_id,
-                "segment_id": segment_ids[code],
-            }
-            for code in exercise.segment_codes
-        )
+    context = DemoExerciseSeedContext(
+        trainer_id=DEMO_TRAINER_ID,
+        seed_id=_seed_id,
+        segment_ids={
+            segment["code"]: segment["id"] for segment in SYSTEM_TRAINING_SEGMENTS
+        },
+    )
+    rows = build_demo_exercise_rows(exercises, context)
 
     await _upsert_by_id(
         session,
         Exercise.__table__,
-        exercise_rows,
+        rows.exercise_rows,
         ("owner_user_id", "scope", "name", "description"),
     )
     await _upsert_by_id(
         session,
         ExerciseVersion.__table__,
-        version_rows,
+        rows.version_rows,
         tuple(
             column
-            for column in version_rows[0]
+            for column in rows.version_rows[0]
             if column not in {"id", "exercise_id", "created_at"}
         ),
     )
     await _upsert_by_id(
         session,
         TrainerExercise.__table__,
-        trainer_rows,
+        rows.trainer_rows,
         tuple(
-            column for column in trainer_rows[0] if column not in {"id", "created_at"}
+            column
+            for column in rows.trainer_rows[0]
+            if column not in {"id", "created_at"}
         ),
     )
-    version_ids = [row["id"] for row in version_rows if isinstance(row["id"], UUID)]
-    trainer_ids = [row["id"] for row in trainer_rows if isinstance(row["id"], UUID)]
     await _replace_associations(
         session,
         exercise_version_equipment,
         "exercise_version_id",
-        version_ids,
-        version_equipment_rows,
+        rows.version_ids,
+        rows.version_equipment_rows,
     )
     await _replace_associations(
         session,
         exercise_version_training_types,
         "exercise_version_id",
-        version_ids,
-        version_training_type_rows,
+        rows.version_ids,
+        rows.version_training_type_rows,
     )
     await _replace_associations(
         session,
         exercise_version_segments,
         "exercise_version_id",
-        version_ids,
-        version_segment_rows,
+        rows.version_ids,
+        rows.version_segment_rows,
     )
     await _replace_associations(
         session,
         trainer_exercise_equipment,
         "trainer_exercise_id",
-        trainer_ids,
-        trainer_equipment_rows,
+        rows.trainer_ids,
+        rows.trainer_equipment_rows,
     )
     await _replace_associations(
         session,
         trainer_exercise_training_types,
         "trainer_exercise_id",
-        trainer_ids,
-        trainer_training_type_rows,
+        rows.trainer_ids,
+        rows.trainer_training_type_rows,
     )
     await _replace_associations(
         session,
         trainer_exercise_segments,
         "trainer_exercise_id",
-        trainer_ids,
-        trainer_segment_rows,
+        rows.trainer_ids,
+        rows.trainer_segment_rows,
     )
-    current_versions_by_exercise = {
-        _seed_id("exercise", source_id): version_id
-        for source_id, version_id in current_version_ids.items()
-    }
     await session.execute(
         update(Exercise)
-        .where(Exercise.id.in_(current_versions_by_exercise))
+        .where(Exercise.id.in_(rows.current_versions_by_exercise))
         .values(
             latest_approved_version_id=case(
-                current_versions_by_exercise,
+                rows.current_versions_by_exercise,
                 value=Exercise.id,
             )
         )
     )
-    return current_version_ids
+    return rows.current_version_ids
 
 
 async def seed_training_groups_and_plans(
@@ -632,8 +486,8 @@ async def seed_demo_data(session: AsyncSession) -> None:
     for user in DEMO_LOCAL_USERS:
         await upsert_local_user(session, user)
     await _remove_previous_demo_data(session)
-    equipment_ids = await seed_equipment(session, exercises)
-    current_version_ids = await seed_exercises(session, exercises, equipment_ids)
+    await seed_equipment(session, exercises)
+    current_version_ids = await seed_exercises(session, exercises)
     await seed_training_groups_and_plans(session, exercises, current_version_ids)
 
 
