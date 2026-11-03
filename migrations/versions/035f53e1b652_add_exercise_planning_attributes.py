@@ -5,23 +5,28 @@ Revises: 70cec280aa2f
 Create Date: 2026-11-03 22:28:56.262852
 
 """
-from datetime import datetime, timezone
-from typing import Sequence, Union
-from uuid import NAMESPACE_URL, uuid5
 
-from alembic import op
+from collections.abc import Sequence
+from datetime import UTC, datetime
+from uuid import UUID, uuid5
+
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
-
 # revision identifiers, used by Alembic.
-revision: str = '035f53e1b652'
-down_revision: Union[str, Sequence[str], None] = '70cec280aa2f'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+revision: str = "035f53e1b652"
+down_revision: str | Sequence[str] | None = "70cec280aa2f"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
-equipment_requirement_mode = sa.Enum(
-    "ALL", "ANY", name="equipment_requirement_mode"
+equipment_requirement_mode = sa.Enum("ALL", "ANY", name="equipment_requirement_mode")
+
+SYSTEM_TRAINING_SEGMENTS = (
+    {"id": 1, "code": "WARMUP", "name": "Rozgrzewka"},
+    {"id": 2, "code": "GAME", "name": "Zabawa"},
+    {"id": 3, "code": "MAIN", "name": "Ćwiczenia"},
+    {"id": 4, "code": "COOLDOWN", "name": "Rozciąganie"},
 )
 
 SYSTEM_TRAINING_TYPE_NAMES = (
@@ -51,12 +56,21 @@ SYSTEM_TRAINING_TYPE_NAMES = (
     "Zabawa",
 )
 
+LEGACY_SYSTEM_TRAINING_TYPE_IDS = {
+    "Technika": UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a12"),
+    "Układy formalne": UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a13"),
+    "Walka": UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a14"),
+}
+
 
 def _training_type_rows() -> list[dict[str, object]]:
-    created_at = datetime.now(timezone.utc)
+    created_at = datetime.now(UTC)
     return [
         {
-            "id": uuid5(NAMESPACE_URL, f"taeplando/training-type/{name.casefold()}"),
+            "id": LEGACY_SYSTEM_TRAINING_TYPE_IDS.get(
+                name,
+                uuid5(UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a00"), name.casefold()),
+            ),
             "owner_user_id": None,
             "name": name,
             "visibility": "GLOBAL",
@@ -88,7 +102,9 @@ def upgrade() -> None:
         ):
             op.add_column(
                 table_name,
-                sa.Column(column_name, sa.SmallInteger(), server_default="3", nullable=False),
+                sa.Column(
+                    column_name, sa.SmallInteger(), server_default="3", nullable=False
+                ),
             )
             op.create_check_constraint(
                 f"ck_{table_name}_{column_name}",
@@ -96,18 +112,22 @@ def upgrade() -> None:
                 f"{column_name} BETWEEN 1 AND 5",
             )
 
+    training_segments = sa.table(
+        "training_segments",
+        sa.column("id", sa.SmallInteger()),
+        sa.column("code", sa.String()),
+        sa.column("name", sa.String()),
+    )
+    insert_segments = postgresql.insert(training_segments).values(
+        SYSTEM_TRAINING_SEGMENTS
+    )
     op.execute(
-        sa.text(
-            """
-            UPDATE training_segments
-            SET name = CASE id
-                WHEN 1 THEN 'Rozgrzewka'
-                WHEN 2 THEN 'Zabawa'
-                WHEN 3 THEN 'Ćwiczenia'
-                WHEN 4 THEN 'Rozciąganie'
-            END
-            WHERE id IN (1, 2, 3, 4)
-            """
+        insert_segments.on_conflict_do_update(
+            index_elements=["id"],
+            set_={
+                "code": insert_segments.excluded.code,
+                "name": insert_segments.excluded.name,
+            },
         )
     )
 
@@ -159,13 +179,19 @@ def upgrade() -> None:
         sa.column(
             "visibility",
             postgresql.ENUM(
-                "LOCAL", "PENDING", "GLOBAL", name="catalog_visibility", create_type=False
+                "LOCAL",
+                "PENDING",
+                "GLOBAL",
+                name="catalog_visibility",
+                create_type=False,
             ),
         ),
         sa.column("created_at", sa.DateTime(timezone=True)),
     )
     for row in _training_type_rows():
-        op.execute(postgresql.insert(training_types).values(**row).on_conflict_do_nothing())
+        op.execute(
+            postgresql.insert(training_types).values(**row).on_conflict_do_nothing()
+        )
 
 
 def downgrade() -> None:

@@ -34,9 +34,9 @@ from app.models.associations import (
 )
 from app.models.base import Base, utc_now
 from app.models.enums import (
+    EquipmentRequirementMode,
     ExerciseScope,
     ExerciseVersionStatus,
-    EquipmentRequirementMode,
     TrainerExerciseStatus,
 )
 
@@ -44,6 +44,47 @@ if TYPE_CHECKING:
     from app.models.catalogs import Equipment, TrainingSegment, TrainingType
     from app.models.training import TrainingPlanExercise
     from app.models.users import User
+
+
+def _planning_attribute_constraints(table_name: str) -> tuple[CheckConstraint, ...]:
+    """Build the shared 1–5 constraints for exercise planning attributes."""
+
+    return tuple(
+        CheckConstraint(
+            f"{column_name} BETWEEN 1 AND 5",
+            name=f"ck_{table_name}_{column_name}",
+        )
+        for column_name in (
+            "physical_difficulty",
+            "technical_difficulty",
+            "upper_body_load",
+            "lower_body_load",
+            "core_load",
+        )
+    )
+
+
+class ExercisePlanningAttributesMixin:
+    """Planning metadata shared by global versions and trainer configurations."""
+
+    equipment_requirement_mode: Mapped[EquipmentRequirementMode] = mapped_column(
+        SqlEnum(EquipmentRequirementMode, name="equipment_requirement_mode"),
+        default=EquipmentRequirementMode.ALL,
+        server_default=EquipmentRequirementMode.ALL.value,
+    )
+    physical_difficulty: Mapped[int] = mapped_column(
+        SmallInteger, default=3, server_default="3"
+    )
+    technical_difficulty: Mapped[int] = mapped_column(
+        SmallInteger, default=3, server_default="3"
+    )
+    upper_body_load: Mapped[int] = mapped_column(
+        SmallInteger, default=3, server_default="3"
+    )
+    lower_body_load: Mapped[int] = mapped_column(
+        SmallInteger, default=3, server_default="3"
+    )
+    core_load: Mapped[int] = mapped_column(SmallInteger, default=3, server_default="3")
 
 
 class Exercise(Base):
@@ -92,7 +133,7 @@ class Exercise(Base):
     )
 
 
-class ExerciseVersion(Base):
+class ExerciseVersion(ExercisePlanningAttributesMixin, Base):
     """An immutable moderation version of a global exercise."""
 
     __tablename__ = "exercise_versions"
@@ -113,23 +154,7 @@ class ExerciseVersion(Base):
         CheckConstraint(
             "duration_minutes > 0", name="ck_exercise_versions_duration_minutes"
         ),
-        CheckConstraint(
-            "physical_difficulty BETWEEN 1 AND 5",
-            name="ck_exercise_versions_physical_difficulty",
-        ),
-        CheckConstraint(
-            "technical_difficulty BETWEEN 1 AND 5",
-            name="ck_exercise_versions_technical_difficulty",
-        ),
-        CheckConstraint(
-            "upper_body_load BETWEEN 1 AND 5",
-            name="ck_exercise_versions_upper_body_load",
-        ),
-        CheckConstraint(
-            "lower_body_load BETWEEN 1 AND 5",
-            name="ck_exercise_versions_lower_body_load",
-        ),
-        CheckConstraint("core_load BETWEEN 1 AND 5", name="ck_exercise_versions_core_load"),
+        *_planning_attribute_constraints("exercise_versions"),
         Index(
             "uq_exercise_versions_pending",
             "exercise_id",
@@ -154,26 +179,6 @@ class ExerciseVersion(Base):
     min_participants: Mapped[int] = mapped_column(Integer)
     max_participants: Mapped[int] = mapped_column(Integer)
     duration_minutes: Mapped[int] = mapped_column(Integer)
-    equipment_requirement_mode: Mapped[EquipmentRequirementMode] = mapped_column(
-        SqlEnum(EquipmentRequirementMode, name="equipment_requirement_mode"),
-        default=EquipmentRequirementMode.ALL,
-        server_default=EquipmentRequirementMode.ALL.value,
-    )
-    physical_difficulty: Mapped[int] = mapped_column(
-        SmallInteger, default=3, server_default="3"
-    )
-    technical_difficulty: Mapped[int] = mapped_column(
-        SmallInteger, default=3, server_default="3"
-    )
-    upper_body_load: Mapped[int] = mapped_column(
-        SmallInteger, default=3, server_default="3"
-    )
-    lower_body_load: Mapped[int] = mapped_column(
-        SmallInteger, default=3, server_default="3"
-    )
-    core_load: Mapped[int] = mapped_column(
-        SmallInteger, default=3, server_default="3"
-    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now
     )
@@ -199,7 +204,7 @@ class ExerciseVersion(Base):
     )
 
 
-class TrainerExercise(Base):
+class TrainerExercise(ExercisePlanningAttributesMixin, Base):
     """A trainer's local configuration of a source exercise."""
 
     __tablename__ = "trainer_exercises"
@@ -217,23 +222,7 @@ class TrainerExercise(Base):
         CheckConstraint(
             "duration_minutes > 0", name="ck_trainer_exercises_duration_minutes"
         ),
-        CheckConstraint(
-            "physical_difficulty BETWEEN 1 AND 5",
-            name="ck_trainer_exercises_physical_difficulty",
-        ),
-        CheckConstraint(
-            "technical_difficulty BETWEEN 1 AND 5",
-            name="ck_trainer_exercises_technical_difficulty",
-        ),
-        CheckConstraint(
-            "upper_body_load BETWEEN 1 AND 5",
-            name="ck_trainer_exercises_upper_body_load",
-        ),
-        CheckConstraint(
-            "lower_body_load BETWEEN 1 AND 5",
-            name="ck_trainer_exercises_lower_body_load",
-        ),
-        CheckConstraint("core_load BETWEEN 1 AND 5", name="ck_trainer_exercises_core_load"),
+        *_planning_attribute_constraints("trainer_exercises"),
     )
 
     id: Mapped[UUID] = mapped_column(
@@ -252,26 +241,6 @@ class TrainerExercise(Base):
     min_participants: Mapped[int] = mapped_column(Integer)
     max_participants: Mapped[int] = mapped_column(Integer)
     duration_minutes: Mapped[int] = mapped_column(Integer)
-    equipment_requirement_mode: Mapped[EquipmentRequirementMode] = mapped_column(
-        SqlEnum(EquipmentRequirementMode, name="equipment_requirement_mode"),
-        default=EquipmentRequirementMode.ALL,
-        server_default=EquipmentRequirementMode.ALL.value,
-    )
-    physical_difficulty: Mapped[int] = mapped_column(
-        SmallInteger, default=3, server_default="3"
-    )
-    technical_difficulty: Mapped[int] = mapped_column(
-        SmallInteger, default=3, server_default="3"
-    )
-    upper_body_load: Mapped[int] = mapped_column(
-        SmallInteger, default=3, server_default="3"
-    )
-    lower_body_load: Mapped[int] = mapped_column(
-        SmallInteger, default=3, server_default="3"
-    )
-    core_load: Mapped[int] = mapped_column(
-        SmallInteger, default=3, server_default="3"
-    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now
     )
