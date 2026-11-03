@@ -15,7 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import FromClause
 
 from app.core.security import hash_password
-from app.db.demo_training_plans import build_demo_training_rows
+from app.db.demo_training_plans import (
+    DemoTrainingContext,
+    build_demo_training_rows,
+)
 from app.db.exercise_catalog import SeedExercise, equipment_names, load_exercise_catalog
 from app.db.session import dispose_engine, get_session_factory
 from app.models.associations import (
@@ -581,8 +584,7 @@ async def seed_training_groups_and_plans(
         }
         for segment in SYSTEM_TRAINING_SEGMENTS
     }
-    rows = build_demo_training_rows(
-        exercises,
+    context = DemoTrainingContext(
         trainer_id=DEMO_TRAINER_ID,
         seed_id=_seed_id,
         equipment_ids=equipment_ids,
@@ -590,6 +592,7 @@ async def seed_training_groups_and_plans(
         segment_snapshots=segment_snapshots,
         current_version_ids=current_version_ids,
     )
+    rows = build_demo_training_rows(exercises, context)
     await _upsert_by_id(
         session,
         TrainingGroup.__table__,

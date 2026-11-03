@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -42,6 +42,18 @@ class DemoTrainingRows:
     plan_ids: list[UUID]
     plan_rows: list[dict[str, object]]
     plan_exercise_rows: list[dict[str, object]]
+
+
+@dataclass(frozen=True)
+class DemoTrainingContext:
+    """Stable seed dependencies used to build presentation training plans."""
+
+    trainer_id: UUID
+    seed_id: Callable[[str, str | int], UUID]
+    equipment_ids: Mapping[str, UUID]
+    training_type_ids: Mapping[str, UUID]
+    segment_snapshots: Mapping[str, Mapping[str, object]]
+    current_version_ids: Mapping[int, UUID]
 
 
 _WARMUP = GroupSchemaSeed(1, "WARMUP", "Rozgrzewka", 20)
@@ -116,24 +128,18 @@ def _plan_exercise(
 
 def build_demo_training_rows(
     exercises: tuple[SeedExercise, ...],
-    *,
-    trainer_id: UUID,
-    seed_id: Callable[[str, str | int], UUID],
-    equipment_ids: dict[str, UUID],
-    training_type_ids: dict[str, UUID],
-    segment_snapshots: dict[str, dict[str, object]],
-    current_version_ids: dict[int, UUID],
+    context: DemoTrainingContext,
 ) -> DemoTrainingRows:
     """Build deterministic rows for three groups and five plans per group."""
 
     group_ids = {
-        group.key: seed_id("training-group", group.key)
+        group.key: context.seed_id("training-group", group.key)
         for group in DEMO_TRAINING_GROUPS
     }
     group_rows = [
         {
             "id": group_ids[group.key],
-            "trainer_id": trainer_id,
+            "trainer_id": context.trainer_id,
             "name": group.name,
             "min_age": group.min_age,
             "max_age": group.max_age,
@@ -151,7 +157,7 @@ def build_demo_training_rows(
         for position, schema_item in enumerate(group.schema, start=1):
             group_schema_rows.append(
                 {
-                    "id": seed_id("group-schema", f"{group.key}:{position}"),
+                    "id": context.seed_id("group-schema", f"{group.key}:{position}"),
                     "training_group_id": group_id,
                     "segment_id": schema_item.segment_id,
                     "percentage": schema_item.percentage,
@@ -160,7 +166,7 @@ def build_demo_training_rows(
             )
         for plan_index in range(PLANS_PER_GROUP):
             plan_number = plan_index + 1
-            plan_id = seed_id("training-plan", f"{group.key}:{plan_number}")
+            plan_id = context.seed_id("training-plan", f"{group.key}:{plan_number}")
             plan_ids.append(plan_id)
             selected = [
                 _plan_exercise(
@@ -189,7 +195,7 @@ def build_demo_training_rows(
             plan_rows.append(
                 {
                     "id": plan_id,
-                    "trainer_id": trainer_id,
+                    "trainer_id": context.trainer_id,
                     "training_group_id": group_id,
                     "participant_count": group.participant_count + plan_number - 1,
                     "name": f"{group.name} – trening {plan_number}",
@@ -198,11 +204,11 @@ def build_demo_training_rows(
                     "group_max_age_snapshot": group.max_age,
                     "training_duration_snapshot": group.duration_minutes,
                     "available_equipment_snapshot": [
-                        {"id": str(equipment_ids[name]), "name": name}
+                        {"id": str(context.equipment_ids[name]), "name": name}
                         for name in used_equipment
                     ],
                     "training_types_snapshot": [
-                        {"id": str(training_type_ids[name]), "name": name}
+                        {"id": str(context.training_type_ids[name]), "name": name}
                         for name in used_training_types
                     ],
                     "schema_snapshot": [
@@ -220,16 +226,18 @@ def build_demo_training_rows(
             for position, exercise in enumerate(selected, start=1):
                 plan_exercise_rows.append(
                     {
-                        "id": seed_id(
+                        "id": context.seed_id(
                             "training-plan-exercise",
                             f"{group.key}:{plan_number}:{position}",
                         ),
                         "training_plan_id": plan_id,
-                        "trainer_exercise_id": seed_id(
+                        "trainer_exercise_id": context.seed_id(
                             "trainer-exercise", exercise.source_id
                         ),
-                        "exercise_id": seed_id("exercise", exercise.source_id),
-                        "exercise_version_id": current_version_ids[exercise.source_id],
+                        "exercise_id": context.seed_id("exercise", exercise.source_id),
+                        "exercise_version_id": context.current_version_ids[
+                            exercise.source_id
+                        ],
                         "position": position,
                         "schema_position": position,
                         "name_snapshot": exercise.name,
@@ -240,15 +248,15 @@ def build_demo_training_rows(
                         "max_participants_snapshot": exercise.max_participants,
                         "duration_minutes_snapshot": exercise.duration_minutes,
                         "equipment_snapshot": [
-                            {"id": str(equipment_ids[name]), "name": name}
+                            {"id": str(context.equipment_ids[name]), "name": name}
                             for name in exercise.equipment_names
                         ],
                         "training_types_snapshot": [
-                            {"id": str(training_type_ids[name]), "name": name}
+                            {"id": str(context.training_type_ids[name]), "name": name}
                             for name in exercise.training_type_names
                         ],
                         "segments_snapshot": [
-                            segment_snapshots[segment_code]
+                            context.segment_snapshots[segment_code]
                             for segment_code in exercise.segment_codes
                         ],
                     }
