@@ -56,21 +56,14 @@ SYSTEM_TRAINING_TYPE_NAMES = (
     "Zabawa",
 )
 
-LEGACY_SYSTEM_TRAINING_TYPE_IDS = {
-    "Technika": UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a12"),
-    "Układy formalne": UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a13"),
-    "Walka": UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a14"),
-}
+SYSTEM_TRAINING_TYPE_NAMESPACE = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a00")
 
 
 def _training_type_rows() -> list[dict[str, object]]:
     created_at = datetime.now(UTC)
     return [
         {
-            "id": LEGACY_SYSTEM_TRAINING_TYPE_IDS.get(
-                name,
-                uuid5(UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a00"), name.casefold()),
-            ),
+            "id": uuid5(SYSTEM_TRAINING_TYPE_NAMESPACE, name.casefold()),
             "owner_user_id": None,
             "name": name,
             "visibility": "GLOBAL",
@@ -131,46 +124,6 @@ def upgrade() -> None:
         )
     )
 
-    op.execute(
-        sa.text(
-            """
-            UPDATE training_types
-            SET name = CASE name
-                WHEN 'Poomsae' THEN 'Układy formalne'
-                WHEN 'Walka sportowa' THEN 'Walka'
-            END
-            WHERE visibility = 'GLOBAL'
-              AND name IN ('Poomsae', 'Walka sportowa')
-            """
-        )
-    )
-    op.execute(
-        sa.text(
-            """
-            DELETE FROM trainer_exercise_training_types
-            WHERE training_type_id IN (
-                SELECT id FROM training_types
-                WHERE visibility = 'GLOBAL' AND name = 'Samoobrona'
-            )
-            """
-        )
-    )
-    op.execute(
-        sa.text(
-            """
-            DELETE FROM exercise_version_training_types
-            WHERE training_type_id IN (
-                SELECT id FROM training_types
-                WHERE visibility = 'GLOBAL' AND name = 'Samoobrona'
-            )
-            """
-        )
-    )
-    op.execute(
-        sa.text(
-            "DELETE FROM training_types WHERE visibility = 'GLOBAL' AND name = 'Samoobrona'"
-        )
-    )
     training_types = sa.table(
         "training_types",
         sa.column("id", sa.Uuid(as_uuid=True)),
@@ -187,6 +140,31 @@ def upgrade() -> None:
             ),
         ),
         sa.column("created_at", sa.DateTime(timezone=True)),
+    )
+    obsolete_global_training_type_ids = sa.select(training_types.c.id).where(
+        training_types.c.visibility == "GLOBAL",
+        training_types.c.name.not_in(SYSTEM_TRAINING_TYPE_NAMES),
+    )
+    for association_table_name in (
+        "trainer_exercise_training_types",
+        "exercise_version_training_types",
+    ):
+        association_table = sa.table(
+            association_table_name,
+            sa.column("training_type_id", sa.Uuid(as_uuid=True)),
+        )
+        op.execute(
+            sa.delete(association_table).where(
+                association_table.c.training_type_id.in_(
+                    obsolete_global_training_type_ids
+                )
+            )
+        )
+    op.execute(
+        sa.delete(training_types).where(
+            training_types.c.visibility == "GLOBAL",
+            training_types.c.name.not_in(SYSTEM_TRAINING_TYPE_NAMES),
+        )
     )
     for row in _training_type_rows():
         op.execute(
