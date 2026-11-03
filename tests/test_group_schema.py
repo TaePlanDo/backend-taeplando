@@ -43,7 +43,7 @@ def _group_response() -> GroupResponse:
             GroupSchemaItemResponse(
                 segment_id=3,
                 segment_code="MAIN",
-                segment_name="Część główna",
+                segment_name="Ćwiczenia",
                 percentage=100,
                 position=1,
             )
@@ -66,7 +66,7 @@ def _training_group() -> TrainingGroup:
     group.training_plans = [TrainingPlan(id=PLAN_ID)]
     group.schema_items = [
         TrainingGroupSchemaItem(
-            segment=TrainingSegment(id=3, code="MAIN", name="Część główna"),
+            segment=TrainingSegment(id=3, code="MAIN", name="Ćwiczenia"),
             percentage=Decimal("100"),
             position=1,
         )
@@ -176,14 +176,14 @@ def test_put_group_schema_replaces_schema_for_authenticated_trainer(
         GroupSchemaItemResponse(
             segment_id=3,
             segment_code="MAIN",
-            segment_name="Część główna",
+            segment_name="Ćwiczenia",
             percentage=Decimal("70"),
             position=2,
         ),
         GroupSchemaItemResponse(
             segment_id=4,
             segment_code="COOLDOWN",
-            segment_name="Wyciszenie",
+            segment_name="Rozciąganie",
             percentage=Decimal("10"),
             position=3,
         ),
@@ -215,14 +215,14 @@ def test_put_group_schema_replaces_schema_for_authenticated_trainer(
         {
             "segment_id": 3,
             "segment_code": "MAIN",
-            "segment_name": "Część główna",
+            "segment_name": "Ćwiczenia",
             "percentage": "70",
             "position": 2,
         },
         {
             "segment_id": 4,
             "segment_code": "COOLDOWN",
-            "segment_name": "Wyciszenie",
+            "segment_name": "Rozciąganie",
             "percentage": "10",
             "position": 3,
         },
@@ -275,8 +275,8 @@ def test_replace_group_schema_assigns_positions_and_commits_once() -> None:
     session.commit = AsyncMock()
     group = _training_group()
     warmup = TrainingSegment(id=1, code="WARMUP", name="Rozgrzewka")
-    main = TrainingSegment(id=3, code="MAIN", name="Część główna")
-    cooldown = TrainingSegment(id=4, code="COOLDOWN", name="Wyciszenie")
+    main = TrainingSegment(id=3, code="MAIN", name="Ćwiczenia")
+    cooldown = TrainingSegment(id=4, code="COOLDOWN", name="Rozciąganie")
     payload = GroupSchemaWrite(
         items=[
             {"segment_id": 1, "percentage": Decimal("20")},

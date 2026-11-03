@@ -41,7 +41,7 @@ def _training_type() -> TrainingType:
     return TrainingType(
         id=TRAINING_TYPE_ID,
         owner_user_id=None,
-        name="Poomsae",
+        name="Układy formalne",
         visibility=CatalogVisibility.GLOBAL,
         created_at=CREATED_AT,
     )
@@ -51,7 +51,7 @@ def _response() -> TrainingTypeResponse:
     """Build the matching public API representation."""
     return TrainingTypeResponse(
         id=TRAINING_TYPE_ID,
-        name="Poomsae",
+        name="Układy formalne",
         visibility=CatalogVisibility.GLOBAL,
         created_at=CREATED_AT,
     )
@@ -128,8 +128,28 @@ def test_list_training_types_filters_to_global_and_owned_entries() -> None:
 def test_system_training_type_seed_contains_the_taekwondo_catalog() -> None:
     """Keep the globally seeded training types stable for new installations."""
     assert [training_type["name"] for training_type in SYSTEM_TRAINING_TYPES] == [
+        "Celność",
+        "Core",
+        "Dystans",
+        "Kondycja",
+        "Koordynacja",
+        "Mobilność",
+        "Mobilność – Dynamiczne",
+        "Mobilność – Statyczne",
+        "Moc",
+        "Obrona",
+        "Ogólnorozwojowy",
+        "Pamięć",
+        "Reakcja",
+        "Równowaga",
+        "Siła",
+        "Siła grzbietu",
+        "Stabilizacja",
+        "Szybkość",
+        "Taktyka",
         "Technika",
-        "Poomsae",
-        "Walka sportowa",
-        "Samoobrona",
+        "Układy formalne",
+        "Walka",
+        "Wytrzymałość",
+        "Zabawa",
     ]

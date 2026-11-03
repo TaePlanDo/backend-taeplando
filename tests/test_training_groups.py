@@ -46,7 +46,7 @@ def _group_response() -> GroupResponse:
             GroupSchemaItemResponse(
                 segment_id=3,
                 segment_code="MAIN",
-                segment_name="Część główna",
+                segment_name="Ćwiczenia",
                 percentage=100,
                 position=1,
             )
@@ -69,7 +69,7 @@ def _training_group() -> TrainingGroup:
     group.training_plans = [TrainingPlan(id=PLAN_ID)]
     group.schema_items = [
         TrainingGroupSchemaItem(
-            segment=TrainingSegment(id=3, code="MAIN", name="Część główna"),
+            segment=TrainingSegment(id=3, code="MAIN", name="Ćwiczenia"),
             percentage=Decimal("100"),
             position=1,
         )
@@ -336,7 +336,7 @@ def test_create_group_uses_authenticated_trainer_and_returns_service_response(
         {
             "segment_id": 3,
             "segment_code": "MAIN",
-            "segment_name": "Część główna",
+            "segment_name": "Ćwiczenia",
             "percentage": "100",
             "position": 1,
         }
@@ -348,7 +348,7 @@ def test_create_group_builds_the_default_main_schema() -> None:
     """Create each group with one 100% MAIN schema item."""
     session = MagicMock()
     session.commit = AsyncMock()
-    main_segment = TrainingSegment(id=3, code="MAIN", name="Część główna")
+    main_segment = TrainingSegment(id=3, code="MAIN", name="Ćwiczenia")
     expected_response = _group_response()
     payload = GroupWrite(name="Młodzież", min_age=7, max_age=14, duration_minutes=60)
     with (

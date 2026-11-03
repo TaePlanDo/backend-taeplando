@@ -1,0 +1,319 @@
+source_id,name,description,min_age,max_age,equipment,min_participants,max_participants,duration_minutes,training_types,segments,physical_difficulty,technical_difficulty,upper_body_load,lower_body_load,core_load
+1,Bieg między liniami,Bieg od linii do linii; powrót truchtem.,3,99,Brak,1,30,6,Kondycja,Rozgrzewka,3,2,2,5,3
+2,Bieg z dotykaniem ścian,Na komendę zawodnicy dotykają wskazanej ściany dłonią i wracają.,3,13,Brak,3,30,3,Reakcja,Rozgrzewka,3,2,2,5,3
+3,Krok dostawny między liniami,Ruch bokiem bez krzyżowania nóg; zmiana strony co przejście.,3,99,Brak,1,30,1,Koordynacja,Rozgrzewka,2,1,2,4,2
+4,Bieg tyłem między liniami,Kontrolowany bieg tyłem z zatrzymaniem przed linią.,3,99,Brak,1,30,1,Koordynacja,Rozgrzewka,3,2,2,5,3
+5,Marsz niedźwiedzia,Poruszanie na dłoniach i stopach z biodrami wysoko.,3,99,Brak,1,24,2,Siła,Rozgrzewka,3,2,4,4,4
+6,Chód kraba,Poruszanie w podporze tyłem; krótkie odcinki między liniami.,3,99,Brak,1,24,2,Siła,Rozgrzewka,3,2,4,4,4
+7,Gąsienica,Z pozycji stojącej przejście dłońmi do podporu i dojście stopami.,3,99,Brak,1,24,2,Mobilność,Rozgrzewka,3,2,4,4,4
+8,Slalom biegowy,Bieg slalomem pomiędzy znacznikami.,3,99,Znaczniki,1,24,6,Koordynacja,Rozgrzewka,3,3,2,5,3
+9,Slalom na czworakach,Pokonanie slalomu na czterech podporach.,3,99,Znaczniki,1,20,6,Koordynacja,Rozgrzewka,3,3,2,5,3
+10,Drabinka – jedna stopa w polu,"Przejście przodem przez drabinkę, jedna stopa w każdym polu.",7,99,Drabinka koordynacyjna,1,24,3,Koordynacja,Rozgrzewka,2,3,2,4,2
+11,Drabinka – dwie stopy w polu,Szybki rytm: obie stopy kolejno w każdym polu.,7,99,Drabinka koordynacyjna,1,24,3,Szybkość,Rozgrzewka,2,3,2,4,2
+12,Drabinka – wejścia bokiem,Przejście bokiem z dwiema stopami w każdym polu.,7,99,Drabinka koordynacyjna,1,24,3,Koordynacja,Rozgrzewka,2,3,2,4,2
+13,Znaczniki kolorowe na reakcję,Trener pokazuje kolor; zawodnicy jak najszybciej dotykają odpowiedniego znacznika.,3,99,Znaczniki,1,30,5,Reakcja,Rozgrzewka / Zabawa,2,2,2,4,2
+14,Rozrzucanie i zbieranie piłeczek,Na sygnał grupa zbiera rozsypane piłeczki i odkłada je do wyznaczonej strefy.,3,9,Piłeczki,2,20,5,Kondycja,Rozgrzewka / Zabawa,2,1,2,4,2
+15,Bieg z woreczkiem na głowie,Marsz lub trucht z woreczkiem na głowie bez podtrzymywania rękami.,3,13,Woreczki,1,24,6,Równowaga,Rozgrzewka,3,2,2,5,3
+16,Odbijanie balona w ruchu,Przemieszczanie się po sali i utrzymywanie balona w powietrzu.,3,99,Balony,1,20,6,Koordynacja,Rozgrzewka / Zabawa,2,2,2,4,2
+17,Bieg lustrzany za trenerem,"Grupa odwzorowuje kierunek, tempo i sposób poruszania trenera.",3,99,Brak,2,30,6,Reakcja,Rozgrzewka,3,2,2,5,3
+18,Bieg lustrzany w parach,"Jedna osoba prowadzi, druga odwzorowuje ruchy; zmiana roli.",7,99,Brak,2,30,10,Reakcja,Rozgrzewka,3,2,2,5,3
+19,Wyścig w parach za rękę,Krótki odcinek biegowy wykonywany parami bez puszczania dłoni.,3,9,Brak,4,24,6,Koordynacja,Rozgrzewka / Zabawa,3,2,2,5,3
+20,Wyścig z pałką między nogami,Bieg lub marsz z makaronem trzymanym między nogami.,3,13,Pałki,4,24,2,Koordynacja,Rozgrzewka / Zabawa,3,2,2,5,3
+21,Berek z pałką,Berek; osoba goniąca trzyma miękką pałkę i dotyka nią poniżej barków.,3,99,Pałki,4,24,8,Kondycja,Rozgrzewka / Zabawa,3,2,2,5,3
+22,Mobilizacja szyi,"Powolne skłony i skręty głowy w bezpiecznym zakresie, bez krążenia pełnego.",3,99,Brak,1,30,1,Mobilność,Rozgrzewka,1,1,4,1,2
+23,Krążenia barków,"Krążenia barków w przód i w tył, następnie naprzemiennie.",3,99,Brak,1,30,1,Mobilność,Rozgrzewka,1,1,4,1,2
+24,Mobilizacja łokci,"Zgięcia, wyprosty i lekkie krążenia przedramion.",3,99,Brak,1,30,1,Mobilność,Rozgrzewka,1,1,4,1,2
+25,Mobilizacja nadgarstków,Krążenia nadgarstków i delikatne przenoszenie ciężaru na dłonie.,3,99,Brak,1,30,1,Mobilność,Rozgrzewka,1,1,4,1,2
+26,Krążenia bioder,Szerokie krążenia bioder w obu kierunkach.,3,99,Brak,1,30,1,Mobilność,Rozgrzewka,1,1,1,4,2
+27,Mobilizacja kolan,Półprzysiady i kontrolowane zgięcia kolan; bez forsownych krążeń.,3,99,Brak,1,30,1,Mobilność,Rozgrzewka,1,1,1,4,2
+28,Krążenia stawów skokowych,Stanie na jednej nodze i krążenie drugą stopą w obu kierunkach.,3,99,Brak,1,30,1,Mobilność,Rozgrzewka,3,1,1,4,2
+29,Przysiad z przeniesieniem ciężaru,Płytki przysiad i przenoszenie ciężaru lewo-prawo.,3,99,Brak,1,30,1,Mobilność,Rozgrzewka,2,2,1,4,3
+30,Mobilizacja całego ciała w kółku,Sekwencja barki–biodra–kolana–kostki prowadzona przez trenera.,3,99,Brak,1,30,5,Mobilność,Rozgrzewka,1,1,3,3,3
+31,Wymach nogi w przód,Pojedynczy rodzaj rozciągania dynamicznego: kontrolowane wymachy przód–tył przy stabilnym tułowiu.,7,99,Brak,1,30,1,Mobilność – Dynamiczne,Rozciąganie,2,3,1,4,3
+32,Wymach nogi w bok,"Kontrolowane wymachy nogi na bok, bez skręcania stopy podporowej.",7,99,Brak,1,30,1,Mobilność – Dynamiczne,Rozciąganie,2,3,1,4,3
+33,Ap cha olligi w marszu,Naprzemienne wysokie unoszenie prostej nogi w marszu.,3,99,Brak,1,30,1,Mobilność – Dynamiczne,Rozciąganie,2,3,1,4,3
+34,Kolano do klatki w marszu,Przyciągnięcie kolana do klatki i krok naprzód; naprzemiennie.,7,99,Brak,1,30,1,Mobilność – Dynamiczne,Rozciąganie,2,2,1,4,2
+35,Pięta do pośladka w marszu,"Chwyt za stopę na jeden krok, rozluźnienie i zmiana nogi.",7,99,Brak,1,30,1,Mobilność – Dynamiczne,Rozciąganie,2,2,1,4,2
+36,Wykrok z rotacją tułowia,Wykrok w przód i łagodna rotacja tułowia w stronę nogi wykrocznej.,7,99,Brak,1,30,1,Mobilność – Dynamiczne,Rozciąganie,2,2,2,2,4
+37,Wykrok boczny naprzemienny,Przenoszenie ciężaru z nogi na nogę w szerokim rozkroku.,7,99,Brak,1,30,1,Mobilność – Dynamiczne,Rozciąganie,2,2,1,4,2
+38,Przysiad kozacki płytki,Naprzemienne zejście w bok w kontrolowanym zakresie.,10,99,Brak,1,30,1,Mobilność – Dynamiczne,Rozciąganie,3,3,1,5,3
+39,Otwieranie biodra w marszu,"Uniesienie kolana i ruch na zewnątrz, naprzemiennie.",7,99,Brak,1,30,1,Mobilność – Dynamiczne,Rozciąganie,2,2,1,4,2
+40,Zamykanie biodra w marszu,Ruch kolana od zewnątrz do środka w kontrolowanym tempie.,7,99,Brak,1,30,1,Mobilność – Dynamiczne,Rozciąganie,2,2,1,4,2
+41,Dynamiczny skłon do palców,Naprzemienne sięganie dłonią do przeciwnej stopy podczas marszu.,7,99,Brak,1,30,1,Mobilność – Dynamiczne,Rozciąganie,2,2,2,2,4
+42,Dynamiczna kobra do podporu,Płynne przejście z podporu do lekkiego wyprostu tułowia i z powrotem.,10,99,Brak,1,30,1,Mobilność – Dynamiczne,Rozciąganie,2,2,2,2,4
+43,Dynamiczne otwarcie pachwiny,Z szerokiego rozkroku płynne przenoszenie ciężaru bez zatrzymania.,7,99,Brak,1,30,1,Mobilność – Dynamiczne,Rozciąganie,2,2,1,4,2
+44,Wymach nogi do pałki,Wymach prostą nogą do pałki trzymanej na umiarkowanej wysokości.,3,99,Pałki,1,30,1,Mobilność – Dynamiczne,Rozciąganie,2,3,1,4,3
+45,Rozciąganie dynamiczne za trenerem,"Jedna ustalona sekwencja dynamiczna w ruchu, wykonywana za trenerem.",3,13,Brak,1,30,5,Mobilność – Dynamiczne,Rozciąganie,2,2,2,4,3
+46,Skłon stojąc – tył uda,Rozciąganie statyczne tylnej taśmy w skłonie; spokojny oddech.,3,99,Brak,1,30,1,Mobilność – Statyczne,Rozciąganie,1,2,1,4,2
+47,Skłon w siadzie prostym,"Siad prosty, pochylenie tułowia do przodu bez szarpania.",3,99,Brak,1,30,1,Mobilność – Statyczne,Rozciąganie,1,2,1,4,2
+48,Motylek,"Stopy złączone, kolana na boki; utrzymanie pozycji bez dociskania na siłę.",3,99,Brak,1,30,1,Mobilność – Statyczne,Rozciąganie,1,2,1,4,2
+49,Żaba – pachwiny,"Pozycja na przedramionach i kolanach, spokojne otwarcie bioder.",7,99,Brak,1,30,1,Mobilność – Statyczne,Rozciąganie,1,2,1,4,2
+50,Wykrok klęczny – zginacze biodra,"Jedno kolano na macie, miednica lekko podwinięta, przesunięcie w przód.",7,99,Brak,1,30,1,Mobilność – Statyczne,Rozciąganie,1,2,1,4,2
+51,Czworogłowy uda stojąc,"Stanie na jednej nodze, chwyt stopy i przyciągnięcie pięty do pośladka.",3,99,Brak,1,30,1,Mobilność – Statyczne,Rozciąganie,1,2,1,4,2
+52,Łydka przy ścianie,"Tylna noga prosta, pięta na podłodze, nacisk w stronę ściany.",7,99,Brak,1,30,1,Mobilność – Statyczne,Rozciąganie,1,2,1,4,2
+53,Pośladek w leżeniu,Noga założona na kolano i przyciągnięcie uda do klatki.,7,99,Brak,1,30,1,Mobilność – Statyczne,Rozciąganie,1,2,1,4,2
+54,Przywodziciele w szerokim siadzie,Szeroki siad i spokojny skłon do przodu.,7,99,Brak,1,30,1,Mobilność – Statyczne,Rozciąganie,1,2,1,4,2
+55,Bok uda w siadzie,"Jedna noga wyprostowana w bok, skłon boczny w jej kierunku.",7,99,Brak,1,30,1,Mobilność – Statyczne,Rozciąganie,1,2,1,4,2
+56,Bark – ramię przez klatkę,Przyciągnięcie wyprostowanego ramienia do klatki.,3,99,Brak,1,30,1,Mobilność – Statyczne,Rozciąganie,1,2,4,1,2
+57,Triceps nad głową,"Zgięty łokieć za głową, delikatne dociągnięcie drugą ręką.",3,99,Brak,1,30,1,Mobilność – Statyczne,Rozciąganie,1,2,4,1,2
+58,Klatka piersiowa przy ścianie,"Dłoń na ścianie, łagodny skręt tułowia od ręki.",10,99,Brak,1,30,1,Mobilność – Statyczne,Rozciąganie,1,2,4,1,2
+59,Pozycja dziecka,"Siad na piętach i wyciągnięcie ramion w przód, rozluźnienie pleców.",7,99,Brak,1,30,1,Mobilność – Statyczne,Rozciąganie,1,2,2,2,4
+60,Rozciąganie boczne tułowia,"Stanie lub siad, ręka nad głową i skłon w bok.",3,99,Brak,1,30,1,Mobilność – Statyczne,Rozciąganie,1,2,2,2,4
+61,Ap chagi – w miejscu w powietrze,"Kopnięcie frontalne. Serie techniczne w miejscu, nacisk na komorę, tor ruchu i powrót nogi.",7,99,Brak,1,30,5,Technika,Ćwiczenia,2,2,1,5,4
+62,Ap chagi – w packę,Kopnięcie frontalne. Kopnięcia pojedyncze do packi trzymanej przez partnera; zmiana co serię.,3,99,Packi,2,30,5,Technika,Ćwiczenia,2,2,1,5,4
+63,Ap chagi – w poduchę,Kopnięcie frontalne. Kopnięcia do dużej poduchy z pełnym zatrzymaniem po każdej próbie.,3,99,Poduchy,2,30,5,Technika,Ćwiczenia,3,2,1,5,4
+64,Ap chagi – po linii,Kopnięcie frontalne. Przemieszczanie po wyznaczonej linii i wykonanie kopnięcia na komendę.,3,99,Znaczniki,1,30,5,Technika,Ćwiczenia,2,2,1,5,4
+65,Ap chagi – na reakcję kolorystyczną,Kopnięcie frontalne. Kolor wskazany przez trenera oznacza stronę lub moment wykonania kopnięcia.,7,99,"Znaczniki, packi",3,30,5,Reakcja / Technika,Ćwiczenia,2,3,1,5,4
+66,Ap chagi – po wejściu krokowym,"Kopnięcie frontalne. Krok lub doskok do dystansu, kopnięcie i kontrolowany powrót do pozycji.",7,99,Packi lub poduchy,2,30,5,Technika,Ćwiczenia,3,2,1,5,4
+67,Ap chagi – na mały cel,Kopnięcie frontalne. Celnościowe kopnięcia do małej packi albo zawieszonej piłeczki.,7,99,Packi,2,24,5,Celność / Technika,Ćwiczenia,2,3,1,5,4
+68,Dollyo chagi – w miejscu w powietrze,"Kopnięcie okrężne. Serie techniczne w miejscu, nacisk na komorę, tor ruchu i powrót nogi.",7,99,Brak,1,30,5,Technika,Ćwiczenia,2,3,1,5,4
+69,Dollyo chagi – w packę,Kopnięcie okrężne. Kopnięcia pojedyncze do packi trzymanej przez partnera; zmiana co serię.,3,99,Packi,2,30,5,Technika,Ćwiczenia,3,3,1,5,4
+70,Dollyo chagi – w poduchę,Kopnięcie okrężne. Kopnięcia do dużej poduchy z pełnym zatrzymaniem po każdej próbie.,3,99,Poduchy,2,30,5,Technika,Ćwiczenia,4,3,1,5,4
+71,Dollyo chagi – po linii,Kopnięcie okrężne. Przemieszczanie po wyznaczonej linii i wykonanie kopnięcia na komendę.,3,99,Znaczniki,1,30,5,Technika,Ćwiczenia,3,3,1,5,4
+72,Dollyo chagi – na reakcję kolorystyczną,Kopnięcie okrężne. Kolor wskazany przez trenera oznacza stronę lub moment wykonania kopnięcia.,7,99,"Znaczniki, packi",3,30,5,Reakcja / Technika,Ćwiczenia,3,4,1,5,4
+73,Dollyo chagi – po wejściu krokowym,"Kopnięcie okrężne. Krok lub doskok do dystansu, kopnięcie i kontrolowany powrót do pozycji.",7,99,Packi lub poduchy,2,30,5,Technika,Ćwiczenia,4,3,1,5,4
+74,Dollyo chagi – na mały cel,Kopnięcie okrężne. Celnościowe kopnięcia do małej packi albo zawieszonej piłeczki.,7,99,Packi,2,24,5,Celność / Technika,Ćwiczenia,3,4,1,5,4
+75,Yop chagi – w miejscu w powietrze,"Kopnięcie boczne. Serie techniczne w miejscu, nacisk na komorę, tor ruchu i powrót nogi.",7,99,Brak,1,30,5,Technika,Ćwiczenia,2,3,1,5,4
+76,Yop chagi – w packę,Kopnięcie boczne. Kopnięcia pojedyncze do packi trzymanej przez partnera; zmiana co serię.,7,99,Packi,2,30,5,Technika,Ćwiczenia,3,3,1,5,4
+77,Yop chagi – w poduchę,Kopnięcie boczne. Kopnięcia do dużej poduchy z pełnym zatrzymaniem po każdej próbie.,7,99,Poduchy,2,30,5,Technika,Ćwiczenia,4,3,1,5,4
+78,Yop chagi – po linii,Kopnięcie boczne. Przemieszczanie po wyznaczonej linii i wykonanie kopnięcia na komendę.,7,99,Znaczniki,1,30,5,Technika,Ćwiczenia,3,3,1,5,4
+79,Yop chagi – na reakcję kolorystyczną,Kopnięcie boczne. Kolor wskazany przez trenera oznacza stronę lub moment wykonania kopnięcia.,7,99,"Znaczniki, packi",3,30,5,Reakcja / Technika,Ćwiczenia,3,4,1,5,4
+80,Yop chagi – po wejściu krokowym,"Kopnięcie boczne. Krok lub doskok do dystansu, kopnięcie i kontrolowany powrót do pozycji.",7,99,Packi lub poduchy,2,30,5,Technika,Ćwiczenia,4,3,1,5,4
+81,Yop chagi – na mały cel,Kopnięcie boczne. Celnościowe kopnięcia do małej packi albo zawieszonej piłeczki.,7,99,Packi,2,24,5,Celność / Technika,Ćwiczenia,3,4,1,5,4
+82,Naeryo chagi – w miejscu w powietrze,"Kopnięcie opadające. Serie techniczne w miejscu, nacisk na komorę, tor ruchu i powrót nogi.",7,99,Brak,1,30,5,Technika,Ćwiczenia,3,3,1,5,4
+83,Naeryo chagi – w packę,Kopnięcie opadające. Kopnięcia pojedyncze do packi trzymanej przez partnera; zmiana co serię.,7,99,Packi,2,30,5,Technika,Ćwiczenia,4,3,1,5,4
+84,Naeryo chagi – w poduchę,Kopnięcie opadające. Kopnięcia do dużej poduchy z pełnym zatrzymaniem po każdej próbie.,7,99,Poduchy,2,30,5,Technika,Ćwiczenia,5,3,1,5,4
+85,Naeryo chagi – po linii,Kopnięcie opadające. Przemieszczanie po wyznaczonej linii i wykonanie kopnięcia na komendę.,7,99,Znaczniki,1,30,5,Technika,Ćwiczenia,4,3,1,5,4
+86,Naeryo chagi – na reakcję kolorystyczną,Kopnięcie opadające. Kolor wskazany przez trenera oznacza stronę lub moment wykonania kopnięcia.,7,99,"Znaczniki, packi",3,30,5,Reakcja / Technika,Ćwiczenia,4,4,1,5,4
+87,Naeryo chagi – po wejściu krokowym,"Kopnięcie opadające. Krok lub doskok do dystansu, kopnięcie i kontrolowany powrót do pozycji.",7,99,Packi lub poduchy,2,30,5,Technika,Ćwiczenia,5,3,1,5,4
+88,Naeryo chagi – na mały cel,Kopnięcie opadające. Celnościowe kopnięcia do małej packi albo zawieszonej piłeczki.,7,99,Packi,2,24,5,Celność / Technika,Ćwiczenia,4,4,1,5,4
+89,Dwi chagi – w miejscu w powietrze,"Kopnięcie w tył. Serie techniczne w miejscu, nacisk na komorę, tor ruchu i powrót nogi.",7,99,Brak,1,30,5,Technika,Ćwiczenia,3,4,1,5,4
+90,Dwi chagi – w packę,Kopnięcie w tył. Kopnięcia pojedyncze do packi trzymanej przez partnera; zmiana co serię.,7,99,Packi,2,30,5,Technika,Ćwiczenia,4,4,1,5,4
+91,Dwi chagi – w poduchę,Kopnięcie w tył. Kopnięcia do dużej poduchy z pełnym zatrzymaniem po każdej próbie.,7,99,Poduchy,2,30,5,Technika,Ćwiczenia,5,4,1,5,4
+92,Dwi chagi – po linii,Kopnięcie w tył. Przemieszczanie po wyznaczonej linii i wykonanie kopnięcia na komendę.,7,99,Znaczniki,1,30,5,Technika,Ćwiczenia,4,4,1,5,4
+93,Dwi chagi – na reakcję kolorystyczną,Kopnięcie w tył. Kolor wskazany przez trenera oznacza stronę lub moment wykonania kopnięcia.,7,99,"Znaczniki, packi",3,30,5,Reakcja / Technika,Ćwiczenia,4,5,1,5,4
+94,Dwi chagi – po wejściu krokowym,"Kopnięcie w tył. Krok lub doskok do dystansu, kopnięcie i kontrolowany powrót do pozycji.",7,99,Packi lub poduchy,2,30,5,Technika,Ćwiczenia,5,4,1,5,4
+95,Dwi chagi – na mały cel,Kopnięcie w tył. Celnościowe kopnięcia do małej packi albo zawieszonej piłeczki.,7,99,Packi,2,24,5,Celność / Technika,Ćwiczenia,4,5,1,5,4
+96,Tora yop chagi – w miejscu w powietrze,"Obrotowe kopnięcie boczne. Serie techniczne w miejscu, nacisk na komorę, tor ruchu i powrót nogi.",10,99,Brak,1,30,5,Technika,Ćwiczenia,3,4,1,5,4
+97,Tora yop chagi – w packę,Obrotowe kopnięcie boczne. Kopnięcia pojedyncze do packi trzymanej przez partnera; zmiana co serię.,10,99,Packi,2,30,5,Technika,Ćwiczenia,4,4,1,5,4
+98,Tora yop chagi – w poduchę,Obrotowe kopnięcie boczne. Kopnięcia do dużej poduchy z pełnym zatrzymaniem po każdej próbie.,10,99,Poduchy,2,30,5,Technika,Ćwiczenia,5,4,1,5,4
+99,Tora yop chagi – po linii,Obrotowe kopnięcie boczne. Przemieszczanie po wyznaczonej linii i wykonanie kopnięcia na komendę.,10,99,Znaczniki,1,30,5,Technika,Ćwiczenia,4,4,1,5,4
+100,Tora yop chagi – na reakcję kolorystyczną,Obrotowe kopnięcie boczne. Kolor wskazany przez trenera oznacza stronę lub moment wykonania kopnięcia.,10,99,"Znaczniki, packi",3,30,5,Reakcja / Technika,Ćwiczenia,4,5,1,5,4
+101,Tora yop chagi – po wejściu krokowym,"Obrotowe kopnięcie boczne. Krok lub doskok do dystansu, kopnięcie i kontrolowany powrót do pozycji.",10,99,Packi lub poduchy,2,30,5,Technika,Ćwiczenia,5,4,1,5,4
+102,Tora yop chagi – na mały cel,Obrotowe kopnięcie boczne. Celnościowe kopnięcia do małej packi albo zawieszonej piłeczki.,10,99,Packi,2,24,5,Celność / Technika,Ćwiczenia,4,5,1,5,4
+103,Bandae dollyo chagi – w miejscu w powietrze,"Odwrotne kopnięcie okrężne. Serie techniczne w miejscu, nacisk na komorę, tor ruchu i powrót nogi.",10,99,Brak,1,30,5,Technika,Ćwiczenia,4,5,1,5,4
+104,Bandae dollyo chagi – w packę,Odwrotne kopnięcie okrężne. Kopnięcia pojedyncze do packi trzymanej przez partnera; zmiana co serię.,10,99,Packi,2,30,5,Technika,Ćwiczenia,5,5,1,5,4
+105,Bandae dollyo chagi – w poduchę,Odwrotne kopnięcie okrężne. Kopnięcia do dużej poduchy z pełnym zatrzymaniem po każdej próbie.,10,99,Poduchy,2,30,5,Technika,Ćwiczenia,5,5,1,5,4
+106,Bandae dollyo chagi – po linii,Odwrotne kopnięcie okrężne. Przemieszczanie po wyznaczonej linii i wykonanie kopnięcia na komendę.,10,99,Znaczniki,1,30,5,Technika,Ćwiczenia,5,5,1,5,4
+107,Bandae dollyo chagi – na reakcję kolorystyczną,Odwrotne kopnięcie okrężne. Kolor wskazany przez trenera oznacza stronę lub moment wykonania kopnięcia.,10,99,"Znaczniki, packi",3,30,5,Reakcja / Technika,Ćwiczenia,5,5,1,5,4
+108,Bandae dollyo chagi – po wejściu krokowym,"Odwrotne kopnięcie okrężne. Krok lub doskok do dystansu, kopnięcie i kontrolowany powrót do pozycji.",10,99,Packi lub poduchy,2,30,5,Technika,Ćwiczenia,5,5,1,5,4
+109,Bandae dollyo chagi – na mały cel,Odwrotne kopnięcie okrężne. Celnościowe kopnięcia do małej packi albo zawieszonej piłeczki.,10,99,Packi,2,24,5,Celność / Technika,Ćwiczenia,5,5,1,5,4
+110,Twimyo ap chagi – w miejscu w powietrze,"Wyskokowe kopnięcie frontalne. Serie techniczne w miejscu, nacisk na komorę, tor ruchu i powrót nogi.",10,99,Brak,1,30,5,Technika,Ćwiczenia,3,4,1,5,4
+111,Twimyo ap chagi – w packę,Wyskokowe kopnięcie frontalne. Kopnięcia pojedyncze do packi trzymanej przez partnera; zmiana co serię.,10,99,Packi,2,30,5,Technika,Ćwiczenia,4,4,1,5,4
+112,Twimyo ap chagi – w poduchę,Wyskokowe kopnięcie frontalne. Kopnięcia do dużej poduchy z pełnym zatrzymaniem po każdej próbie.,10,99,Poduchy,2,30,5,Technika,Ćwiczenia,5,4,1,5,4
+113,Twimyo ap chagi – po linii,Wyskokowe kopnięcie frontalne. Przemieszczanie po wyznaczonej linii i wykonanie kopnięcia na komendę.,10,99,Znaczniki,1,30,5,Technika,Ćwiczenia,4,4,1,5,4
+114,Twimyo ap chagi – na reakcję kolorystyczną,Wyskokowe kopnięcie frontalne. Kolor wskazany przez trenera oznacza stronę lub moment wykonania kopnięcia.,10,99,"Znaczniki, packi",3,30,5,Reakcja / Technika,Ćwiczenia,4,5,1,5,4
+115,Twimyo ap chagi – po wejściu krokowym,"Wyskokowe kopnięcie frontalne. Krok lub doskok do dystansu, kopnięcie i kontrolowany powrót do pozycji.",10,99,Packi lub poduchy,2,30,5,Technika,Ćwiczenia,5,4,1,5,4
+116,Twimyo ap chagi – na mały cel,Wyskokowe kopnięcie frontalne. Celnościowe kopnięcia do małej packi albo zawieszonej piłeczki.,10,99,Packi,2,24,5,Celność / Technika,Ćwiczenia,4,5,1,5,4
+117,Twimyo dollyo chagi – w miejscu w powietrze,"Wyskokowe kopnięcie okrężne. Serie techniczne w miejscu, nacisk na komorę, tor ruchu i powrót nogi.",14,99,Brak,1,30,5,Technika,Ćwiczenia,4,5,1,5,4
+118,Twimyo dollyo chagi – w packę,Wyskokowe kopnięcie okrężne. Kopnięcia pojedyncze do packi trzymanej przez partnera; zmiana co serię.,14,99,Packi,2,30,5,Technika,Ćwiczenia,5,5,1,5,4
+119,Twimyo dollyo chagi – w poduchę,Wyskokowe kopnięcie okrężne. Kopnięcia do dużej poduchy z pełnym zatrzymaniem po każdej próbie.,14,99,Poduchy,2,30,5,Technika,Ćwiczenia,5,5,1,5,4
+120,Twimyo dollyo chagi – po linii,Wyskokowe kopnięcie okrężne. Przemieszczanie po wyznaczonej linii i wykonanie kopnięcia na komendę.,14,99,Znaczniki,1,30,5,Technika,Ćwiczenia,5,5,1,5,4
+121,Twimyo dollyo chagi – na reakcję kolorystyczną,Wyskokowe kopnięcie okrężne. Kolor wskazany przez trenera oznacza stronę lub moment wykonania kopnięcia.,14,99,"Znaczniki, packi",3,30,5,Reakcja / Technika,Ćwiczenia,5,5,1,5,4
+122,Twimyo dollyo chagi – po wejściu krokowym,"Wyskokowe kopnięcie okrężne. Krok lub doskok do dystansu, kopnięcie i kontrolowany powrót do pozycji.",14,99,Packi lub poduchy,2,30,5,Technika,Ćwiczenia,5,5,1,5,4
+123,Twimyo dollyo chagi – na mały cel,Wyskokowe kopnięcie okrężne. Celnościowe kopnięcia do małej packi albo zawieszonej piłeczki.,14,99,Packi,2,24,5,Celność / Technika,Ćwiczenia,5,5,1,5,4
+124,Twimyo yop chagi – w miejscu w powietrze,"Wyskokowe kopnięcie boczne. Serie techniczne w miejscu, nacisk na komorę, tor ruchu i powrót nogi.",14,99,Brak,1,30,5,Technika,Ćwiczenia,4,5,1,5,4
+125,Twimyo yop chagi – w packę,Wyskokowe kopnięcie boczne. Kopnięcia pojedyncze do packi trzymanej przez partnera; zmiana co serię.,14,99,Packi,2,30,5,Technika,Ćwiczenia,5,5,1,5,4
+126,Twimyo yop chagi – w poduchę,Wyskokowe kopnięcie boczne. Kopnięcia do dużej poduchy z pełnym zatrzymaniem po każdej próbie.,14,99,Poduchy,2,30,5,Technika,Ćwiczenia,5,5,1,5,4
+127,Twimyo yop chagi – po linii,Wyskokowe kopnięcie boczne. Przemieszczanie po wyznaczonej linii i wykonanie kopnięcia na komendę.,14,99,Znaczniki,1,30,5,Technika,Ćwiczenia,5,5,1,5,4
+128,Twimyo yop chagi – na reakcję kolorystyczną,Wyskokowe kopnięcie boczne. Kolor wskazany przez trenera oznacza stronę lub moment wykonania kopnięcia.,14,99,"Znaczniki, packi",3,30,5,Reakcja / Technika,Ćwiczenia,5,5,1,5,4
+129,Twimyo yop chagi – po wejściu krokowym,"Wyskokowe kopnięcie boczne. Krok lub doskok do dystansu, kopnięcie i kontrolowany powrót do pozycji.",14,99,Packi lub poduchy,2,30,5,Technika,Ćwiczenia,5,5,1,5,4
+130,Twimyo yop chagi – na mały cel,Wyskokowe kopnięcie boczne. Celnościowe kopnięcia do małej packi albo zawieszonej piłeczki.,14,99,Packi,2,24,5,Celność / Technika,Ćwiczenia,5,5,1,5,4
+131,Churugi do packi,Cios prosty do packi na wysokości tułowia; praca biodra.,3,99,Packi,2,30,5,Technika,Ćwiczenia,3,3,4,2,3
+132,Podwójne churugi w ruchu,Dwa ciosy proste po kroku w przód; powrót do gardy.,7,99,Brak,1,30,5,Technika,Ćwiczenia,2,4,4,2,3
+133,Sonkal do packi,Kontrolowane uderzenie ręką otwartą do packi na bezpiecznej wysokości.,7,99,Packi,2,24,5,Technika,Ćwiczenia,3,3,4,2,3
+134,Blok przed miękką pałką – dół,Partner prowadzi miękką pałkę po przewidywalnym torze; ćwiczący wykonuje blok dolny.,3,99,Pałki,2,24,3,Technika,Ćwiczenia,2,3,4,2,3
+135,Blok przed miękką pałką – bok,Partner podaje bezpieczny bodziec z boku; ćwiczący ustawia blok środkowy.,3,99,Pałki,2,24,3,Technika,Ćwiczenia,2,3,4,2,3
+136,Blok przed miękką pałką – góra,Partner wolno prowadzi pałkę z góry; ćwiczący wykonuje blok górny.,3,99,Pałki,2,24,3,Technika,Ćwiczenia,2,3,4,2,3
+137,Gunnun sogi – ustawienie pozycji,Wejście do długiej pozycji z kontrolą szerokości i długości kroku.,3,99,Brak,1,30,5,Technika,Ćwiczenia,2,3,2,5,4
+138,Niunja sogi – ustawienie pozycji,Przeniesienie ciężaru i ustawienie stóp w pozycji tylnej.,3,99,Brak,1,30,5,Technika,Ćwiczenia,2,3,2,5,4
+139,Annun sogi – pozycja konika,Ustawienie stóp i kolan; krótkie utrzymania pozycji.,3,99,Brak,1,30,5,Technika / Siła,Ćwiczenia,3,3,2,5,4
+140,Zmiana pozycji gunnun–niunja,Płynne przejścia między dwiema pozycjami bez technik ręcznych.,7,99,Brak,1,30,8,Technika,Ćwiczenia,2,3,3,3,3
+141,Krok do przodu + blok niski,Marsz po linii w pozycji i blok dolny na każdy krok.,7,99,Brak,1,30,3,Technika,Ćwiczenia,2,4,4,4,4
+142,Krok do przodu + churugi,Marsz po linii z ciosem prostym na każdy krok.,7,99,Brak,1,30,3,Technika,Ćwiczenia,2,4,4,4,4
+143,Blok niski + churugi,Połączenie bloku i ciosu w ustalonej pozycji.,7,99,Brak,1,30,3,Technika,Ćwiczenia,2,4,4,2,3
+144,Blok środkowy + churugi,Sekwencja dwóch technik z kontrolą rytmu i oddechu.,7,99,Brak,1,30,3,Technika,Ćwiczenia,2,4,4,2,3
+145,Zmiana gardy na komendę,Na sygnał zmiana nogi z przodu bez utraty równowagi i bez krzyżowania stóp.,7,99,Brak,1,30,3,Technika / Reakcja,Ćwiczenia,2,3,3,3,3
+146,Poruszanie przód–tył w gardzie,"Krótkie kroki w dystansie walki, bez krzyżowania nóg.",7,99,Brak,1,30,3,Technika / Walka,Ćwiczenia,3,3,2,5,3
+147,Poruszanie na boki w gardzie,Odejście z linii ataku w lewo i prawo.,7,99,Brak,1,30,5,Technika / Walka,Ćwiczenia,3,3,2,5,3
+148,Pivot na nodze podporowej,Kontrolowany obrót na stopie podporowej potrzebny do kopnięć bocznych i okrężnych.,10,99,Brak,1,24,5,Technika,Ćwiczenia,2,3,2,5,4
+149,Komora kopnięcia z gumą,Lekka guma utrudnia uniesienie kolana; mały zakres i pełna kontrola.,14,99,Gumy oporowe,1,20,5,Siła / Technika,Ćwiczenia,3,3,2,4,3
+150,Układ formalny,Nauka czterech kolejnych ruchów aktualnego układu z zatrzymaniem po każdym.,7,99,Brak,1,30,15,Układy formalne,Ćwiczenia,2,4,3,4,4
+151,Układ formalny – same pozycje,"Przejście ścieżki układu bez technik rąk, skupienie na stopach.",7,99,Brak,1,30,5,Układy formalne / Technika,Ćwiczenia,2,4,1,5,4
+152,Układ formalny – same ręce,Ruchy rąk wykonywane w miejscu w kolejności z układu.,7,99,Brak,1,30,5,Układy formalne / Technika,Ćwiczenia,2,4,4,2,3
+153,Układ formalny – kierunki na znacznikach,Znaczniki wyznaczają punkty i osie zwrotów w układzie.,7,99,Brak,1,30,5,Układy formalne,Ćwiczenia,2,4,3,4,4
+154,Układ formalny – rytm i oddech,"Powtórzenie układu z naciskiem na moment napięcia, rozluźnienia i wydechu.",10,99,Brak,1,30,5,Układy formalne,Ćwiczenia,2,4,3,4,4
+155,Układ formalny – zatrzymanie na losową komendę,Trener zatrzymuje grupę w losowym momencie i sprawdza pozycję.,7,99,Brak,2,30,5,Układy formalne / Reakcja,Ćwiczenia,2,4,3,4,4
+156,Układ formalny z woreczkiem na głowie,Łatwy fragment układu z woreczkiem jako bodźcem do kontroli postawy.,7,13,Woreczki,1,20,5,Układy formalne / Równowaga,Ćwiczenia,2,4,2,3,4
+157,Układ formalny – start z losowego fragmentu,"Trener podaje numer fragmentu, zawodnik zaczyna od wskazanego miejsca.",14,99,Brak,1,24,5,Układy formalne / Pamięć,Ćwiczenia,2,5,3,4,4
+158,Układ formalny – wykonanie tyłem do trenera,Grupa wykonuje układ bez wizualnego podpowiadania ruchów.,10,99,Brak,1,30,5,Układy formalne / Pamięć,Ćwiczenia,2,5,3,4,4
+159,Ubieranie sprzętu,Zawodnicy ubierają sprzęt do walki,7,99,,2,,5,,,1,1,2,1,1
+160,Walka – tylko poruszanie,Praca w parach bez technik; zadaniem jest utrzymanie dystansu i kąta.,10,99,Brak,2,24,5,Walka,Ćwiczenia,3,3,2,5,3
+161,Walka – wejście i wyjście ze strefy,Jedna osoba wchodzi do oznaczonej strefy ataku i od razu wychodzi; partner reaguje ruchem.,10,99,Znaczniki,2,24,5,Walka / Dystans,Ćwiczenia,3,4,2,5,4
+162,Walka – dotknięcie barku,"Lekki pojedynek na dotknięcie barku otwartą dłonią, bez uderzeń.",7,99,Brak,2,24,8,Walka / Reakcja,Ćwiczenia,2,2,3,3,3
+163,Walka – tylko churugi do poduchy partnera,Partner trzyma poduchę i porusza się; ćwiczący szuka dystansu do ciosu.,10,99,Poduchy,2,24,5,Walka / Technika,Ćwiczenia,3,3,4,4,4
+164,Walka – tylko ap chagi,Lekki sparing zadaniowy; dozwolone wyłącznie kontrolowane ap chagi do ochraniacza.,7,99,Brak,2,20,3,Walka,Ćwiczenia,4,4,3,5,4
+165,Walka – tylko dollyo chagi,Sparing zadaniowy z jednym rodzajem kopnięcia i pełną kontrolą siły.,7,99,Brak,2,20,3,Walka,Ćwiczenia,4,4,3,5,4
+166,Walka – tylko yop chagi,Sparing zadaniowy na kontrolę dystansu kopnięciem bocznym.,10,99,Brak,2,20,3,Walka,Ćwiczenia,4,4,3,5,4
+167,Walka – atak po sygnale,"Na sygnał jedna osoba wykonuje pojedynczy ustalony atak, druga schodzi z linii.",10,99,Brak,2,24,5,Walka / Reakcja,Ćwiczenia,4,4,3,5,4
+168,Walka – kontra po dollyo,Partner podaje kontrolowane dollyo; druga osoba wykonuje zejście i ustaloną kontrę na packę.,10,99,Brak,2,20,5,Walka / Technika,Ćwiczenia,4,5,3,5,5
+169,Walka – kontra po yop,Partner markuje yop chagi; ćwiczący pracuje zejściem z linii i kontratakiem.,10,99,Brak,2,20,5,Walka / Technika,Ćwiczenia,4,5,3,5,5
+170,Walka – dwa kroki do środka,Grupy po 4–5 osób krążą wokół poduchy; na sygnał szybkie wejście do dystansu i wyjście.,7,99,Poduchy,4,25,80,Walka / Dystans,Ćwiczenia,3,4,2,5,4
+171,Walka – lustro w parach,"Jedna osoba prowadzi poruszanie w gardzie, druga utrzymuje dystans i odwzorowuje.",7,99,Brak,2,30,5,Walka / Reakcja,Ćwiczenia,3,3,2,5,3
+172,Walka – zmiana strony po gwizdku,Poruszanie w gardzie; na gwizdek zmiana kierunku i nogi prowadzącej.,7,99,Znaczniki,2,30,3,Walka / Reakcja,Ćwiczenia,4,3,3,5,4
+173,Walka – zejście w lewo/prawo,Partner sygnalizuje atak makaronem; ćwiczący wykonuje zejście poza linię.,10,99,Pałki,2,24,4,Walka / Obrona,Ćwiczenia,4,4,3,5,4
+174,Walka – presja na linię,Jedna osoba kontrolowanie spycha partnera ruchem do wyznaczonej linii; bez kontaktu technik.,14,99,Brak,2,20,3,Walka / Dystans,Ćwiczenia,3,4,2,5,4
+175,Walka – trzy rundy po 45 sekund,"Lekki sparing techniczny w krótkich rundach, z 30 s przerwy na wskazówkę.",10,99,Brak,2,20,8,Walka,Ćwiczenia,4,5,3,5,5
+176,Walka – punkt za pierwszą technikę,Runda kończy się po czystej kontrolowanej technice; szybka zmiana partnera.,10,99,Brak,4,20,12,Walka / Reakcja,Ćwiczenia,4,5,3,5,5
+177,Walka – ograniczona strefa,"Sparing techniczny w małym polu wyznaczonym znacznikami, nacisk na kontrolę przestrzeni.",10,99,Znaczniki,2,20,10,Walka,Ćwiczenia,4,5,3,5,5
+178,Walka – tylko kontra,"Jedna osoba inicjuje ustaloną technikę, druga zdobywa punkt tylko kontrą.",10,99,Brak,2,20,12,Walka / Taktyka,Ćwiczenia,4,5,3,5,5
+179,Walka – zadanie trenerskie 2+1,Dwie dozwolone techniki podstawowe plus jedna wybrana przez trenera; sparing zadaniowy.,10,99,Brak,2,20,12,Walka / Taktyka,Ćwiczenia,4,5,3,5,5
+180,Przysiady z gumą nad kolanami,Lekka guma utrzymuje aktywność pośladków; spokojne tempo.,14,99,Gumy oporowe,1,24,1,Siła,Ćwiczenia,3,3,1,5,3
+181,Pompki z dotknięciem barku,Po każdej pompce dotknięcie przeciwnego barku bez rotacji bioder.,7,99,Brak,1,24,1,Siła,Ćwiczenia,4,2,5,2,4
+182,Deska bokiem,Utrzymanie podporu bokiem; zmiana strony po serii.,7,99,Brak,1,30,3,Siła / Stabilizacja,Ćwiczenia,3,2,3,2,5
+183,Dead bug,Naprzemienny wyprost przeciwnej ręki i nogi przy docisku lędźwi.,7,99,Brak,1,30,2,Stabilizacja,Ćwiczenia,3,2,3,2,5
+184,Superman,W leżeniu przodem łagodne uniesienie przeciwnej ręki i nogi.,7,99,Brak,1,30,1,Siła grzbietu,Ćwiczenia,2,2,3,2,5
+185,Most biodrowy,Unoszenie bioder z pełnym napięciem pośladków.,3,99,Brak,1,30,1,Siła,Ćwiczenia,2,1,1,4,4
+186,Przeskoki na jednej nodze przez drabinkę,Kontrolowane przeskoki przez kolejne pola; zmiana nogi.,7,99,Drabinka koordynacyjna,1,24,1,Siła / Koordynacja,Ćwiczenia,4,3,2,5,4
+187,Sprint 10 m,Krótkie sprinty z pełnym powrotem marszem.,7,99,Brak,1,30,2,Szybkość,Ćwiczenia,4,2,2,5,4
+188,Sprint wahadłowy 5–10–5,Zmiana kierunku na liniach i mocne odbicie.,7,99,Brak,1,24,3,Kondycja / Szybkość,Ćwiczenia,4,2,2,5,4
+189,Interwał 20/20 – bieg,"20 s szybkiego biegu, 20 s marszu; kilka powtórzeń.",7,99,Brak,1,30,3,Wytrzymałość,Ćwiczenia,4,2,2,4,3
+190,Interwał 20/20 – ap chagi,"20 s lekkich kopnięć naprzemiennych, 20 s odpoczynku.",7,99,Brak,1,30,2,Wytrzymałość / Technika,Ćwiczenia,4,3,1,5,4
+191,Interwał 20/20 – dollyo na packę,"Krótka intensywna seria kopnięć do packi, potem zmiana roli.",7,99,Packi,2,24,4,Wytrzymałość / Technika,Ćwiczenia,4,3,1,5,4
+192,Seria 30 s churugi do poduchy,"Szybkie techniczne ciosy przez 30 s, następnie odpoczynek.",7,99,Poduchy,2,24,4,Wytrzymałość / Szybkość,Ćwiczenia,4,2,5,3,4
+193,Seria 30 s dollyo do poduchy,Naprzemienne dollyo w umiarkowanej mocy przez 30 s.,7,99,Poduchy,2,24,4,Wytrzymałość,Ćwiczenia,4,3,1,5,4
+194,Seria 30 s yop do poduchy,Powtarzane yop chagi z kontrolą techniki i rytmu.,7,99,Poduchy,2,24,4,Wytrzymałość,Ćwiczenia,4,3,1,5,4
+195,Obwód: przysiad–pompka–brzuch,"Trzy stacje po 30–40 s, zmiana po sygnale.",7,99,Brak,3,30,10,Siła / Kondycja,Ćwiczenia,5,3,4,5,5
+196,Obwód: drabinka–sprint–poducha,"Stacja koordynacyjna, krótki sprint i seria technik w poduchę.",7,99,"Drabinka, znaczniki, poduchy",4,30,10,Kondycja,Ćwiczenia,5,3,4,5,5
+197,Chód z gumą bokiem,Małe kroki bokiem z gumą nad kolanami lub na kostkach.,10,99,Gumy oporowe,1,24,3,Siła,Ćwiczenia,3,3,2,4,3
+198,Yop chagi z lekką gumą,"Guma daje niewielki opór; pojedyncze, techniczne powtórzenia.",10,99,Gumy oporowe,1,20,5,Siła / Technika,Ćwiczenia,3,3,1,5,4
+199,Churugi z gumą,"Lekki opór gumy podczas ciosu prostego, powolny powrót.",10,99,Gumy oporowe,1,20,5,Siła / Technika,Ćwiczenia,3,3,5,2,4
+200,Tor kondycyjny 4 stacje,"Slalom, drabinka, przeskoki i seria kopnięć do packi.",7,99,"Znaczniki, drabinka, płotki, packi",4,30,10,Kondycja / Wytrzymałość,Ćwiczenia,5,3,4,5,5
+201,Złodziej poduch,Dwie bazy; zespoły przenoszą po jednej poduszce z bazy przeciwnika do swojej.,7,99,Poduchy,6,30,10,Kondycja / Taktyka,Zabawa,3,2,2,5,3
+202,Śnieżki,Dwie drużyny przerzucają miękkie piłeczki na stronę przeciwnika do sygnału końca.,3,13,Piłeczki,6,30,5,Kondycja,Zabawa,3,2,4,3,3
+203,Śnieżki z murami,"Jak w śnieżkach, ale część piłek zatrzymują mury z dużych poduch.",3,13,"Piłeczki, poduchy",6,30,5,Kondycja / Koordynacja,Zabawa,3,2,4,3,3
+204,Zamki,Zespoły próbują strącić miękkimi piłeczkami konstrukcję z poduch po stronie przeciwnika.,7,13,"Poduchy, piłeczki",6,30,8,Celność / Koordynacja,Zabawa,3,2,4,3,3
+205,Rekiny i wyspy,"Materace są wyspami; na sygnał trzeba zmienić wyspę, unikając rekinów.",3,9,Materace,6,24,5,Kondycja / Reakcja,Zabawa,3,2,2,5,3
+206,Murarz,Jedna lub kilka osób próbuje dotknąć przebiegających; złapani dołączają jako mur.,7,13,Znaczniki,15,30,10,Kondycja,Zabawa,3,2,2,5,3
+207,Murarz z miękką pałką,Murarz dotyka biegnących miękką pałką poniżej barków.,7,13,Pałki,6,24,8,Kondycja / Reakcja,Zabawa,3,2,2,5,3
+208,Berek leżak,"Bezpieczne bazy to materace, ale można na nich zostać maksymalnie 3 sekundy.",3,9,Materace,3,24,3,Kondycja,Zabawa,3,2,2,5,3
+209,Berek kolorów,Trener woła kolor; ten kolor znacznika staje się chwilową bazą.,7,9,Znaczniki,3,24,3,Reakcja,Zabawa,3,2,2,5,3
+210,Oddaj znaczniki trenerowi,"Trener przemieszcza się, a dzieci próbują wrzucać znaczniki do niesionego pojemnika.",3,9,Znaczniki,2,20,2,Koordynacja / Kondycja,Zabawa,3,2,4,3,3
+211,Oddaj woreczki trenerowi,"Trener przemieszcza się, a dzieci próbują wrzucać woreczki do niesionego pojemnika.",3,9,Woreczki,2,20,8,Koordynacja / Celność,Zabawa,3,2,4,3,3
+212,Piłka śmierdziucha,"Dzieci przebiegają między liniami, a osoby trafione piłką robią na końcu ćwiczenie.",3,13,Piłki,1,24,5,Reakcja / Kondycja,Zabawa,3,2,2,4,3
+213,Szczurek z makaronem,"Uczestnicy stoją w kole; prowadzący przesuwa miękką pałkę nisko, a pozostali przeskakują.",3,9,Pałki,2,20,3,Koordynacja / Reakcja,Zabawa,3,2,2,4,3
+214,Szlaban,"Dwie miękkie pałki jako szlabany; trener podnosi jedną, a zawodnik wybiera wolną stronę.",7,99,Pałki,4,24,5,Reakcja / Koordynacja,Zabawa,3,2,2,4,3
+215,Czarny rycerz,"Trener z dużą poduchą i miękką pałką pilnuje strefy, a dzieci próbują dotknąć celu i wrócić.",3,6,"Poduchy, pałki, kaski",2,20,5,Reakcja / Kondycja,Zabawa,3,2,2,4,3
+216,Budowle ze znaczników,"Dzieci budują z oznaczników zadany kształt, potem obiegają go slalomem.",3,6,Znaczniki,1,20,5,Koordynacja,Zabawa,2,2,2,3,2
+217,Wyścig z woreczkiem do celu,Bieg do linii i rzut woreczkiem do obręczy; punkt dopiero po trafieniu.,7,99,"Woreczki, obręcze, znaczniki",4,24,5,Celność / Kondycja,Zabawa,3,2,2,5,3
+218,Wyścig raków,Sztafeta chodem kraba do znacznika i z powrotem.,3,99,Brak,2,24,1,Siła / Zabawa,Zabawa,4,2,4,4,4
+219,Wyścig niedźwiedzi,Sztafeta w podporze na dłoniach i stopach.,3,99,Brak,2,24,1,Siła / Zabawa,Zabawa,4,2,4,4,4
+220,Kalaki punktowane lekką pałką,W parach próba dotknięcia wyznaczonej strefy miękką pałką; wymagany kask i lekki kontakt.,7,9,"Pałki, kaski",2,20,15,Reakcja / Walka,Zabawa,4,4,3,5,4
+221,Kalaki drużynowe,"Krótkie pojedynki punktowe, wynik sumuje się dla drużyny.",3,9,"Pałki, kaski",6,24,10,Reakcja / Walka,Zabawa,4,4,3,5,4
+222,Przebieg pod ruchomą pałką,Trenerzy unoszą i opuszczają miękką pałkę; uczestnicy wybierają moment przejścia.,3,6,Pałki,2,20,3,Reakcja / Koordynacja,Zabawa,3,2,2,4,3
+223,Balonowy ping-pong nogą,W parach utrzymanie balona między sobą używając tylko lekkich dotknięć stopą.,3,99,Balony,2,20,3,Koordynacja / Technika,Zabawa,2,2,2,3,2
+224,Tor przeszkód klasyczny,"Slalom, tunel, przejście po linii, przeskoki i finisz dotknięciem packi.",3,99,"Znaczniki, materace, płotki, packa",1,24,15,Ogólnorozwojowy,Zabawa,4,3,4,5,4
+225,Trucht,Trucht z naprzemienną pracą ramion.,3,99,Brak,1,30,1,Kondycja,Rozgrzewka,2,1,2,4,2
+226,Bieg boksera,Drobny bieg boksera na śródstopiu z rękami w gardzie.,7,99,Brak,1,30,1,Kondycja / Technika,Rozgrzewka,3,2,3,5,3
+227,Bieg z przyspieszeniem na gwizdek,Przyspieszenie pracy nóg na gwizdek lub głos trenera i powrót do lekkiego tempa.,7,99,Brak,1,30,1,Kondycja / Reakcja,Rozgrzewka,3,2,2,5,3
+228,Bieg z zatrzymaniem na komendę,Natychmiastowe zatrzymanie na sygnał i ponowne ruszenie.,7,99,Brak,1,30,1,Reakcja,Rozgrzewka,2,2,2,4,3
+229,Skip A,Unoszenie kolan wysoko w rytmie biegu.,7,99,Brak,1,30,1,Kondycja,Rozgrzewka,3,2,2,5,3
+230,Skip C,Naprzemienne kierowanie pięt do pośladków w rytmie biegu.,7,99,Brak,1,30,1,Kondycja,Rozgrzewka,3,2,2,5,3
+231,Szybkie stopy,Bardzo szybkie krótkie kroki na śródstopiu.,7,99,Brak,1,30,1,Szybkość,Rozgrzewka,3,2,2,5,3
+232,Bieg na palcach,Sprężysty bieg na śródstopiu z lekkim uniesieniem pięt.,7,99,Brak,1,30,1,Koordynacja,Rozgrzewka,2,2,2,4,3
+233,Bieg z wysokim kolanem na sygnał,"Pojedyncze uniesienie kolana do klatki na sygnał, bez przerywania ruchu.",7,99,Brak,1,30,1,Reakcja / Kondycja,Rozgrzewka,2,2,2,4,3
+234,Krążenia ramion w przód,Krążenia obu ramion do przodu przy lekkiej pracy nóg.,7,99,Brak,1,30,1,Mobilność / Kondycja,Rozgrzewka,2,2,4,3,3
+235,Krążenia ramion w tył,Krążenia obu ramion do tyłu przy lekkiej pracy nóg.,7,99,Brak,1,30,1,Mobilność / Kondycja,Rozgrzewka,2,2,4,3,3
+236,Naprzemienne krążenia ramion,Naprzemienne krążenia ramion w przód przy pracy nóg.,7,99,Brak,1,30,1,Koordynacja / Mobilność,Rozgrzewka,2,3,4,3,3
+237,Wymachy ramion przed klatką,Naprzemienne otwieranie ramion na boki i krzyżowanie przed klatką przy lekkiej pracy nóg.,7,99,Brak,1,30,1,Mobilność,Rozgrzewka,2,2,4,3,2
+238,Bieg z bokserskim unikaniem głową,"Drobny bieg i małe, kontrolowane przenoszenie głowy w lewo i prawo.",7,99,Brak,1,30,1,Koordynacja / Technika,Rozgrzewka,2,3,2,4,3
+239,Bieg z unoszeniem barków,Naprzemienne unoszenie i rozluźnianie barków przy lekkiej pracy nóg.,7,99,Brak,1,30,1,Mobilność,Rozgrzewka,1,1,3,3,2
+240,Bieg z pracą ramion w gardzie,Trucht z utrzymaniem gardy i naprzemienną zmianą pozycji łokci.,7,99,Brak,1,30,1,Technika,Rozgrzewka,2,2,4,3,3
+241,Pajacyki,Na sygnał wykonać: pajacyki z pełną pracą ramion i miękkim lądowaniem. Pomiędzy sygnałami utrzymać lekki ruch i bezpieczne odstępy.,7,99,Brak,1,30,1,Kondycja / Koordynacja,Rozgrzewka,3,2,4,4,3
+242,Pajacyki skrzyżne,Na sygnał wykonać: pajacyki z krzyżowaniem stóp przed i za osią ciała. Pomiędzy sygnałami utrzymać lekki ruch i bezpieczne odstępy.,7,99,Brak,1,30,1,Koordynacja / Kondycja,Rozgrzewka,3,3,3,5,3
+243,Podskoki obunóż,Na sygnał wykonać: dwa sprężyste podskoki obunóż. Pomiędzy sygnałami utrzymać lekki ruch i bezpieczne odstępy.,7,99,Brak,1,30,1,Kondycja,Rozgrzewka,3,1,2,5,3
+244,Podskoki na lewej nodze,Na sygnał wykonać: dwa małe podskoki na lewej nodze. Pomiędzy sygnałami utrzymać lekki ruch i bezpieczne odstępy.,7,99,Brak,1,30,1,Koordynacja / Równowaga,Rozgrzewka,3,2,2,5,4
+245,Podskoki na prawej nodze,Na sygnał wykonać: dwa małe podskoki na prawej nodze. Pomiędzy sygnałami utrzymać lekki ruch i bezpieczne odstępy.,7,99,Brak,1,30,1,Koordynacja / Równowaga,Rozgrzewka,3,2,2,5,4
+246,Przeskoki przód–tył,Na sygnał wykonać: dwa przeskoki obunóż przód–tył przez wyobrażoną linię. Pomiędzy sygnałami utrzymać lekki ruch i bezpieczne odstępy.,7,99,Brak,1,30,1,Kondycja / Koordynacja,Rozgrzewka,3,2,2,5,4
+247,Przeskoki lewo–prawo,Na sygnał wykonać: dwa przeskoki obunóż lewo–prawo przez wyobrażoną linię. Pomiędzy sygnałami utrzymać lekki ruch i bezpieczne odstępy.,7,99,Brak,1,30,1,Kondycja / Koordynacja,Rozgrzewka,3,2,2,5,4
+248,Przeskoki nożycowe,Na sygnał wykonać: dwa podskoki ze zmianą ustawienia stóp przód–tył. Pomiędzy sygnałami utrzymać lekki ruch i bezpieczne odstępy.,7,99,Brak,1,30,1,Koordynacja / Kondycja,Rozgrzewka,3,3,2,5,4
+249,Wyskok z przysiadu,"Na sygnał wykonać: jeden kontrolowany półprzysiad i pionowy wyskok, miękkie lądowanie. Pomiędzy sygnałami utrzymać lekki ruch i bezpieczne odstępy.",7,99,Brak,1,30,1,Siła / Kondycja,Rozgrzewka,4,2,2,5,4
+250,Wyskok z kolanami w górę,Na sygnał wykonać: jeden wyskok z uniesieniem kolan bez podciągania ich dłońmi. Pomiędzy sygnałami utrzymać lekki ruch i bezpieczne odstępy.,7,99,Brak,1,30,1,Kondycja / Moc,Rozgrzewka,4,3,2,5,4
+251,Obrót o 90° w podskoku,Na sygnał wykonać: jeden mały podskok z obrotem o ćwierć obrotu i stabilnym lądowaniem. Pomiędzy sygnałami utrzymać lekki ruch i bezpieczne odstępy.,7,99,Brak,1,30,1,Koordynacja / Równowaga,Rozgrzewka,3,3,2,5,4
+252,Obrót o 180° w podskoku,Na sygnał wykonać: jeden półobrót z podskokiem i stabilnym lądowaniem. Pomiędzy sygnałami utrzymać lekki ruch i bezpieczne odstępy.,7,99,Brak,1,30,1,Koordynacja / Równowaga,Rozgrzewka,3,4,2,5,4
+253,Zmiana gardy podskokiem,Na sygnał wykonać: jedną zmianę nogi prowadzącej podskokiem w niskiej gardzie. Pomiędzy sygnałami utrzymać lekki ruch i bezpieczne odstępy.,7,99,Brak,1,30,1,Technika / Koordynacja,Rozgrzewka,3,3,2,5,4
+254,Rozkrok–zeskok,Na sygnał wykonać: jeden sprężysty rozkrok i zeskok do stania wąsko. Pomiędzy sygnałami utrzymać lekki ruch i bezpieczne odstępy.,7,99,Brak,1,30,1,Kondycja,Rozgrzewka,3,2,2,5,3
+255,Przysiad na komendę,Na sygnał wykonać: dwa przysiady z kontrolą kolan i wyprostowaniem tułowia. Pomiędzy sygnałami utrzymać lekki ruch i bezpieczne odstępy.,7,99,Brak,1,30,1,Siła,Rozgrzewka,3,1,1,5,3
+256,Przysiad z churugi,Na sygnał wykonać: przysiad i pojedyncze churugi przy powrocie do stania. Pomiędzy sygnałami utrzymać lekki ruch i bezpieczne odstępy.,7,99,Brak,1,30,1,Siła / Technika,Rozgrzewka,3,3,4,5,4
+257,Wykrok naprzemienny na komendę,Na sygnał wykonać: jeden wykrok do przodu i powrót; kolejna komenda zmienia nogę. Pomiędzy sygnałami utrzymać lekki ruch i bezpieczne odstępy.,7,99,Brak,1,30,1,Siła / Równowaga,Rozgrzewka,3,2,1,5,4
+258,Zakrok na komendę,Na sygnał wykonać: jeden zakrok w tył i powrót do pozycji wyjściowej. Pomiędzy sygnałami utrzymać lekki ruch i bezpieczne odstępy.,7,99,Brak,1,30,1,Siła / Równowaga,Rozgrzewka,3,2,1,5,4
+259,Wspięcia na palce na komendę,Na sygnał wykonać: trzy wspięcia na palce z kontrolowanym opuszczeniem pięt. Pomiędzy sygnałami utrzymać lekki ruch i bezpieczne odstępy.,7,99,Brak,1,30,1,Siła,Rozgrzewka,2,1,1,4,2
+260,Pompka na komendę,"Na komendę bezpiecznie zatrzymać się, zejść do podłoża i wykonać: jedną pompkę w wariancie odpowiednim do możliwości ćwiczącego. Powrócić do stania przed dalszym przemieszczaniem.",7,99,Brak,1,30,1,Siła,Rozgrzewka,4,2,5,2,4
+261,Pompka z zatrzymaniem w dole,"Na komendę bezpiecznie zatrzymać się, zejść do podłoża i wykonać: jedną pompkę z krótkim zatrzymaniem nad podłożem. Powrócić do stania przed dalszym przemieszczaniem.",7,99,Brak,1,30,1,Siła / Stabilizacja,Rozgrzewka,4,3,5,2,5
+262,Brzuszek na komendę,"Na komendę bezpiecznie zatrzymać się, zejść do podłoża i wykonać: dwa krótkie spięcia brzucha w leżeniu na plecach. Powrócić do stania przed dalszym przemieszczaniem.",7,99,Brak,1,30,1,Siła / Core,Rozgrzewka,3,1,1,2,5
+263,Rowerek w leżeniu na komendę,"Na komendę bezpiecznie zatrzymać się, zejść do podłoża i wykonać: cztery naprzemienne ruchy nóg i tułowia w ćwiczeniu rowerek. Powrócić do stania przed dalszym przemieszczaniem.",7,99,Brak,1,30,1,Siła / Core,Rozgrzewka,3,2,1,3,5
+264,Unoszenie nóg na komendę,"Na komendę bezpiecznie zatrzymać się, zejść do podłoża i wykonać: jedno kontrolowane uniesienie i opuszczenie zgiętych nóg w leżeniu. Powrócić do stania przed dalszym przemieszczaniem.",7,99,Brak,1,30,1,Siła / Core,Rozgrzewka,3,2,1,3,5
+265,Deska przodem na komendę,"Na komendę bezpiecznie zatrzymać się, zejść do podłoża i wykonać: pięciosekundową deskę na przedramionach. Powrócić do stania przed dalszym przemieszczaniem.",7,99,Brak,1,30,1,Stabilizacja,Rozgrzewka,3,2,3,2,5
+266,Deska z dotykaniem barków,"Na komendę bezpiecznie zatrzymać się, zejść do podłoża i wykonać: dwa naprzemienne dotknięcia barków w podporze przodem. Powrócić do stania przed dalszym przemieszczaniem.",7,99,Brak,1,30,1,Siła / Stabilizacja,Rozgrzewka,3,3,4,2,5
+267,Naprzemienne kolana do klatki w podporze,"Na komendę bezpiecznie zatrzymać się, zejść do podłoża i wykonać: cztery naprzemienne dociągnięcia kolan w podporze przodem. Powrócić do stania przed dalszym przemieszczaniem.",7,99,Brak,1,30,1,Siła / Kondycja,Rozgrzewka,4,2,4,4,5
+268,Padnij–powstań na komendę,"Na komendę bezpiecznie zatrzymać się, zejść do podłoża i wykonać: zejście do podporu przodem i powrót do stania bez wyskoku. Bezpiecznie wznowić przemieszczanie.",7,99,Brak,1,30,1,Siła / Kondycja,Rozgrzewka,4,2,4,4,5
+269,Burpee bez pompki,"Na komendę bezpiecznie zatrzymać się, zejść do podłoża i wykonać: jedno zejście do podporu, powrót i wyskok z miękkim lądowaniem. Powrócić do stania przed dalszym przemieszczaniem.",7,99,Brak,1,30,1,Kondycja / Siła,Rozgrzewka,5,3,4,5,5
+270,Churugi pojedyncze na komendę,Na komendę wykonać: jedno proste churugi w powietrze i powrót do gardy. Zachować gardę i bezpieczne odstępy.,7,99,Brak,1,30,1,Technika / Reakcja,Rozgrzewka,2,2,4,3,3
+271,Churugi podwójne na komendę,Na komendę wykonać: dwa szybkie naprzemienne churugi w powietrze i powrót do gardy. Zachować gardę i bezpieczne odstępy.,7,99,Brak,1,30,1,Technika / Reakcja,Rozgrzewka,3,3,5,3,4
+272,Churugi potrójne na komendę,Na komendę wykonać: trzy krótkie naprzemienne churugi i powrót do gardy. Zachować gardę i bezpieczne odstępy.,7,99,Brak,1,30,1,Technika / Reakcja,Rozgrzewka,3,3,5,3,4
+273,Churugi pojedyncze w podskoku,Na komendę wykonać: jedno churugi podczas małego pionowego podskoku. Zachować gardę i bezpieczne odstępy.,7,99,Brak,1,30,1,Technika / Koordynacja,Rozgrzewka,3,3,4,4,4
+274,Churugi podwójne w podskoku,Na komendę wykonać: dwa churugi podczas dwóch małych podskoków. Zachować gardę i bezpieczne odstępy.,7,99,Brak,1,30,1,Technika / Koordynacja,Rozgrzewka,4,4,5,4,4
+275,Churugi naprzemiennie z szybką pracą nóg,"Na komendę wykonać: dwa churugi, a pomiędzy komendami szybką pracę nóg. Zachować gardę i bezpieczne odstępy.",7,99,Brak,1,30,1,Technika / Kondycja,Rozgrzewka,3,3,4,5,4
+276,Churugi po zmianie gardy,Na sygnał wykonać: zmianę nogi prowadzącej i jedno churugi z ustawieniem barku. Pomiędzy sygnałami utrzymać lekki ruch i bezpieczne odstępy.,7,99,Brak,1,30,1,Technika / Reakcja,Rozgrzewka,3,3,4,4,4
+277,Podwójne churugi po zmianie gardy,Na sygnał wykonać: zmianę gardy i dwa naprzemienne churugi. Pomiędzy sygnałami utrzymać lekki ruch i bezpieczne odstępy.,7,99,Brak,1,30,1,Technika / Koordynacja,Rozgrzewka,3,4,5,4,4
+278,Sonkal na komendę,Na komendę wykonać: jedną technikę sonkal w powietrze z kontrolą łokcia. Zachować gardę i bezpieczne odstępy.,7,99,Brak,1,30,1,Technika / Reakcja,Rozgrzewka,2,3,4,2,3
+279,Blok dolny na komendę,"Na komendę wykonać: jeden blok dolny, po czym powrót do gardy. Zachować gardę i bezpieczne odstępy.",7,99,Brak,1,30,1,Technika / Reakcja,Rozgrzewka,2,2,4,2,3
+280,Blok środkowy na komendę,"Na komendę wykonać: jeden blok środkowy, po czym powrót do gardy. Zachować gardę i bezpieczne odstępy.",7,99,Brak,1,30,1,Technika / Reakcja,Rozgrzewka,2,2,4,2,3
+281,Blok górny na komendę,"Na komendę wykonać: jeden blok górny, po czym powrót do gardy. Zachować gardę i bezpieczne odstępy.",7,99,Brak,1,30,1,Technika / Reakcja,Rozgrzewka,2,2,4,2,3
+282,Unik głową w lewo na komendę,Na komendę wykonać: krótki unik głową i tułowiem w lewo z utrzymaniem gardy. Zachować gardę i bezpieczne odstępy.,7,99,Brak,1,30,1,Technika / Reakcja,Rozgrzewka,2,3,2,3,4
+283,Unik głową w prawo na komendę,Na komendę wykonać: krótki unik głową i tułowiem w prawo z utrzymaniem gardy. Zachować gardę i bezpieczne odstępy.,7,99,Brak,1,30,1,Technika / Reakcja,Rozgrzewka,2,3,2,3,4
+284,Doskok i odskok w gardzie,Na sygnał wykonać: jeden krótki doskok do przodu i odskok bez krzyżowania stóp. Pomiędzy sygnałami utrzymać lekki ruch i bezpieczne odstępy.,7,99,Brak,1,30,1,Technika / Szybkość,Rozgrzewka,3,3,2,5,4
+285,Doskok–ap chagi–odskok,"Na sygnał wykonać: krótki doskok, jedno ap chagi w powietrze i odskok do gardy. Zachować odstępy i zmieniać nogę między powtórzeniami.",7,99,Brak,1,30,1,Technika / Reakcja,Rozgrzewka,3,3,2,5,4
+286,Doskok–dollyo chagi–odskok,"Na sygnał wykonać: krótki doskok, jedno dollyo chagi w powietrze i odskok do gardy. Zachować odstępy i zmieniać nogę między powtórzeniami.",7,99,Brak,1,30,1,Technika / Reakcja,Rozgrzewka,4,4,2,5,5
+287,Doskok–yop chagi–odskok,"Na sygnał wykonać: krótki doskok, jedno yop chagi w powietrze i odskok do gardy. Zachować odstępy i zmieniać nogę między powtórzeniami.",7,99,Brak,1,30,1,Technika / Reakcja,Rozgrzewka,4,4,2,5,5
+288,Ap chagi na komendę,Na sygnał wykonać: jedno kontrolowane ap chagi w powietrze i powrót do gardy. Zachować odstępy i zmieniać nogę między powtórzeniami.,7,99,Brak,1,30,1,Technika / Reakcja,Rozgrzewka,2,2,1,5,4
+289,Dollyo chagi na komendę,Na sygnał wykonać: jedno kontrolowane dollyo chagi w powietrze i powrót do gardy. Zachować odstępy i zmieniać nogę między powtórzeniami.,7,99,Brak,1,30,1,Technika / Reakcja,Rozgrzewka,3,3,1,5,4
+290,Yop chagi na komendę,Na sygnał wykonać: jedno kontrolowane yop chagi w powietrze i powrót do gardy. Zachować odstępy i zmieniać nogę między powtórzeniami.,7,99,Brak,1,30,1,Technika / Reakcja,Rozgrzewka,3,4,1,5,4
+291,Komora ap chagi na komendę,Na sygnał wykonać: uniesienie kolana do komory ap chagi i dwusekundowe utrzymanie równowagi. Zachować odstępy i zmieniać nogę między powtórzeniami.,7,99,Brak,1,30,1,Równowaga / Technika,Rozgrzewka,2,3,1,4,5
+292,Komora dollyo chagi na komendę,Na sygnał wykonać: uniesienie kolana i ustawienie biodra do dollyo bez wyprostu nogi. Zachować odstępy i zmieniać nogę między powtórzeniami.,7,99,Brak,1,30,1,Równowaga / Technika,Rozgrzewka,2,3,1,4,5
+293,Przysiad–ap chagi,"Na sygnał wykonać: jeden półprzysiad, powrót do stania i ap chagi w powietrze. Zachować odstępy i zmieniać nogę między powtórzeniami.",7,99,Brak,1,30,1,Siła / Technika,Rozgrzewka,3,3,1,5,4
+294,Dollyo chagi z podskoku,Na sygnał wykonać: jedno kontrolowane dollyo chagi po małym podskoku. Zachować odstępy i zmieniać nogę między powtórzeniami.,7,99,Brak,1,30,1,Technika / Koordynacja,Rozgrzewka,4,4,1,5,5
+295,Interwał 20/10 – pompki + bieg boksera,"6 × (20 s pompek + 10 s biegu boksera). Dostosować tempo pompek do możliwości, zachować technikę.",10,99,Brak,1,30,3,Siła / Kondycja,Ćwiczenia,4,2,4,3,4
+296,Interwał 20/10 – przysiady + ap chagi,6 × (20 s przysiadów + 10 s naprzemiennych ap chagi bez sprzętu).,10,99,Brak,1,30,3,Siła / Technika / Kondycja,Ćwiczenia,4,3,2,5,3
+297,Interwał 20/10 – przysiady + dollyo chagi,6 × (20 s przysiadów + 10 s naprzemiennych dollyo chagi w powietrze).,10,99,Brak,1,30,3,Siła / Technika / Kondycja,Ćwiczenia,4,4,2,5,4
+298,Interwał 20/10 – brzuszki + deska,6 × (20 s brzuszków + 10 s deski na przedramionach).,10,99,Brak,1,30,3,Siła / Stabilizacja,Ćwiczenia,4,2,2,2,5
+299,Interwał 20/10 – pompki + churugi,"6 × (20 s pompek + 10 s szybkich, kontrolowanych churugi w powietrze).",10,99,Brak,1,30,3,Siła / Technika / Kondycja,Ćwiczenia,4,3,5,2,4
+300,Interwał 20/10 – wykroki + bieg boksera,6 × (20 s wykroków naprzemiennych + 10 s biegu boksera).,10,99,Brak,1,30,3,Siła / Kondycja,Ćwiczenia,4,2,2,5,3
+301,Interwał 20/10 – przysiady + wyskoki,6 × (20 s przysiadów + 10 s kontrolowanych wyskoków z miękkim lądowaniem).,10,99,Brak,1,30,3,Siła / Moc / Kondycja,Ćwiczenia,5,3,2,5,4
+302,Interwał 20/10 – deska + kolana do klatki,6 × (20 s deski przodem + 10 s naprzemiennego przyciągania kolan do klatki w podporze).,10,99,Brak,1,30,3,Siła / Stabilizacja / Kondycja,Ćwiczenia,4,3,4,4,5
+303,Interwał 20/10 – brzuszki + rowerek,6 × (20 s brzuszków + 10 s rowerka w leżeniu).,10,99,Brak,1,30,3,Siła / Core,Ćwiczenia,4,2,1,3,5
+304,Interwał 20/10 – pompki + przysiady,6 × (20 s pompek + 10 s przysiadów); zmiana pozycji spokojna i kontrolowana.,10,99,Brak,1,30,3,Siła / Kondycja,Ćwiczenia,5,2,5,5,4
+305,Interwał 20/10 – deska + pompki,6 × (20 s deski przodem + 10 s pompek); stabilna pozycja tułowia.,10,99,Brak,1,30,3,Siła / Stabilizacja,Ćwiczenia,4,2,5,2,5
+306,Szybki przysiad + dollyo + churugi w parach,"Na gwizdek szybki przysiad, następnie dollyo chagi do packi i churugi do drugiej packi. Zmiana ról.",10,99,Packi,2,24,3,Siła / Walka / Technika,Ćwiczenia,4,4,4,5,4
+307,Szybki przysiad + yop + churugi w parach,"Na gwizdek szybki przysiad, yop chagi do packi i dwa churugi do celu; zmiana ról.",10,99,Packi,2,24,3,Siła / Walka / Technika,Ćwiczenia,4,4,4,5,4
+308,Szybki przysiad + doskok + dwa churugi w parach,"Na gwizdek szybki przysiad, doskok i dwa churugi do packi trzymanej przez partnera; powrót do gardy.",10,99,Packi,2,24,3,Siła / Walka / Reakcja,Ćwiczenia,4,3,4,4,4
+309,Pompka + dollyo do packi,"Na komendę pompka, kontrolowane powstanie i dollyo chagi do packi partnera; zmiana ról.",10,99,Packi,2,24,3,Siła / Walka / Technika,Ćwiczenia,4,4,4,5,4
+310,Szybki przysiad + ap chagi + dollyo,"Na gwizdek szybki przysiad, a następnie ap chagi i dollyo chagi do celów trzymanych przez partnera.",10,99,Packi,2,24,3,Siła / Walka / Technika,Ćwiczenia,4,4,3,5,4
+311,Szybki przysiad + unik + kontra,"Na gwizdek szybki przysiad; partner markuje miękką pałką atak, a ćwiczący unika i kontruje do packi.",14,99,"Pałki, packi",2,20,4,Siła / Walka / Reakcja,Ćwiczenia,4,5,3,5,4
+312,Szybki przysiad + kontra na wskazany cel,"Na gwizdek szybki przysiad; partner pokazuje packę z wybranej strony, ćwiczący odpowiada ustalonym kopnięciem.",14,99,Packi,2,24,4,Siła / Walka / Reakcja,Ćwiczenia,4,5,3,5,4
+313,Szybki przysiad + wymiana technik w parach,"Na gwizdek oboje wykonują szybki przysiad, potem naprzemiennie realizują umówioną kombinację uderzeń i kopnięć do packi.",14,99,Packi,2,24,4,Siła / Walka / Technika,Ćwiczenia,5,5,4,5,5
+314,Przysiad bułgarski przy drabinkach,"Tylna stopa na niskim, stabilnym szczeblu drabinki; kontrolowane przysiady jednonóż i zmiana strony.",10,99,Drabinki,1,24,3,Siła / Stabilizacja,Ćwiczenia,4,3,1,5,4
+315,Izometryczny przysiad,"Utrzymanie półprzysiadu w krótkich seriach po 20–30 s, z rozluźnieniem między seriami.",10,99,Brak,1,30,2,Siła / Stabilizacja,Ćwiczenia,4,2,1,5,4
+316,Krzesełko przy ścianie,Utrzymanie pozycji siedzącej z plecami opartymi o ścianę w krótkich seriach.,10,99,Brak,1,30,2,Siła / Stabilizacja,Ćwiczenia,4,1,1,5,3
+317,Pompki z wolnym opuszczaniem,Pompki z 3–4-sekundową fazą opuszczania i kontrolowanym powrotem.,10,99,Brak,1,30,2,Siła,Ćwiczenia,4,3,5,2,4
+318,Wspięcia na palce jednonóż,"Powolne wspięcia na palce jednej nogi, kontrolowane opuszczanie pięty i zmiana nogi.",10,99,Brak,1,30,2,Siła / Równowaga,Ćwiczenia,3,2,1,5,3
