@@ -134,3 +134,13 @@ def equipment_names(exercises: tuple[SeedExercise, ...]) -> tuple[str, ...]:
     return tuple(
         sorted({name for exercise in exercises for name in exercise.equipment_names})
     )
+
+
+def training_type_names(exercises: tuple[SeedExercise, ...]) -> tuple[str, ...]:
+    """Return the alphabetically ordered training-type catalog from the source data."""
+
+    return tuple(
+        sorted(
+            {name for exercise in exercises for name in exercise.training_type_names}
+        )
+    )

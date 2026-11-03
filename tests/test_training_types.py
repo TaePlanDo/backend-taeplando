@@ -1,13 +1,15 @@
 import asyncio
+from collections.abc import Generator
 from datetime import UTC, datetime
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 from uuid import UUID
 
 import pytest
+from fastapi.testclient import TestClient
 
 from app.db import catalogs as catalogs_db
 from app.db.catalogs import CatalogPage
-from app.db.seed import SYSTEM_TRAINING_TYPES
+from app.db.exercise_catalog import load_exercise_catalog, training_type_names
 from app.dependencies.auth import get_current_user
 from app.main import app
 from app.models.catalogs import TrainingType
@@ -23,7 +25,7 @@ CREATED_AT = datetime(2026, 10, 23, 12, 0, tzinfo=UTC)
 
 
 @pytest.fixture
-def authenticated_trainer() -> None:
+def authenticated_trainer() -> Generator[None]:
     """Authenticate training-type route tests without JWT parsing."""
     app.dependency_overrides[get_current_user] = lambda: User(
         id=TRAINER_ID,
@@ -58,7 +60,7 @@ def _response() -> TrainingTypeResponse:
 
 
 def test_list_training_types_uses_the_authenticated_trainer(
-    client, authenticated_trainer
+    client: TestClient, authenticated_trainer: None
 ) -> None:
     """Forward pagination and the trainer ID derived from authentication."""
     response_item = _response()
@@ -127,7 +129,7 @@ def test_list_training_types_filters_to_global_and_owned_entries() -> None:
 
 def test_system_training_type_seed_contains_the_taekwondo_catalog() -> None:
     """Keep the globally seeded training types stable for new installations."""
-    assert [training_type["name"] for training_type in SYSTEM_TRAINING_TYPES] == [
+    assert training_type_names(load_exercise_catalog()) == (
         "Celność",
         "Core",
         "Dystans",
@@ -152,4 +154,4 @@ def test_system_training_type_seed_contains_the_taekwondo_catalog() -> None:
         "Walka",
         "Wytrzymałość",
         "Zabawa",
-    ]
+    )

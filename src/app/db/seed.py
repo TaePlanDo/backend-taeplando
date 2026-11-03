@@ -23,7 +23,12 @@ from app.db.demo_training_plans import (
     SegmentSnapshot,
     build_demo_training_rows,
 )
-from app.db.exercise_catalog import SeedExercise, equipment_names, load_exercise_catalog
+from app.db.exercise_catalog import (
+    SeedExercise,
+    equipment_names,
+    load_exercise_catalog,
+    training_type_names,
+)
 from app.db.session import dispose_engine, get_session_factory
 from app.models.associations import (
     exercise_version_equipment,
@@ -63,13 +68,6 @@ class TrainingSegmentSeed(TypedDict):
     name: str
 
 
-class TrainingTypeSeed(TypedDict):
-    """One immutable entry of the system training-type catalog."""
-
-    id: UUID
-    name: str
-
-
 class LocalUserSeed(TypedDict):
     """One local user created by the development seed."""
 
@@ -86,42 +84,10 @@ SYSTEM_TRAINING_SEGMENTS: Sequence[TrainingSegmentSeed] = (
     {"id": 4, "code": "COOLDOWN", "name": "Rozciąganie"},
 )
 
-SYSTEM_TRAINING_TYPE_NAMES = (
-    "Celność",
-    "Core",
-    "Dystans",
-    "Kondycja",
-    "Koordynacja",
-    "Mobilność",
-    "Mobilność – Dynamiczne",
-    "Mobilność – Statyczne",
-    "Moc",
-    "Obrona",
-    "Ogólnorozwojowy",
-    "Pamięć",
-    "Reakcja",
-    "Równowaga",
-    "Siła",
-    "Siła grzbietu",
-    "Stabilizacja",
-    "Szybkość",
-    "Taktyka",
-    "Technika",
-    "Układy formalne",
-    "Walka",
-    "Wytrzymałość",
-    "Zabawa",
-)
-
 
 def _seed_id(kind: str, key: str | int) -> UUID:
     return uuid5(SEED_NAMESPACE, f"{kind}:{key}")
 
-
-SYSTEM_TRAINING_TYPES: Sequence[TrainingTypeSeed] = tuple(
-    {"id": _seed_id("training-type", name), "name": name}
-    for name in SYSTEM_TRAINING_TYPE_NAMES
-)
 
 DEMO_LOCAL_USERS: Sequence[LocalUserSeed] = (
     {
@@ -217,7 +183,9 @@ async def _clear_global_equipment(session: AsyncSession) -> None:
     )
 
 
-async def seed_training_types(session: AsyncSession) -> None:
+async def seed_training_types(
+    session: AsyncSession, exercises: tuple[SeedExercise, ...]
+) -> None:
     """Replace the global training-type dictionary with the source catalog."""
 
     await _clear_global_training_types(session)
@@ -225,11 +193,12 @@ async def seed_training_types(session: AsyncSession) -> None:
         insert(TrainingType).values(
             [
                 {
-                    **training_type,
+                    "id": _seed_id("training-type", name),
                     "owner_user_id": None,
+                    "name": name,
                     "visibility": CatalogVisibility.GLOBAL,
                 }
-                for training_type in SYSTEM_TRAINING_TYPES
+                for name in training_type_names(exercises)
             ]
         )
     )
@@ -430,10 +399,11 @@ async def seed_training_groups_and_plans(
     await session.execute(insert(TrainingPlanExercise).values(rows.plan_exercise_rows))
 
 
-async def seed_demo_data(session: AsyncSession) -> None:
+async def seed_demo_data(
+    session: AsyncSession, exercises: tuple[SeedExercise, ...]
+) -> None:
     """Insert the demo trainer, global catalog exercises, groups, and plans."""
 
-    exercises = load_exercise_catalog()
     logger.info("Seeding %d source exercises", len(exercises))
     for user in DEMO_LOCAL_USERS:
         await upsert_local_user(session, user)
@@ -446,11 +416,12 @@ async def seed_system_data() -> None:
     """Apply all system seed data in one transaction."""
 
     logger.info("Starting system-data seed transaction")
+    exercises = load_exercise_catalog()
     async with get_session_factory()() as session:
         async with session.begin():
             await seed_training_segments(session)
-            await seed_training_types(session)
-            await seed_demo_data(session)
+            await seed_training_types(session, exercises)
+            await seed_demo_data(session, exercises)
     logger.info("System-data seed transaction completed")
 
 
