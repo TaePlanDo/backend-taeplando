@@ -142,6 +142,24 @@ def _current_version_number(exercise: SeedExercise) -> int:
     return 2 if exercise.source_id in HISTORICAL_VERSION_SOURCE_IDS else 1
 
 
+def _planning_attributes(exercise: SeedExercise) -> dict[str, object]:
+    """Map the fields shared by global versions and trainer configurations."""
+
+    return {
+        "min_age": exercise.min_age,
+        "max_age": exercise.max_age,
+        "min_participants": exercise.min_participants,
+        "max_participants": exercise.max_participants,
+        "duration_minutes": exercise.duration_minutes,
+        "equipment_requirement_mode": exercise.equipment_requirement_mode,
+        "physical_difficulty": exercise.physical_difficulty,
+        "technical_difficulty": exercise.technical_difficulty,
+        "upper_body_load": exercise.upper_body_load,
+        "lower_body_load": exercise.lower_body_load,
+        "core_load": exercise.core_load,
+    }
+
+
 def _exercise_version_row(
     exercise: SeedExercise,
     *,
@@ -158,17 +176,7 @@ def _exercise_version_row(
         "status": ExerciseVersionStatus.APPROVED,
         "name": exercise.name,
         "description": description,
-        "min_age": exercise.min_age,
-        "max_age": exercise.max_age,
-        "min_participants": exercise.min_participants,
-        "max_participants": exercise.max_participants,
-        "duration_minutes": exercise.duration_minutes,
-        "equipment_requirement_mode": exercise.equipment_requirement_mode,
-        "physical_difficulty": exercise.physical_difficulty,
-        "technical_difficulty": exercise.technical_difficulty,
-        "upper_body_load": exercise.upper_body_load,
-        "lower_body_load": exercise.lower_body_load,
-        "core_load": exercise.core_load,
+        **_planning_attributes(exercise),
         "approved_at": datetime(2026, 10, version_number, tzinfo=UTC),
     }
 
@@ -453,17 +461,7 @@ async def seed_exercises(
                 "exercise_id": _seed_id("exercise", exercise.source_id),
                 "source_version_id": current_version_id,
                 "status": TrainerExerciseStatus.ACTIVE,
-                "min_age": exercise.min_age,
-                "max_age": exercise.max_age,
-                "min_participants": exercise.min_participants,
-                "max_participants": exercise.max_participants,
-                "duration_minutes": exercise.duration_minutes,
-                "equipment_requirement_mode": exercise.equipment_requirement_mode,
-                "physical_difficulty": exercise.physical_difficulty,
-                "technical_difficulty": exercise.technical_difficulty,
-                "upper_body_load": exercise.upper_body_load,
-                "lower_body_load": exercise.lower_body_load,
-                "core_load": exercise.core_load,
+                **_planning_attributes(exercise),
             }
         )
         trainer_equipment_rows.extend(
