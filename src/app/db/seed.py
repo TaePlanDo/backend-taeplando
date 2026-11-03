@@ -30,6 +30,7 @@ from app.db.exercise_catalog import (
     training_type_names,
 )
 from app.db.session import dispose_engine, get_session_factory
+from app.db.training_catalog import SYSTEM_TRAINING_SEGMENTS
 from app.models.associations import (
     exercise_version_equipment,
     exercise_version_segments,
@@ -60,14 +61,6 @@ DEMO_TRAINER_EMAIL = "demo.trener@gmail.com"
 DEMO_TRAINER_PASSWORD = "Demo123!"
 
 
-class TrainingSegmentSeed(TypedDict):
-    """One immutable entry of the system training-segment dictionary."""
-
-    id: int
-    code: str
-    name: str
-
-
 class LocalUserSeed(TypedDict):
     """One local user created by the development seed."""
 
@@ -75,14 +68,6 @@ class LocalUserSeed(TypedDict):
     email: str
     full_name: str
     password: str
-
-
-SYSTEM_TRAINING_SEGMENTS: Sequence[TrainingSegmentSeed] = (
-    {"id": 1, "code": "WARMUP", "name": "Rozgrzewka"},
-    {"id": 2, "code": "GAME", "name": "Zabawa"},
-    {"id": 3, "code": "MAIN", "name": "Ćwiczenia"},
-    {"id": 4, "code": "COOLDOWN", "name": "Rozciąganie"},
-)
 
 
 def _seed_id(kind: str, key: str | int) -> UUID:
@@ -138,7 +123,12 @@ async def _replace_associations(
 async def seed_training_segments(session: AsyncSession) -> None:
     """Insert or restore the fixed training-segment dictionary."""
 
-    statement = insert(TrainingSegment).values(list(SYSTEM_TRAINING_SEGMENTS))
+    statement = insert(TrainingSegment).values(
+        [
+            {"id": segment.id, "code": segment.code, "name": segment.name}
+            for segment in SYSTEM_TRAINING_SEGMENTS
+        ]
+    )
     await session.execute(
         statement.on_conflict_do_update(
             index_elements=[TrainingSegment.id],
@@ -259,9 +249,7 @@ async def seed_exercises(
     context = DemoExerciseSeedContext(
         trainer_id=DEMO_TRAINER_ID,
         seed_id=_seed_id,
-        segment_ids={
-            segment["code"]: segment["id"] for segment in SYSTEM_TRAINING_SEGMENTS
-        },
+        segment_ids={segment.code: segment.id for segment in SYSTEM_TRAINING_SEGMENTS},
     )
     rows = build_demo_exercise_rows(exercises, context)
 
@@ -354,10 +342,10 @@ async def seed_training_groups_and_plans(
     """Persist the deterministic presentation groups and their plan snapshots."""
 
     segment_snapshots: dict[str, SegmentSnapshot] = {
-        segment["code"]: {
-            "id": segment["id"],
-            "code": segment["code"],
-            "name": segment["name"],
+        segment.code: {
+            "id": segment.id,
+            "code": segment.code,
+            "name": segment.name,
         }
         for segment in SYSTEM_TRAINING_SEGMENTS
     }

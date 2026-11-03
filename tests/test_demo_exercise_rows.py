@@ -8,7 +8,7 @@ from app.db.demo_exercise_rows import (
     build_demo_exercise_rows,
 )
 from app.db.exercise_catalog import load_exercise_catalog
-from app.db.seed import SYSTEM_TRAINING_SEGMENTS
+from app.db.training_catalog import SYSTEM_TRAINING_SEGMENTS
 
 
 def _seed_id(kind: str, key: str | int) -> UUID:
@@ -21,9 +21,7 @@ def _context() -> DemoExerciseSeedContext:
     return DemoExerciseSeedContext(
         trainer_id=_seed_id("trainer", "demo"),
         seed_id=_seed_id,
-        segment_ids={
-            segment["code"]: segment["id"] for segment in SYSTEM_TRAINING_SEGMENTS
-        },
+        segment_ids={segment.code: segment.id for segment in SYSTEM_TRAINING_SEGMENTS},
     )
 
 

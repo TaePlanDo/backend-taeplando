@@ -1,22 +1,12 @@
-"""Load the checked-in exercise catalog used by the development seed."""
+"""Normalize the checked-in exercise catalog used by the development seed."""
 
 from __future__ import annotations
 
-import csv
 from dataclasses import dataclass
-from functools import cache
-from pathlib import Path
 
+from app.db.exercise_catalog_source import EXERCISE_SOURCE_ROWS
+from app.db.training_catalog import SEGMENT_CODE_BY_NAME
 from app.models.enums import EquipmentRequirementMode
-
-CATALOG_PATH = Path(__file__).with_name("data") / "exercise_catalog.csv"
-
-SEGMENT_CODE_BY_NAME = {
-    "Rozgrzewka": "WARMUP",
-    "Zabawa": "GAME",
-    "Ćwiczenia": "MAIN",
-    "Rozciąganie": "COOLDOWN",
-}
 
 _CANONICAL_EQUIPMENT_NAMES = {
     "balony": "Balony",
@@ -82,47 +72,78 @@ def _equipment(value: str) -> tuple[tuple[str, ...], EquipmentRequirementMode]:
     return tuple(dict.fromkeys(names)), mode
 
 
-def _number(row: dict[str, str], column: str, *, default: int | None = None) -> int:
-    value = row[column].strip()
+def _number(
+    value: str,
+    column: str,
+    source_id: str,
+    *,
+    default: int | None = None,
+) -> int:
+    value = value.strip()
     if value:
         return int(value)
     if default is not None:
         return default
-    raise ValueError(f"Missing {column} for catalog exercise {row['source_id']}")
+    raise ValueError(f"Missing {column} for catalog exercise {source_id}")
 
 
-def _row_to_exercise(row: dict[str, str]) -> SeedExercise:
-    equipment_names, equipment_requirement_mode = _equipment(row["equipment"].strip())
-    min_participants = _number(row, "min_participants")
+def _row_to_exercise(row: tuple[str, ...]) -> SeedExercise:
+    (
+        source_id,
+        name,
+        description,
+        min_age,
+        max_age,
+        equipment,
+        min_participants,
+        max_participants,
+        duration_minutes,
+        training_types,
+        segments,
+        physical_difficulty,
+        technical_difficulty,
+        upper_body_load,
+        lower_body_load,
+        core_load,
+    ) = row
+    equipment_names, equipment_requirement_mode = _equipment(equipment.strip())
+    parsed_min_participants = _number(min_participants, "min_participants", source_id)
     return SeedExercise(
-        source_id=_number(row, "source_id"),
-        name=row["name"].strip(),
-        description=row["description"].strip(),
-        min_age=_number(row, "min_age"),
-        max_age=_number(row, "max_age"),
-        min_participants=min_participants,
-        max_participants=_number(row, "max_participants", default=min_participants),
-        duration_minutes=_number(row, "duration_minutes"),
-        physical_difficulty=_number(row, "physical_difficulty"),
-        technical_difficulty=_number(row, "technical_difficulty"),
-        upper_body_load=_number(row, "upper_body_load"),
-        lower_body_load=_number(row, "lower_body_load"),
-        core_load=_number(row, "core_load"),
+        source_id=_number(source_id, "source_id", source_id),
+        name=name.strip(),
+        description=description.strip(),
+        min_age=_number(min_age, "min_age", source_id),
+        max_age=_number(max_age, "max_age", source_id),
+        min_participants=parsed_min_participants,
+        max_participants=_number(
+            max_participants,
+            "max_participants",
+            source_id,
+            default=parsed_min_participants,
+        ),
+        duration_minutes=_number(duration_minutes, "duration_minutes", source_id),
+        physical_difficulty=_number(
+            physical_difficulty, "physical_difficulty", source_id
+        ),
+        technical_difficulty=_number(
+            technical_difficulty, "technical_difficulty", source_id
+        ),
+        upper_body_load=_number(upper_body_load, "upper_body_load", source_id),
+        lower_body_load=_number(lower_body_load, "lower_body_load", source_id),
+        core_load=_number(core_load, "core_load", source_id),
         equipment_names=equipment_names,
         equipment_requirement_mode=equipment_requirement_mode,
-        training_type_names=_split(row["training_types"].strip(), "/"),
+        training_type_names=_split(training_types.strip(), "/"),
         segment_codes=tuple(
-            SEGMENT_CODE_BY_NAME[name] for name in _split(row["segments"].strip(), "/")
+            SEGMENT_CODE_BY_NAME[name] for name in _split(segments.strip(), "/")
         ),
     )
 
 
-@cache
 def load_exercise_catalog() -> tuple[SeedExercise, ...]:
-    """Return every source exercise and reject duplicate catalog IDs."""
+    """Return every source exercise embedded in application code."""
 
-    with CATALOG_PATH.open(encoding="utf-8", newline="") as catalog_file:
-        exercises = tuple(_row_to_exercise(row) for row in csv.DictReader(catalog_file))
+    exercises = tuple(_row_to_exercise(row) for row in EXERCISE_SOURCE_ROWS)
     if len({exercise.source_id for exercise in exercises}) != len(exercises):
         raise ValueError("Exercise catalog contains duplicate source IDs")
     return exercises
