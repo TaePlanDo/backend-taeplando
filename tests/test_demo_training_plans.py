@@ -5,8 +5,8 @@ from typing import TypedDict, cast
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from app.db.demo_training_plans import DemoTrainingContext, build_demo_training_rows
-from app.db.exercise_catalog import equipment_names, load_exercise_catalog
-from app.db.seed import SYSTEM_TRAINING_SEGMENTS, SYSTEM_TRAINING_TYPES
+from app.db.exercise_catalog import load_exercise_catalog
+from app.db.seed import SYSTEM_TRAINING_SEGMENTS
 
 
 class _SchemaSnapshot(TypedDict):
@@ -28,13 +28,6 @@ def _context() -> DemoTrainingContext:
     return DemoTrainingContext(
         trainer_id=_seed_id("trainer", "demo"),
         seed_id=_seed_id,
-        equipment_ids={
-            name: _seed_id("equipment", name) for name in equipment_names(exercises)
-        },
-        training_type_ids={
-            training_type["name"]: training_type["id"]
-            for training_type in SYSTEM_TRAINING_TYPES
-        },
         segment_snapshots={
             segment["code"]: {
                 "id": segment["id"],

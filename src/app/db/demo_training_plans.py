@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import TypedDict
+from typing import Literal, TypedDict
 from uuid import UUID
 
 from app.db.exercise_catalog import SeedExercise
@@ -24,6 +24,9 @@ class SegmentSnapshot(TypedDict):
     id: int
     code: str
     name: str
+
+
+CatalogKind = Literal["equipment", "training-type"]
 
 
 @dataclass(frozen=True)
@@ -57,8 +60,6 @@ class DemoTrainingContext:
 
     trainer_id: UUID
     seed_id: Callable[[str, str | int], UUID]
-    equipment_ids: Mapping[str, UUID]
-    training_type_ids: Mapping[str, UUID]
     segment_snapshots: Mapping[str, SegmentSnapshot]
     current_version_ids: Mapping[int, UUID]
 
@@ -149,6 +150,16 @@ def _schema_snapshot(
     }
 
 
+def _catalog_snapshot(
+    seed_id: Callable[[str, str | int], UUID],
+    kind: CatalogKind,
+    names: tuple[str, ...],
+) -> list[dict[str, str]]:
+    """Build an immutable catalog snapshot from deterministic catalog IDs."""
+
+    return [{"id": str(seed_id(kind, name)), "name": name} for name in names]
+
+
 def build_demo_training_rows(
     exercises: tuple[SeedExercise, ...],
     context: DemoTrainingContext,
@@ -227,14 +238,12 @@ def build_demo_training_rows(
                     "group_min_age_snapshot": group.min_age,
                     "group_max_age_snapshot": group.max_age,
                     "training_duration_snapshot": group.duration_minutes,
-                    "available_equipment_snapshot": [
-                        {"id": str(context.equipment_ids[name]), "name": name}
-                        for name in used_equipment
-                    ],
-                    "training_types_snapshot": [
-                        {"id": str(context.training_type_ids[name]), "name": name}
-                        for name in used_training_types
-                    ],
+                    "available_equipment_snapshot": _catalog_snapshot(
+                        context.seed_id, "equipment", used_equipment
+                    ),
+                    "training_types_snapshot": _catalog_snapshot(
+                        context.seed_id, "training-type", used_training_types
+                    ),
                     "schema_snapshot": [
                         _schema_snapshot(
                             position,
@@ -269,14 +278,14 @@ def build_demo_training_rows(
                         "min_participants_snapshot": exercise.min_participants,
                         "max_participants_snapshot": exercise.max_participants,
                         "duration_minutes_snapshot": exercise.duration_minutes,
-                        "equipment_snapshot": [
-                            {"id": str(context.equipment_ids[name]), "name": name}
-                            for name in exercise.equipment_names
-                        ],
-                        "training_types_snapshot": [
-                            {"id": str(context.training_type_ids[name]), "name": name}
-                            for name in exercise.training_type_names
-                        ],
+                        "equipment_snapshot": _catalog_snapshot(
+                            context.seed_id, "equipment", exercise.equipment_names
+                        ),
+                        "training_types_snapshot": _catalog_snapshot(
+                            context.seed_id,
+                            "training-type",
+                            exercise.training_type_names,
+                        ),
                         "segments_snapshot": [
                             context.segment_snapshots[segment_code]
                             for segment_code in exercise.segment_codes

@@ -568,15 +568,10 @@ async def seed_exercises(
 async def seed_training_groups_and_plans(
     session: AsyncSession,
     exercises: tuple[SeedExercise, ...],
-    equipment_ids: dict[str, UUID],
     current_version_ids: dict[int, UUID],
 ) -> None:
     """Persist the deterministic presentation groups and their plan snapshots."""
 
-    training_type_ids = {
-        training_type["name"]: training_type["id"]
-        for training_type in SYSTEM_TRAINING_TYPES
-    }
     segment_snapshots: dict[str, SegmentSnapshot] = {
         segment["code"]: {
             "id": segment["id"],
@@ -588,8 +583,6 @@ async def seed_training_groups_and_plans(
     context = DemoTrainingContext(
         trainer_id=DEMO_TRAINER_ID,
         seed_id=_seed_id,
-        equipment_ids=equipment_ids,
-        training_type_ids=training_type_ids,
         segment_snapshots=segment_snapshots,
         current_version_ids=current_version_ids,
     )
@@ -635,9 +628,7 @@ async def seed_demo_data(session: AsyncSession) -> None:
     await _remove_previous_demo_data(session)
     equipment_ids = await seed_equipment(session, exercises)
     current_version_ids = await seed_exercises(session, exercises, equipment_ids)
-    await seed_training_groups_and_plans(
-        session, exercises, equipment_ids, current_version_ids
-    )
+    await seed_training_groups_and_plans(session, exercises, current_version_ids)
 
 
 async def seed_system_data() -> None:
