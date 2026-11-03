@@ -281,54 +281,6 @@ async def upsert_local_user(session: AsyncSession, user: LocalUserSeed) -> None:
     )
 
 
-async def _remove_previous_demo_data(session: AsyncSession) -> None:
-    """Remove the single-record demo dataset used before the catalog seed."""
-
-    old_ids = {
-        "equipment": UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a02"),
-        "training_type": UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a03"),
-        "exercise": UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a04"),
-        "trainer_exercise": UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a05"),
-        "training_group": UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a06"),
-        "training_plan": UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a10"),
-        "plan_exercise": UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a11"),
-    }
-    await session.execute(
-        delete(TrainingPlanExercise).where(
-            TrainingPlanExercise.id == old_ids["plan_exercise"]
-        )
-    )
-    await session.execute(
-        delete(TrainingPlan).where(TrainingPlan.id == old_ids["training_plan"])
-    )
-    await session.execute(
-        delete(TrainingGroupSchemaItem).where(
-            TrainingGroupSchemaItem.training_group_id == old_ids["training_group"]
-        )
-    )
-    await session.execute(
-        delete(TrainingGroup).where(TrainingGroup.id == old_ids["training_group"])
-    )
-    for association_table in (
-        trainer_exercise_equipment,
-        trainer_exercise_training_types,
-        trainer_exercise_segments,
-    ):
-        await session.execute(
-            delete(association_table).where(
-                association_table.c.trainer_exercise_id == old_ids["trainer_exercise"]
-            )
-        )
-    await session.execute(
-        delete(TrainerExercise).where(TrainerExercise.id == old_ids["trainer_exercise"])
-    )
-    await session.execute(delete(Exercise).where(Exercise.id == old_ids["exercise"]))
-    await session.execute(delete(Equipment).where(Equipment.id == old_ids["equipment"]))
-    await session.execute(
-        delete(TrainingType).where(TrainingType.id == old_ids["training_type"])
-    )
-
-
 async def seed_exercises(
     session: AsyncSession,
     exercises: tuple[SeedExercise, ...],
@@ -485,7 +437,6 @@ async def seed_demo_data(session: AsyncSession) -> None:
     logger.info("Seeding %d source exercises", len(exercises))
     for user in DEMO_LOCAL_USERS:
         await upsert_local_user(session, user)
-    await _remove_previous_demo_data(session)
     await seed_equipment(session, exercises)
     current_version_ids = await seed_exercises(session, exercises)
     await seed_training_groups_and_plans(session, exercises, current_version_ids)
