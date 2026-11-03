@@ -86,6 +86,7 @@ DEMO_TRAINING_GROUPS = (
         ),
     ),
 )
+PLANS_PER_GROUP = 5
 
 
 def _plan_exercise(
@@ -157,7 +158,8 @@ def build_demo_training_rows(
                     "position": position,
                 }
             )
-        for plan_number in range(1, 6):
+        for plan_index in range(PLANS_PER_GROUP):
+            plan_number = plan_index + 1
             plan_id = seed_id("training-plan", f"{group.key}:{plan_number}")
             plan_ids.append(plan_id)
             selected = [
@@ -165,9 +167,10 @@ def build_demo_training_rows(
                     exercises,
                     group,
                     schema_item,
-                    group_index * 47 + plan_number * 11 + position * 7,
+                    (group_index * PLANS_PER_GROUP + plan_index) * len(group.schema)
+                    + schema_index,
                 )
-                for position, schema_item in enumerate(group.schema, start=1)
+                for schema_index, schema_item in enumerate(group.schema)
             ]
             used_equipment = tuple(
                 sorted(
