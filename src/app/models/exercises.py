@@ -12,6 +12,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
@@ -33,6 +34,7 @@ from app.models.associations import (
 )
 from app.models.base import Base, utc_now
 from app.models.enums import (
+    EquipmentRequirementMode,
     ExerciseScope,
     ExerciseVersionStatus,
     TrainerExerciseStatus,
@@ -42,6 +44,47 @@ if TYPE_CHECKING:
     from app.models.catalogs import Equipment, TrainingSegment, TrainingType
     from app.models.training import TrainingPlanExercise
     from app.models.users import User
+
+
+def _planning_attribute_constraints(table_name: str) -> tuple[CheckConstraint, ...]:
+    """Build the shared 1–5 constraints for exercise planning attributes."""
+
+    return tuple(
+        CheckConstraint(
+            f"{column_name} BETWEEN 1 AND 5",
+            name=f"ck_{table_name}_{column_name}",
+        )
+        for column_name in (
+            "physical_difficulty",
+            "technical_difficulty",
+            "upper_body_load",
+            "lower_body_load",
+            "core_load",
+        )
+    )
+
+
+class ExercisePlanningAttributesMixin:
+    """Planning metadata shared by global versions and trainer configurations."""
+
+    equipment_requirement_mode: Mapped[EquipmentRequirementMode] = mapped_column(
+        SqlEnum(EquipmentRequirementMode, name="equipment_requirement_mode"),
+        default=EquipmentRequirementMode.ALL,
+        server_default=EquipmentRequirementMode.ALL.value,
+    )
+    physical_difficulty: Mapped[int] = mapped_column(
+        SmallInteger, default=3, server_default="3"
+    )
+    technical_difficulty: Mapped[int] = mapped_column(
+        SmallInteger, default=3, server_default="3"
+    )
+    upper_body_load: Mapped[int] = mapped_column(
+        SmallInteger, default=3, server_default="3"
+    )
+    lower_body_load: Mapped[int] = mapped_column(
+        SmallInteger, default=3, server_default="3"
+    )
+    core_load: Mapped[int] = mapped_column(SmallInteger, default=3, server_default="3")
 
 
 class Exercise(Base):
@@ -90,7 +133,7 @@ class Exercise(Base):
     )
 
 
-class ExerciseVersion(Base):
+class ExerciseVersion(ExercisePlanningAttributesMixin, Base):
     """An immutable moderation version of a global exercise."""
 
     __tablename__ = "exercise_versions"
@@ -111,6 +154,7 @@ class ExerciseVersion(Base):
         CheckConstraint(
             "duration_minutes > 0", name="ck_exercise_versions_duration_minutes"
         ),
+        *_planning_attribute_constraints("exercise_versions"),
         Index(
             "uq_exercise_versions_pending",
             "exercise_id",
@@ -160,7 +204,7 @@ class ExerciseVersion(Base):
     )
 
 
-class TrainerExercise(Base):
+class TrainerExercise(ExercisePlanningAttributesMixin, Base):
     """A trainer's local configuration of a source exercise."""
 
     __tablename__ = "trainer_exercises"
@@ -178,6 +222,7 @@ class TrainerExercise(Base):
         CheckConstraint(
             "duration_minutes > 0", name="ck_trainer_exercises_duration_minutes"
         ),
+        *_planning_attribute_constraints("trainer_exercises"),
     )
 
     id: Mapped[UUID] = mapped_column(
