@@ -49,6 +49,11 @@ def test_builder_creates_three_coherent_groups_with_five_plans_each() -> None:
     rows = build_demo_training_rows(load_exercise_catalog(), _context())
 
     assert len(rows.group_rows) == 3
+    assert [row["name"] for row in rows.group_rows] == [
+        "Żarów gr. 1",
+        "Jaworzyna gr. 1",
+        "Jaworzyna gr. 2",
+    ]
     assert len(rows.group_schema_rows) == 10
     assert len(rows.plan_rows) == 15
     assert len(rows.plan_exercise_rows) == 50

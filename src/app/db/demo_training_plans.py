@@ -72,7 +72,7 @@ _COOLDOWN = GroupSchemaSeed("COOLDOWN", 10)
 DEMO_TRAINING_GROUPS = (
     TrainingGroupSeed(
         key="children",
-        name="Dzieci początkujące",
+        name="Żarów gr. 1",
         min_age=6,
         max_age=8,
         duration_minutes=45,
@@ -81,7 +81,7 @@ DEMO_TRAINING_GROUPS = (
     ),
     TrainingGroupSeed(
         key="youth",
-        name="Młodzicy",
+        name="Jaworzyna gr. 1",
         min_age=9,
         max_age=12,
         duration_minutes=60,
@@ -94,7 +94,7 @@ DEMO_TRAINING_GROUPS = (
     ),
     TrainingGroupSeed(
         key="teens",
-        name="Młodzież zaawansowana",
+        name="Jaworzyna gr. 2",
         min_age=13,
         max_age=16,
         duration_minutes=75,
