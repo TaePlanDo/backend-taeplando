@@ -20,7 +20,7 @@ def test_list_segments_returns_catalog_for_authenticated_trainer(
     """Return the seeded segment list for an authenticated trainer."""
     segments = [
         TrainingSegmentResponse(id=1, code="WARMUP", name="Rozgrzewka"),
-        TrainingSegmentResponse(id=3, code="MAIN", name="Część główna"),
+        TrainingSegmentResponse(id=3, code="MAIN", name="Ćwiczenia"),
     ]
     with patch(
         "app.api.training_segments.training_segment_service.list_segments",
@@ -31,7 +31,7 @@ def test_list_segments_returns_catalog_for_authenticated_trainer(
     assert response.status_code == 200
     assert response.json() == [
         {"id": 1, "code": "WARMUP", "name": "Rozgrzewka"},
-        {"id": 3, "code": "MAIN", "name": "Część główna"},
+        {"id": 3, "code": "MAIN", "name": "Ćwiczenia"},
     ]
     list_segments.assert_awaited_once()
 
@@ -44,7 +44,7 @@ def test_list_segments_service_maps_catalog_rows() -> None:
         new=AsyncMock(
             return_value=[
                 TrainingSegment(id=1, code="WARMUP", name="Rozgrzewka"),
-                TrainingSegment(id=3, code="MAIN", name="Część główna"),
+                TrainingSegment(id=3, code="MAIN", name="Ćwiczenia"),
             ]
         ),
     ) as list_all:
@@ -52,7 +52,7 @@ def test_list_segments_service_maps_catalog_rows() -> None:
 
     assert result == [
         TrainingSegmentResponse(id=1, code="WARMUP", name="Rozgrzewka"),
-        TrainingSegmentResponse(id=3, code="MAIN", name="Część główna"),
+        TrainingSegmentResponse(id=3, code="MAIN", name="Ćwiczenia"),
     ]
     list_all.assert_awaited_once_with(session)
 
@@ -78,7 +78,7 @@ def test_list_all_orders_by_id() -> None:
     session = AsyncMock()
     segments = [
         TrainingSegment(id=1, code="WARMUP", name="Rozgrzewka"),
-        TrainingSegment(id=3, code="MAIN", name="Część główna"),
+        TrainingSegment(id=3, code="MAIN", name="Ćwiczenia"),
     ]
     result = MagicMock()
     result.scalars.return_value.all.return_value = segments

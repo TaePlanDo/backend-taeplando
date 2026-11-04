@@ -33,8 +33,13 @@ Install and start both of the following before setting up the project:
  uv run seed-system-data
 ```
 
-The seed is idempotent. It creates or updates the local demo data; the
-current demo credentials are defined in `src/app/db/seed.py`. 5. Start the API:
+The seed is idempotent. It keeps one local demo trainer and creates the four
+fixed segments, 24 global training types, 14 global equipment types, 318 global
+exercises, eight exercise histories with two approved versions, three training
+groups, and five historical plans per group. The current demo credentials are
+defined in `src/app/db/seed.py`.
+
+5. Start the API:
 
 ```powershell
  uv run uvicorn app.main:app --reload
@@ -146,7 +151,7 @@ Example list response:
         {
           "segment_id": 3,
           "segment_code": "MAIN",
-          "segment_name": "Część główna",
+          "segment_name": "Ćwiczenia",
           "percentage": "100.00",
           "position": 1
         }

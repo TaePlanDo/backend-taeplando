@@ -112,7 +112,7 @@ def _configuration() -> ExerciseConfiguration:
                 visibility=CatalogVisibility.LOCAL,
             )
         ],
-        segments=[TrainingSegment(id=SEGMENT_ID, code="MAIN", name="Część główna")],
+        segments=[TrainingSegment(id=SEGMENT_ID, code="MAIN", name="Ćwiczenia")],
     )
 
 
@@ -134,7 +134,7 @@ def _private_response() -> ExerciseResponse:
         equipment=[CatalogReference(id=EQUIPMENT_ID, name="Tarcza")],
         training_types=[CatalogReference(id=TRAINING_TYPE_ID, name="Techniczny")],
         segments=[
-            TrainingSegmentResponse(id=SEGMENT_ID, code="MAIN", name="Część główna")
+            TrainingSegmentResponse(id=SEGMENT_ID, code="MAIN", name="Ćwiczenia")
         ],
     )
 

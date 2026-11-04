@@ -1,19 +1,40 @@
-"""Seed the fixed system data required by the application."""
+"""Seed the fixed catalogs and a presentation-ready demo dataset."""
 
 from __future__ import annotations
 
 import asyncio
 import logging
 from collections.abc import Sequence
-from typing import Any, TypedDict
-from uuid import UUID
+from typing import TypedDict, cast
+from uuid import UUID, uuid5
 
+from sqlalchemy import Table, case, delete, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import FromClause
 
 from app.core.security import hash_password
+from app.db.demo_exercise_rows import (
+    DemoExerciseSeedContext,
+    build_demo_exercise_rows,
+)
+from app.db.demo_training_plans import (
+    DemoTrainingContext,
+    SegmentSnapshot,
+    build_demo_training_rows,
+)
+from app.db.exercise_catalog import (
+    SeedExercise,
+    equipment_names,
+    load_exercise_catalog,
+    training_type_names,
+)
 from app.db.session import dispose_engine, get_session_factory
+from app.db.training_catalog import SYSTEM_TRAINING_SEGMENTS
 from app.models.associations import (
+    exercise_version_equipment,
+    exercise_version_segments,
+    exercise_version_training_types,
     trainer_exercise_equipment,
     trainer_exercise_segments,
     trainer_exercise_training_types,
@@ -22,10 +43,8 @@ from app.models.catalogs import Equipment, TrainingSegment, TrainingType
 from app.models.enums import (
     AuthMethod,
     CatalogVisibility,
-    ExerciseScope,
-    TrainerExerciseStatus,
 )
-from app.models.exercises import Exercise, TrainerExercise
+from app.models.exercises import Exercise, ExerciseVersion, TrainerExercise
 from app.models.training import (
     TrainingGroup,
     TrainingGroupSchemaItem,
@@ -36,24 +55,10 @@ from app.models.users import User
 
 logger = logging.getLogger(__name__)
 
-# Local development credentials for the deterministic demo trainer.
+SEED_NAMESPACE = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a00")
+DEMO_TRAINER_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a01")
 DEMO_TRAINER_EMAIL = "demo.trener@gmail.com"
 DEMO_TRAINER_PASSWORD = "Demo123!"
-
-
-class TrainingSegmentSeed(TypedDict):
-    """One immutable entry of the system training-segment dictionary."""
-
-    id: int
-    code: str
-    name: str
-
-
-class TrainingTypeSeed(TypedDict):
-    """One immutable entry of the system training-type catalog."""
-
-    id: UUID
-    name: str
 
 
 class LocalUserSeed(TypedDict):
@@ -65,35 +70,10 @@ class LocalUserSeed(TypedDict):
     password: str
 
 
-SYSTEM_TRAINING_SEGMENTS: Sequence[TrainingSegmentSeed] = (
-    {"id": 1, "code": "WARMUP", "name": "Rozgrzewka"},
-    {"id": 2, "code": "GAME", "name": "Zabawa"},
-    {"id": 3, "code": "MAIN", "name": "Część główna"},
-    {"id": 4, "code": "COOLDOWN", "name": "Wyciszenie"},
-)
+def _seed_id(kind: str, key: str | int) -> UUID:
+    return uuid5(SEED_NAMESPACE, f"{kind}:{key}")
 
-SYSTEM_TRAINING_TYPES: Sequence[TrainingTypeSeed] = (
-    {"id": UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a12"), "name": "Technika"},
-    {"id": UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a13"), "name": "Poomsae"},
-    {
-        "id": UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a14"),
-        "name": "Walka sportowa",
-    },
-    {"id": UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a15"), "name": "Samoobrona"},
-)
 
-# Fixed identifiers make repeated seed runs idempotent and preserve relations.
-DEMO_TRAINER_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a01")
-DEMO_EQUIPMENT_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a02")
-DEMO_TRAINING_TYPE_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a03")
-DEMO_EXERCISE_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a04")
-DEMO_TRAINER_EXERCISE_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a05")
-DEMO_TRAINING_GROUP_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a06")
-DEMO_WARMUP_SCHEMA_ITEM_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a07")
-DEMO_MAIN_SCHEMA_ITEM_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a08")
-DEMO_COOLDOWN_SCHEMA_ITEM_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a09")
-DEMO_TRAINING_PLAN_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a10")
-DEMO_PLAN_EXERCISE_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a11")
 DEMO_LOCAL_USERS: Sequence[LocalUserSeed] = (
     {
         "id": DEMO_TRAINER_ID,
@@ -104,11 +84,51 @@ DEMO_LOCAL_USERS: Sequence[LocalUserSeed] = (
 )
 
 
+async def _upsert_by_id(
+    session: AsyncSession,
+    table: FromClause,
+    rows: list[dict[str, object]],
+    update_columns: tuple[str, ...],
+) -> None:
+    if not rows:
+        return
+    writable_table = cast(Table, table)
+    statement = insert(writable_table).values(rows)
+    await session.execute(
+        statement.on_conflict_do_update(
+            index_elements=[table.c.id],
+            set_={column: statement.excluded[column] for column in update_columns},
+        )
+    )
+
+
+async def _replace_associations(
+    session: AsyncSession,
+    table: FromClause,
+    owner_column: str,
+    owner_ids: list[UUID],
+    rows: list[dict[str, object]],
+) -> None:
+    writable_table = cast(Table, table)
+    if owner_ids:
+        await session.execute(
+            delete(writable_table).where(writable_table.c[owner_column].in_(owner_ids))
+        )
+    if rows:
+        await session.execute(
+            insert(writable_table).values(rows).on_conflict_do_nothing()
+        )
+
+
 async def seed_training_segments(session: AsyncSession) -> None:
     """Insert or restore the fixed training-segment dictionary."""
 
-    logger.info("Seeding %d fixed training segments", len(SYSTEM_TRAINING_SEGMENTS))
-    statement = insert(TrainingSegment).values(list(SYSTEM_TRAINING_SEGMENTS))
+    statement = insert(TrainingSegment).values(
+        [
+            {"id": segment.id, "code": segment.code, "name": segment.name}
+            for segment in SYSTEM_TRAINING_SEGMENTS
+        ]
+    )
     await session.execute(
         statement.on_conflict_do_update(
             index_elements=[TrainingSegment.id],
@@ -120,38 +140,80 @@ async def seed_training_segments(session: AsyncSession) -> None:
     )
 
 
-async def seed_training_types(session: AsyncSession) -> None:
-    """Insert or restore the fixed global training-type catalog."""
-    logger.info("Seeding %d global training types", len(SYSTEM_TRAINING_TYPES))
-    statement = insert(TrainingType).values(
-        [
-            {
-                **training_type,
-                "owner_user_id": None,
-                "visibility": CatalogVisibility.GLOBAL,
-            }
-            for training_type in SYSTEM_TRAINING_TYPES
-        ]
+async def _clear_global_training_types(session: AsyncSession) -> None:
+    global_training_type_ids = select(TrainingType.id).where(
+        TrainingType.visibility == CatalogVisibility.GLOBAL
     )
+    for association_table in (
+        exercise_version_training_types,
+        trainer_exercise_training_types,
+    ):
+        await session.execute(
+            delete(association_table).where(
+                association_table.c.training_type_id.in_(global_training_type_ids)
+            )
+        )
     await session.execute(
-        statement.on_conflict_do_update(
-            index_elements=[TrainingType.id],
-            set_={
-                "owner_user_id": None,
-                "name": statement.excluded.name,
-                "visibility": CatalogVisibility.GLOBAL,
-            },
+        delete(TrainingType).where(TrainingType.visibility == CatalogVisibility.GLOBAL)
+    )
+
+
+async def _clear_global_equipment(session: AsyncSession) -> None:
+    global_equipment_ids = select(Equipment.id).where(
+        Equipment.visibility == CatalogVisibility.GLOBAL
+    )
+    for association_table in (exercise_version_equipment, trainer_exercise_equipment):
+        await session.execute(
+            delete(association_table).where(
+                association_table.c.equipment_id.in_(global_equipment_ids)
+            )
+        )
+    await session.execute(
+        delete(Equipment).where(Equipment.visibility == CatalogVisibility.GLOBAL)
+    )
+
+
+async def seed_training_types(
+    session: AsyncSession, exercises: tuple[SeedExercise, ...]
+) -> None:
+    """Replace the global training-type dictionary with the source catalog."""
+
+    await _clear_global_training_types(session)
+    await session.execute(
+        insert(TrainingType).values(
+            [
+                {
+                    "id": _seed_id("training-type", name),
+                    "owner_user_id": None,
+                    "name": name,
+                    "visibility": CatalogVisibility.GLOBAL,
+                }
+                for name in training_type_names(exercises)
+            ]
         )
     )
 
 
-async def insert_if_missing(
-    session: AsyncSession, table: Any, values: dict[str, object]
+async def seed_equipment(
+    session: AsyncSession, exercises: tuple[SeedExercise, ...]
 ) -> None:
-    """Insert one deterministic seed record without replacing existing data."""
+    """Replace global equipment with the normalized values used by source exercises."""
 
-    statement = insert(table).values(values)
-    await session.execute(statement.on_conflict_do_nothing(index_elements=[table.c.id]))
+    await _clear_global_equipment(session)
+    names = equipment_names(exercises)
+    await session.execute(
+        insert(Equipment).values(
+            [
+                {
+                    "id": _seed_id("equipment", name),
+                    "owner_user_id": None,
+                    "name": name,
+                    "visibility": CatalogVisibility.GLOBAL,
+                }
+                for name in names
+            ]
+        )
+    )
 
 
 async def upsert_local_user(session: AsyncSession, user: LocalUserSeed) -> None:
@@ -178,192 +240,176 @@ async def upsert_local_user(session: AsyncSession, user: LocalUserSeed) -> None:
     )
 
 
-async def seed_demo_data(session: AsyncSession) -> None:
-    """Insert one connected trainer, group, exercise, and example plan."""
+async def seed_exercises(
+    session: AsyncSession,
+    exercises: tuple[SeedExercise, ...],
+) -> dict[int, UUID]:
+    """Seed global exercises, their current configurations, and version history."""
 
-    logger.info("Seeding %d local demo users", len(DEMO_LOCAL_USERS))
-    for user in DEMO_LOCAL_USERS:
-        await upsert_local_user(session, user)
+    context = DemoExerciseSeedContext(
+        trainer_id=DEMO_TRAINER_ID,
+        seed_id=_seed_id,
+        segment_ids={segment.code: segment.id for segment in SYSTEM_TRAINING_SEGMENTS},
+    )
+    rows = build_demo_exercise_rows(exercises, context)
 
-    logger.info("Seeding demo catalog, group, and training plan")
-    await insert_if_missing(
-        session,
-        Equipment.__table__,
-        {
-            "id": DEMO_EQUIPMENT_ID,
-            "owner_user_id": DEMO_TRAINER_ID,
-            "name": "Tarcza treningowa",
-            "visibility": CatalogVisibility.LOCAL,
-        },
-    )
-    await insert_if_missing(
-        session,
-        TrainingType.__table__,
-        {
-            "id": DEMO_TRAINING_TYPE_ID,
-            "owner_user_id": DEMO_TRAINER_ID,
-            "name": "Technika",
-            "visibility": CatalogVisibility.LOCAL,
-        },
-    )
-    await insert_if_missing(
+    await _upsert_by_id(
         session,
         Exercise.__table__,
-        {
-            "id": DEMO_EXERCISE_ID,
-            "owner_user_id": DEMO_TRAINER_ID,
-            "scope": ExerciseScope.PRIVATE,
-            "name": "Ap chagi na tarczę",
-            "description": "Kopnięcia frontalne na tarczę trzymaną przez partnera.",
-        },
+        rows.exercise_rows,
+        ("owner_user_id", "scope", "name", "description"),
     )
-    await insert_if_missing(
+    await _upsert_by_id(
+        session,
+        ExerciseVersion.__table__,
+        rows.version_rows,
+        tuple(
+            column
+            for column in rows.version_rows[0]
+            if column not in {"id", "exercise_id", "created_at"}
+        ),
+    )
+    await _upsert_by_id(
         session,
         TrainerExercise.__table__,
-        {
-            "id": DEMO_TRAINER_EXERCISE_ID,
-            "trainer_id": DEMO_TRAINER_ID,
-            "exercise_id": DEMO_EXERCISE_ID,
-            "status": TrainerExerciseStatus.ACTIVE,
-            "min_age": 7,
-            "max_age": 14,
-            "min_participants": 2,
-            "max_participants": 20,
-            "duration_minutes": 10,
-        },
+        rows.trainer_rows,
+        tuple(
+            column
+            for column in rows.trainer_rows[0]
+            if column not in {"id", "created_at"}
+        ),
+    )
+    await _replace_associations(
+        session,
+        exercise_version_equipment,
+        "exercise_version_id",
+        rows.version_ids,
+        rows.version_equipment_rows,
+    )
+    await _replace_associations(
+        session,
+        exercise_version_training_types,
+        "exercise_version_id",
+        rows.version_ids,
+        rows.version_training_type_rows,
+    )
+    await _replace_associations(
+        session,
+        exercise_version_segments,
+        "exercise_version_id",
+        rows.version_ids,
+        rows.version_segment_rows,
+    )
+    await _replace_associations(
+        session,
+        trainer_exercise_equipment,
+        "trainer_exercise_id",
+        rows.trainer_ids,
+        rows.trainer_equipment_rows,
+    )
+    await _replace_associations(
+        session,
+        trainer_exercise_training_types,
+        "trainer_exercise_id",
+        rows.trainer_ids,
+        rows.trainer_training_type_rows,
+    )
+    await _replace_associations(
+        session,
+        trainer_exercise_segments,
+        "trainer_exercise_id",
+        rows.trainer_ids,
+        rows.trainer_segment_rows,
     )
     await session.execute(
-        insert(trainer_exercise_equipment)
+        update(Exercise)
+        .where(Exercise.id.in_(rows.current_versions_by_exercise))
         .values(
-            trainer_exercise_id=DEMO_TRAINER_EXERCISE_ID,
-            equipment_id=DEMO_EQUIPMENT_ID,
+            latest_approved_version_id=case(
+                rows.current_versions_by_exercise,
+                value=Exercise.id,
+            )
         )
-        .on_conflict_do_nothing()
     )
-    await session.execute(
-        insert(trainer_exercise_training_types)
-        .values(
-            trainer_exercise_id=DEMO_TRAINER_EXERCISE_ID,
-            training_type_id=DEMO_TRAINING_TYPE_ID,
-        )
-        .on_conflict_do_nothing()
+    return rows.current_version_ids
+
+
+async def seed_training_groups_and_plans(
+    session: AsyncSession,
+    exercises: tuple[SeedExercise, ...],
+    current_version_ids: dict[int, UUID],
+) -> None:
+    """Persist the deterministic presentation groups and their plan snapshots."""
+
+    segment_snapshots: dict[str, SegmentSnapshot] = {
+        segment.code: {
+            "id": segment.id,
+            "code": segment.code,
+            "name": segment.name,
+        }
+        for segment in SYSTEM_TRAINING_SEGMENTS
+    }
+    context = DemoTrainingContext(
+        trainer_id=DEMO_TRAINER_ID,
+        seed_id=_seed_id,
+        segment_snapshots=segment_snapshots,
+        current_version_ids=current_version_ids,
     )
-    await session.execute(
-        insert(trainer_exercise_segments)
-        .values(trainer_exercise_id=DEMO_TRAINER_EXERCISE_ID, segment_id=3)
-        .on_conflict_do_nothing()
-    )
-    await insert_if_missing(
+    rows = build_demo_training_rows(exercises, context)
+    await _upsert_by_id(
         session,
         TrainingGroup.__table__,
-        {
-            "id": DEMO_TRAINING_GROUP_ID,
-            "trainer_id": DEMO_TRAINER_ID,
-            "name": "Młodzież początkująca",
-            "min_age": 7,
-            "max_age": 14,
-            "duration_minutes": 60,
-        },
+        rows.group_rows,
+        ("trainer_id", "name", "min_age", "max_age", "duration_minutes"),
     )
-    for item_id, segment_id, percentage, position in (
-        (DEMO_WARMUP_SCHEMA_ITEM_ID, 1, 20, 1),
-        (DEMO_MAIN_SCHEMA_ITEM_ID, 3, 70, 2),
-        (DEMO_COOLDOWN_SCHEMA_ITEM_ID, 4, 10, 3),
-    ):
-        await insert_if_missing(
-            session,
-            TrainingGroupSchemaItem.__table__,
-            {
-                "id": item_id,
-                "training_group_id": DEMO_TRAINING_GROUP_ID,
-                "segment_id": segment_id,
-                "percentage": percentage,
-                "position": position,
-            },
+    await _replace_associations(
+        session,
+        TrainingGroupSchemaItem.__table__,
+        "training_group_id",
+        list(rows.group_ids.values()),
+        rows.group_schema_rows,
+    )
+    await session.execute(
+        delete(TrainingPlanExercise).where(
+            TrainingPlanExercise.training_plan_id.in_(rows.plan_ids)
         )
-    await insert_if_missing(
+    )
+    await _upsert_by_id(
         session,
         TrainingPlan.__table__,
-        {
-            "id": DEMO_TRAINING_PLAN_ID,
-            "trainer_id": DEMO_TRAINER_ID,
-            "training_group_id": DEMO_TRAINING_GROUP_ID,
-            "participant_count": 10,
-            "name": "Trening demonstracyjny",
-            "group_name_snapshot": "Młodzież początkująca",
-            "group_min_age_snapshot": 7,
-            "group_max_age_snapshot": 14,
-            "training_duration_snapshot": 60,
-            "available_equipment_snapshot": [
-                {"id": str(DEMO_EQUIPMENT_ID), "name": "Tarcza treningowa"}
-            ],
-            "training_types_snapshot": [
-                {"id": str(DEMO_TRAINING_TYPE_ID), "name": "Technika"}
-            ],
-            "schema_snapshot": [
-                {
-                    "position": 1,
-                    "segment_id": 1,
-                    "code": "WARMUP",
-                    "name": "Rozgrzewka",
-                    "percentage": 20,
-                },
-                {
-                    "position": 2,
-                    "segment_id": 3,
-                    "code": "MAIN",
-                    "name": "Część główna",
-                    "percentage": 70,
-                },
-                {
-                    "position": 3,
-                    "segment_id": 4,
-                    "code": "COOLDOWN",
-                    "name": "Wyciszenie",
-                    "percentage": 10,
-                },
-            ],
-        },
+        rows.plan_rows,
+        tuple(
+            column
+            for column in rows.plan_rows[0]
+            if column not in {"id", "generated_at"}
+        ),
     )
-    await insert_if_missing(
-        session,
-        TrainingPlanExercise.__table__,
-        {
-            "id": DEMO_PLAN_EXERCISE_ID,
-            "training_plan_id": DEMO_TRAINING_PLAN_ID,
-            "trainer_exercise_id": DEMO_TRAINER_EXERCISE_ID,
-            "exercise_id": DEMO_EXERCISE_ID,
-            "position": 1,
-            "schema_position": 2,
-            "name_snapshot": "Ap chagi na tarczę",
-            "description_snapshot": (
-                "Kopnięcia frontalne na tarczę trzymaną przez partnera."
-            ),
-            "min_age_snapshot": 7,
-            "max_age_snapshot": 14,
-            "min_participants_snapshot": 2,
-            "max_participants_snapshot": 20,
-            "duration_minutes_snapshot": 10,
-            "equipment_snapshot": [
-                {"id": str(DEMO_EQUIPMENT_ID), "name": "Tarcza treningowa"}
-            ],
-            "training_types_snapshot": [
-                {"id": str(DEMO_TRAINING_TYPE_ID), "name": "Technika"}
-            ],
-            "segments_snapshot": [{"id": 3, "code": "MAIN", "name": "Część główna"}],
-        },
-    )
+    await session.execute(insert(TrainingPlanExercise).values(rows.plan_exercise_rows))
+
+
+async def seed_demo_data(
+    session: AsyncSession, exercises: tuple[SeedExercise, ...]
+) -> None:
+    """Insert the demo trainer, global catalog exercises, groups, and plans."""
+
+    logger.info("Seeding %d source exercises", len(exercises))
+    for user in DEMO_LOCAL_USERS:
+        await upsert_local_user(session, user)
+    await seed_equipment(session, exercises)
+    current_version_ids = await seed_exercises(session, exercises)
+    await seed_training_groups_and_plans(session, exercises, current_version_ids)
 
 
 async def seed_system_data() -> None:
     """Apply all system seed data in one transaction."""
 
     logger.info("Starting system-data seed transaction")
+    exercises = load_exercise_catalog()
     async with get_session_factory()() as session:
         async with session.begin():
             await seed_training_segments(session)
-            await seed_training_types(session)
-            await seed_demo_data(session)
+            await seed_training_types(session, exercises)
+            await seed_demo_data(session, exercises)
     logger.info("System-data seed transaction completed")
 
 
@@ -380,7 +426,7 @@ async def run_seed_command() -> None:
 
 
 def main() -> None:
-    """Run the system-data seed command."""
+    """Run the seed and configure command-line logging."""
 
     logging.basicConfig(
         level=logging.INFO,
