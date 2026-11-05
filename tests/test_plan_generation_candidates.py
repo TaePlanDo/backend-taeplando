@@ -18,6 +18,8 @@ EQUIPMENT_ID = UUID("2ac590e1-2a46-4cb7-8944-803e364cc46b")
 OTHER_EQUIPMENT_ID = UUID("3ac590e1-2a46-4cb7-8944-803e364cc46b")
 TRAINING_TYPE_ID = UUID("4ac590e1-2a46-4cb7-8944-803e364cc46b")
 OTHER_TRAINING_TYPE_ID = UUID("5ac590e1-2a46-4cb7-8944-803e364cc46b")
+EXERCISE_ID = UUID("fac590e1-2a46-4cb7-8944-803e364cc46b")
+EXERCISE_VERSION_ID = UUID("fbc590e1-2a46-4cb7-8944-803e364cc46b")
 
 
 def _parameters(
@@ -49,12 +51,15 @@ def _source(
     equipment_mode: EquipmentRequirementMode,
     training_type_ids: list[UUID],
     segment_ids: list[int],
+    exercise_id: UUID | None = None,
+    source_version_id: UUID | None = None,
+    duration_minutes: int = 10,
 ) -> SimpleNamespace:
     return SimpleNamespace(
         id=identifier,
-        exercise_id=identifier,
-        source_version_id=None,
-        duration_minutes=10,
+        exercise_id=exercise_id or identifier,
+        source_version_id=source_version_id,
+        duration_minutes=duration_minutes,
         equipment_requirement_mode=equipment_mode,
         equipment=[SimpleNamespace(id=item_id) for item_id in equipment_ids],
         training_types=[SimpleNamespace(id=item_id) for item_id in training_type_ids],
@@ -71,6 +76,9 @@ def test_prepare_candidates_applies_equipment_type_and_segment_rules() -> None:
         equipment_mode=EquipmentRequirementMode.ALL,
         training_type_ids=[TRAINING_TYPE_ID],
         segment_ids=[2, 1],
+        exercise_id=EXERCISE_ID,
+        source_version_id=EXERCISE_VERSION_ID,
+        duration_minutes=15,
     )
     any_requirement = _source(
         UUID("7ac590e1-2a46-4cb7-8944-803e364cc46b"),
@@ -119,11 +127,21 @@ def test_prepare_candidates_applies_equipment_type_and_segment_rules() -> None:
             )
         )
 
-    assert [
-        (item.trainer_exercise_id, item.schema_positions) for item in candidates
-    ] == [
-        (all_requirement.id, (1, 2)),
-        (any_requirement.id, (2,)),
+    assert candidates == [
+        plan_generation_candidates_service.PlanExerciseCandidate(
+            trainer_exercise_id=all_requirement.id,
+            exercise_id=EXERCISE_ID,
+            exercise_version_id=EXERCISE_VERSION_ID,
+            duration_minutes=15,
+            schema_positions=(1, 2),
+        ),
+        plan_generation_candidates_service.PlanExerciseCandidate(
+            trainer_exercise_id=any_requirement.id,
+            exercise_id=any_requirement.id,
+            exercise_version_id=None,
+            duration_minutes=10,
+            schema_positions=(2,),
+        ),
     ]
     list_candidate_sources.assert_awaited_once_with(
         session,
