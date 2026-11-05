@@ -70,7 +70,7 @@ def test_prepare_candidates_applies_equipment_type_and_segment_rules() -> None:
         equipment_ids=[EQUIPMENT_ID],
         equipment_mode=EquipmentRequirementMode.ALL,
         training_type_ids=[TRAINING_TYPE_ID],
-        segment_ids=[1],
+        segment_ids=[2, 1],
     )
     any_requirement = _source(
         UUID("7ac590e1-2a46-4cb7-8944-803e364cc46b"),
@@ -122,7 +122,7 @@ def test_prepare_candidates_applies_equipment_type_and_segment_rules() -> None:
     assert [
         (item.trainer_exercise_id, item.schema_positions) for item in candidates
     ] == [
-        (all_requirement.id, (1,)),
+        (all_requirement.id, (1, 2)),
         (any_requirement.id, (2,)),
     ]
     list_candidate_sources.assert_awaited_once_with(
@@ -215,3 +215,4 @@ def test_list_candidate_sources_accepts_exercises_with_an_age_range_overlap() ->
     assert "trainer_exercises.min_participants" in statement
     assert "trainer_exercises.max_participants" in statement
     assert "exercises.scope" in statement
+    assert "order by trainer_exercises.id" in statement

@@ -65,9 +65,11 @@ def _candidate_for_source(
 
     source_segment_ids = {segment.id for segment in source.segments}
     schema_positions = tuple(
-        item.position
-        for item in group.schema_items
-        if item.segment_id in source_segment_ids
+        sorted(
+            item.position
+            for item in group.schema_items
+            if item.segment_id in source_segment_ids
+        )
     )
     if not schema_positions:
         return None

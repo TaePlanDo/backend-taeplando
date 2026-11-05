@@ -227,6 +227,7 @@ async def list_candidate_sources(
                 Exercise.owner_user_id == trainer_id,
             ),
         )
+        .order_by(TrainerExercise.id)
     )
     return list(result.unique())
 
