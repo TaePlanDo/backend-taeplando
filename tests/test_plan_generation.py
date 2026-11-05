@@ -154,12 +154,14 @@ def test_validate_parameters_accepts_visible_non_empty_selections() -> None:
             )
         )
 
-    assert [
-        call.kwargs["ids"] for call in list_visible_by_ids.await_args_list
-    ] == [[EQUIPMENT_ID], [TRAINING_TYPE_ID]]
-    assert [
-        call.kwargs["catalog"] for call in list_visible_by_ids.await_args_list
-    ] == [Equipment, TrainingType]
+    assert [call.kwargs["ids"] for call in list_visible_by_ids.await_args_list] == [
+        [EQUIPMENT_ID],
+        [TRAINING_TYPE_ID],
+    ]
+    assert [call.kwargs["catalog"] for call in list_visible_by_ids.await_args_list] == [
+        Equipment,
+        TrainingType,
+    ]
 
 
 @pytest.mark.parametrize(
