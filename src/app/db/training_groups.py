@@ -38,11 +38,7 @@ def _group_response_query() -> Select[TrainingGroup]:
 
 def _group_schema_query() -> Select[TrainingGroup]:
     """Load only the group schema needed for plan-candidate preparation."""
-    return select(TrainingGroup).options(
-        selectinload(TrainingGroup.schema_items).selectinload(
-            TrainingGroupSchemaItem.segment
-        )
-    )
+    return select(TrainingGroup).options(selectinload(TrainingGroup.schema_items))
 
 
 def _group_delete_query() -> Select[TrainingGroup]:
