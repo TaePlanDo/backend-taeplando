@@ -157,6 +157,29 @@ def test_prepare_candidates_skips_type_filter_for_automatic_selection() -> None:
     assert [item.trainer_exercise_id for item in candidates] == [source.id]
 
 
+def test_prepare_candidates_treats_an_untyped_exercise_as_universal() -> None:
+    """An exercise without types remains eligible for a selected training type."""
+
+    source = _source(
+        UUID("cac590e1-2a46-4cb7-8944-803e364cc46b"),
+        equipment_ids=[],
+        equipment_mode=EquipmentRequirementMode.ALL,
+        training_type_ids=[],
+        segment_ids=[1],
+    )
+    with patch(
+        "app.services.plan_generation_candidates_service.exercises_db.list_candidate_sources",
+        new=AsyncMock(return_value=[source]),
+    ):
+        candidates = asyncio.run(
+            plan_generation_candidates_service.prepare_candidates(
+                AsyncMock(), TRAINER_ID, _group(), _parameters()
+            )
+        )
+
+    assert [item.trainer_exercise_id for item in candidates] == [source.id]
+
+
 def test_list_candidate_sources_accepts_exercises_with_an_age_range_overlap() -> None:
     """A 14–16 exercise remains usable for a 15–17 group."""
 

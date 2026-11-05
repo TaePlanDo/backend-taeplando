@@ -93,7 +93,12 @@ def _has_required_equipment(
 
 
 def _has_training_type(source: TrainerExercise, training_type_id: UUID | None) -> bool:
-    """Accept every type for automatic selection, otherwise require the chosen type."""
-    return training_type_id is None or any(
-        training_type.id == training_type_id for training_type in source.training_types
+    """Treat an untyped exercise as universal for every training type."""
+    return (
+        training_type_id is None
+        or not source.training_types
+        or any(
+            training_type.id == training_type_id
+            for training_type in source.training_types
+        )
     )
