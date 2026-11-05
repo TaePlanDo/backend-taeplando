@@ -9,6 +9,7 @@ from sqlalchemy import (
     exists,
     func,
     literal,
+    or_,
     select,
     union_all,
 )
@@ -199,6 +200,35 @@ async def list_available_to_trainer(
         select(func.count()).select_from(visible_exercises)
     )
     return ExercisePage(items=[], total=total_result.scalar_one())
+
+
+async def list_candidate_sources(
+    session: AsyncSession,
+    trainer_id: UUID,
+    *,
+    min_age: int,
+    max_age: int,
+    participant_count: int,
+) -> list[TrainerExercise]:
+    """Return active trainer configurations that match group and size ranges."""
+    result = await session.scalars(
+        select(TrainerExercise)
+        .join(Exercise)
+        .options(*_configuration_loader_options(TrainerExercise))
+        .where(
+            TrainerExercise.trainer_id == trainer_id,
+            TrainerExercise.status == TrainerExerciseStatus.ACTIVE,
+            TrainerExercise.max_age >= min_age,
+            TrainerExercise.min_age <= max_age,
+            TrainerExercise.min_participants <= participant_count,
+            TrainerExercise.max_participants >= participant_count,
+            or_(
+                Exercise.scope == ExerciseScope.GLOBAL,
+                Exercise.owner_user_id == trainer_id,
+            ),
+        )
+    )
+    return list(result.unique())
 
 
 def _filters_for_branch(
