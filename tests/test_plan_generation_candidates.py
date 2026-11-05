@@ -157,10 +157,8 @@ def test_prepare_candidates_skips_type_filter_for_automatic_selection() -> None:
     assert [item.trainer_exercise_id for item in candidates] == [source.id]
 
 
-def test_list_candidate_sources_requires_exercises_to_cover_the_full_group_range() -> (
-    None
-):
-    """A 15–17 exercise must not qualify a 14–16 group."""
+def test_list_candidate_sources_accepts_exercises_with_an_age_range_overlap() -> None:
+    """A 14–16 exercise remains usable for a 15–17 group."""
 
     session = AsyncMock()
     result = MagicMock()
@@ -171,8 +169,8 @@ def test_list_candidate_sources_requires_exercises_to_cover_the_full_group_range
         exercises_db.list_candidate_sources(
             session,
             TRAINER_ID,
-            min_age=14,
-            max_age=16,
+            min_age=15,
+            max_age=17,
             participant_count=12,
         )
     )
@@ -185,8 +183,8 @@ def test_list_candidate_sources_requires_exercises_to_cover_the_full_group_range
             compile_kwargs={"literal_binds": True},
         )
     ).lower()
-    assert "trainer_exercises.min_age <= 14" in compiled
-    assert "trainer_exercises.max_age >= 16" in compiled
+    assert "trainer_exercises.max_age >= 15" in compiled
+    assert "trainer_exercises.min_age <= 17" in compiled
     statement = str(statement).lower()
     assert "trainer_exercises.status" in statement
     assert "trainer_exercises.min_age" in statement

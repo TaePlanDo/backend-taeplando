@@ -218,8 +218,8 @@ async def list_candidate_sources(
         .where(
             TrainerExercise.trainer_id == trainer_id,
             TrainerExercise.status == TrainerExerciseStatus.ACTIVE,
-            TrainerExercise.min_age <= min_age,
-            TrainerExercise.max_age >= max_age,
+            TrainerExercise.max_age >= min_age,
+            TrainerExercise.min_age <= max_age,
             TrainerExercise.min_participants <= participant_count,
             TrainerExercise.max_participants >= participant_count,
             or_(
