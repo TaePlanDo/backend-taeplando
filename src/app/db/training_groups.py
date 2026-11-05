@@ -122,6 +122,21 @@ async def get_for_trainer(
     return result.scalar_one_or_none()
 
 
+async def exists_for_trainer(
+    session: AsyncSession, trainer_id: UUID, group_id: UUID
+) -> bool:
+    """Return whether a group belongs to the trainer without loading relations."""
+    result = await session.execute(
+        select(TrainingGroup.id)
+        .where(
+            TrainingGroup.id == group_id,
+            TrainingGroup.trainer_id == trainer_id,
+        )
+        .limit(1)
+    )
+    return result.scalar_one_or_none() is not None
+
+
 async def list_for_deletion(
     session: AsyncSession, trainer_id: UUID
 ) -> list[TrainingGroup]:

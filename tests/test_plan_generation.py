@@ -6,6 +6,7 @@ from uuid import UUID
 
 import pytest
 
+from app.models.catalogs import Equipment, TrainingType
 from app.schemas.plan_generation import PlanGenerationParameters
 from app.services import plan_generation_parameters_service
 from app.services.plan_generation_parameters_service import (
@@ -109,8 +110,8 @@ def test_validate_parameters_allows_an_empty_equipment_list_and_auto_type() -> N
     )
     with (
         patch(
-            "app.services.plan_generation_parameters_service.training_groups_db.get_for_trainer",
-            new=AsyncMock(return_value=MagicMock()),
+            "app.services.plan_generation_parameters_service.training_groups_db.exists_for_trainer",
+            new=AsyncMock(return_value=True),
         ),
         patch(
             "app.services.plan_generation_parameters_service.catalogs_db.list_visible_by_ids",
@@ -127,16 +128,50 @@ def test_validate_parameters_allows_an_empty_equipment_list_and_auto_type() -> N
     assert list_visible_by_ids.await_args.kwargs["ids"] == []
 
 
+def test_validate_parameters_accepts_visible_non_empty_selections() -> None:
+    """Validate every selected catalog item before accepting the form."""
+
+    session = AsyncMock()
+    parameters = PlanGenerationParameters(
+        training_group_id=GROUP_ID,
+        participant_count=12,
+        available_equipment_ids=[EQUIPMENT_ID],
+        training_type_id=TRAINING_TYPE_ID,
+    )
+    with (
+        patch(
+            "app.services.plan_generation_parameters_service.training_groups_db.exists_for_trainer",
+            new=AsyncMock(return_value=True),
+        ),
+        patch(
+            "app.services.plan_generation_parameters_service.catalogs_db.list_visible_by_ids",
+            new=AsyncMock(side_effect=[[MagicMock()], [MagicMock()]]),
+        ) as list_visible_by_ids,
+    ):
+        asyncio.run(
+            plan_generation_parameters_service.validate_parameters(
+                session, TRAINER_ID, parameters
+            )
+        )
+
+    assert [
+        call.kwargs["ids"] for call in list_visible_by_ids.await_args_list
+    ] == [[EQUIPMENT_ID], [TRAINING_TYPE_ID]]
+    assert [
+        call.kwargs["catalog"] for call in list_visible_by_ids.await_args_list
+    ] == [Equipment, TrainingType]
+
+
 @pytest.mark.parametrize(
-    ("group", "catalog_results", "detail"),
+    ("group_exists", "catalog_results", "detail"),
     [
-        (None, [], "Unknown training_group_id"),
-        (MagicMock(), [[]], "Unknown available_equipment_ids"),
-        (MagicMock(), [[MagicMock()], []], "Unknown training_type_id"),
+        (False, [], "Unknown training_group_id"),
+        (True, [[]], "Unknown available_equipment_ids"),
+        (True, [[MagicMock()], []], "Unknown training_type_id"),
     ],
 )
 def test_validate_parameters_rejects_inaccessible_resources(
-    group, catalog_results, detail
+    group_exists, catalog_results, detail
 ) -> None:
     """Do not accept a foreign or missing group, equipment, or training type."""
 
@@ -149,8 +184,8 @@ def test_validate_parameters_rejects_inaccessible_resources(
     )
     with (
         patch(
-            "app.services.plan_generation_parameters_service.training_groups_db.get_for_trainer",
-            new=AsyncMock(return_value=group),
+            "app.services.plan_generation_parameters_service.training_groups_db.exists_for_trainer",
+            new=AsyncMock(return_value=group_exists),
         ),
         patch(
             "app.services.plan_generation_parameters_service.catalogs_db.list_visible_by_ids",

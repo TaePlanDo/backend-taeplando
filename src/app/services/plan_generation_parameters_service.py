@@ -25,10 +25,10 @@ async def validate_parameters(
 ) -> None:
     """Verify a trainer can use the supplied parameters in a future generation step."""
 
-    group = await training_groups_db.get_for_trainer(
+    group_exists = await training_groups_db.exists_for_trainer(
         session, trainer_id, parameters.training_group_id
     )
-    if group is None:
+    if not group_exists:
         raise InvalidPlanGenerationParametersError("Unknown training_group_id")
 
     equipment = await catalogs_db.list_visible_by_ids(
