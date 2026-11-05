@@ -5,7 +5,7 @@ from uuid import UUID
 
 from sqlalchemy import ColumnElement, Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import load_only, selectinload
 from sqlalchemy.orm.interfaces import LoaderOption
 
 from app.models.training import (
@@ -38,7 +38,13 @@ def _group_response_query() -> Select[TrainingGroup]:
 
 def _group_schema_query() -> Select[TrainingGroup]:
     """Load only the group schema needed for plan-candidate preparation."""
-    return select(TrainingGroup).options(selectinload(TrainingGroup.schema_items))
+    return select(TrainingGroup).options(
+        load_only(TrainingGroup.min_age, TrainingGroup.max_age),
+        selectinload(TrainingGroup.schema_items).load_only(
+            TrainingGroupSchemaItem.segment_id,
+            TrainingGroupSchemaItem.position,
+        ),
+    )
 
 
 def _group_delete_query() -> Select[TrainingGroup]:
