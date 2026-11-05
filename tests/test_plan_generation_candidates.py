@@ -5,6 +5,8 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID
 
+from sqlalchemy.dialects import postgresql
+
 from app.db import exercises as exercises_db
 from app.models.enums import EquipmentRequirementMode
 from app.schemas.plan_generation import PlanGenerationParameters
@@ -155,10 +157,10 @@ def test_prepare_candidates_skips_type_filter_for_automatic_selection() -> None:
     assert [item.trainer_exercise_id for item in candidates] == [source.id]
 
 
-def test_list_candidate_sources_filters_active_visible_range_compatible_records() -> (
+def test_list_candidate_sources_requires_exercises_to_cover_the_full_group_range() -> (
     None
 ):
-    """Keep inactive, foreign, age-incompatible, and size-incompatible records out."""
+    """A 15–17 exercise must not qualify a 14–16 group."""
 
     session = AsyncMock()
     result = MagicMock()
@@ -169,14 +171,23 @@ def test_list_candidate_sources_filters_active_visible_range_compatible_records(
         exercises_db.list_candidate_sources(
             session,
             TRAINER_ID,
-            min_age=7,
-            max_age=14,
+            min_age=14,
+            max_age=16,
             participant_count=12,
         )
     )
 
     assert sources == []
-    statement = str(session.scalars.await_args.args[0]).lower()
+    statement = session.scalars.await_args.args[0]
+    compiled = str(
+        statement.compile(
+            dialect=postgresql.dialect(),
+            compile_kwargs={"literal_binds": True},
+        )
+    ).lower()
+    assert "trainer_exercises.min_age <= 14" in compiled
+    assert "trainer_exercises.max_age >= 16" in compiled
+    statement = str(statement).lower()
     assert "trainer_exercises.status" in statement
     assert "trainer_exercises.min_age" in statement
     assert "trainer_exercises.max_age" in statement
