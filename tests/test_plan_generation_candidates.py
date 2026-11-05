@@ -36,8 +36,8 @@ def _group() -> SimpleNamespace:
         min_age=7,
         max_age=14,
         schema_items=[
-            SimpleNamespace(position=1, segment_id=1),
             SimpleNamespace(position=2, segment_id=2),
+            SimpleNamespace(position=1, segment_id=1),
         ],
     )
 
