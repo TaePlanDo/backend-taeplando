@@ -273,11 +273,17 @@ def build_demo_training_rows(
                         "schema_position": position,
                         "name_snapshot": exercise.name,
                         "description_snapshot": exercise.description,
+                        "image_url_snapshot": None,
                         "min_age_snapshot": exercise.min_age,
                         "max_age_snapshot": exercise.max_age,
                         "min_participants_snapshot": exercise.min_participants,
                         "max_participants_snapshot": exercise.max_participants,
                         "duration_minutes_snapshot": exercise.duration_minutes,
+                        "physical_difficulty_snapshot": exercise.physical_difficulty,
+                        "technical_difficulty_snapshot": exercise.technical_difficulty,
+                        "upper_body_load_snapshot": exercise.upper_body_load,
+                        "lower_body_load_snapshot": exercise.lower_body_load,
+                        "core_load_snapshot": exercise.core_load,
                         "equipment_snapshot": _catalog_snapshot(
                             context.seed_id, "equipment", exercise.equipment_names
                         ),

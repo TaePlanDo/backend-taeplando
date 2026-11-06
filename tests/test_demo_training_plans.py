@@ -100,3 +100,9 @@ def test_builder_is_deterministic_and_uses_current_exercise_versions() -> None:
     assert {row["exercise_version_id"] for row in rows.plan_exercise_rows} <= set(
         context.current_version_ids.values()
     )
+    assert all(row["image_url_snapshot"] is None for row in rows.plan_exercise_rows)
+    assert all(
+        1 <= row["physical_difficulty_snapshot"] <= 5
+        and 1 <= row["core_load_snapshot"] <= 5
+        for row in rows.plan_exercise_rows
+    )

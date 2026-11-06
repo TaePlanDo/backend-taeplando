@@ -326,11 +326,17 @@ async def _assert_jsonb_snapshots(session: AsyncSession, fixture: ModelFixture) 
         schema_position=1,
         name_snapshot="Test exercise",
         description_snapshot="Exercise used only by the model integration test.",
+        image_url_snapshot="https://example.com/test-exercise.png",
         min_age_snapshot=7,
         max_age_snapshot=14,
         min_participants_snapshot=2,
         max_participants_snapshot=20,
         duration_minutes_snapshot=10,
+        physical_difficulty_snapshot=3,
+        technical_difficulty_snapshot=4,
+        upper_body_load_snapshot=2,
+        lower_body_load_snapshot=5,
+        core_load_snapshot=3,
         equipment_snapshot=equipment_snapshot,
         training_types_snapshot=training_type_snapshot,
         segments_snapshot=[
@@ -349,6 +355,12 @@ async def _assert_jsonb_snapshots(session: AsyncSession, fixture: ModelFixture) 
     assert plan.available_equipment_snapshot == equipment_snapshot
     assert plan.training_types_snapshot == training_type_snapshot
     assert plan.schema_snapshot == schema_snapshot
+    assert plan_exercise.image_url_snapshot == "https://example.com/test-exercise.png"
+    assert plan_exercise.physical_difficulty_snapshot == 3
+    assert plan_exercise.technical_difficulty_snapshot == 4
+    assert plan_exercise.upper_body_load_snapshot == 2
+    assert plan_exercise.lower_body_load_snapshot == 5
+    assert plan_exercise.core_load_snapshot == 3
     assert plan_exercise.segments_snapshot == [
         {
             "id": fixture.segment_id,
