@@ -8,6 +8,7 @@ import pytest
 
 from app.models.catalogs import Equipment, TrainingType
 from app.models.enums import PlanGenerationJobStatus
+from app.models.plan_generation import PlanGenerationJob
 from app.schemas.plan_generation import (
     PlanGenerationAccepted,
     PlanGenerationParameters,
@@ -23,6 +24,18 @@ GROUP_ID = UUID("0ac590e1-2a46-4cb7-8944-803e364cc46b")
 EQUIPMENT_ID = UUID("2ac590e1-2a46-4cb7-8944-803e364cc46b")
 TRAINING_TYPE_ID = UUID("3ac590e1-2a46-4cb7-8944-803e364cc46b")
 JOB_ID = UUID("4ac590e1-2a46-4cb7-8944-803e364cc46b")
+
+
+def test_generation_job_is_removed_with_its_group_or_generated_plan() -> None:
+    """Generation metadata must not block the existing group/plan delete flows."""
+
+    delete_actions = {
+        foreign_key.target_fullname: foreign_key.ondelete
+        for foreign_key in PlanGenerationJob.__table__.foreign_keys
+    }
+
+    assert delete_actions["training_groups.id"] == "CASCADE"
+    assert delete_actions["training_plans.id"] == "CASCADE"
 
 
 def _payload() -> dict[str, object]:

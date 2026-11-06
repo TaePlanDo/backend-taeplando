@@ -22,7 +22,13 @@ class PlanGenerationJob(Base):
         PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4
     )
     trainer_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
-    training_group_id: Mapped[UUID] = mapped_column(ForeignKey("training_groups.id"))
+    training_group_id: Mapped[UUID] = mapped_column(
+        ForeignKey(
+            "training_groups.id",
+            name="plan_generation_jobs_training_group_id_fkey",
+            ondelete="CASCADE",
+        )
+    )
     participant_count: Mapped[int] = mapped_column(Integer)
     available_equipment_ids: Mapped[list[str]] = mapped_column(JSONB)
     training_type_id: Mapped[UUID | None] = mapped_column(
@@ -37,7 +43,12 @@ class PlanGenerationJob(Base):
         )
     )
     plan_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey("training_plans.id"), unique=True
+        ForeignKey(
+            "training_plans.id",
+            name="plan_generation_jobs_plan_id_fkey",
+            ondelete="CASCADE",
+        ),
+        unique=True,
     )
     error_code: Mapped[str | None] = mapped_column(String(100))
     error_message: Mapped[str | None] = mapped_column(Text)
