@@ -4,7 +4,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import ANY, AsyncMock, patch
 from uuid import UUID
 
 from app.services import plan_generation_service
@@ -55,7 +55,7 @@ def test_runner_marks_a_persisted_plan_as_succeeded() -> None:
     ):
         asyncio.run(plan_generation_service.run(JOB_ID))
 
-    generate_plan.assert_awaited_once_with(session, job)
+    generate_plan.assert_awaited_once_with(session, job, strategy=ANY)
     mark_succeeded.assert_awaited_once_with(session, JOB_ID, PLAN_ID)
 
 

@@ -32,7 +32,7 @@ from app.services.plan_generation_strategies import (
     GenerationSchemaItem,
     PlanGenerationError,
     PlanGenerationStrategy,
-    get_plan_generation_strategy,
+    RandomPlanGenerationStrategy,
 )
 
 
@@ -79,7 +79,9 @@ async def run(job_id: UUID) -> None:
                 (job.deadline_at - datetime.now(UTC)).total_seconds(), 0
             )
             async with asyncio.timeout(timeout_seconds):
-                plan = await _generate_plan(session, job)
+                plan = await _generate_plan(
+                    session, job, strategy=RandomPlanGenerationStrategy()
+                )
                 if not await jobs_db.mark_succeeded(session, job.id, plan.id):
                     await jobs_db.mark_timed_out(session, job.id)
         except TimeoutError:
@@ -114,7 +116,8 @@ async def _mark_failure(
 async def _generate_plan(
     session: AsyncSession,
     job: PlanGenerationJob,
-    strategy: PlanGenerationStrategy | None = None,
+    *,
+    strategy: PlanGenerationStrategy,
 ) -> TrainingPlan:
     """Build and persist a plan while keeping the strategy free of I/O."""
     parameters = PlanGenerationParameters(
@@ -138,10 +141,7 @@ async def _generate_plan(
         session, job.trainer_id, group, parameters
     )
     context = _generation_context(job, group, candidates)
-    generated = await asyncio.to_thread(
-        (strategy or get_plan_generation_strategy()).generate,
-        context,
-    )
+    generated = await asyncio.to_thread(strategy.generate, context)
     return await _persist_plan(session, job, group, parameters, generated)
 
 

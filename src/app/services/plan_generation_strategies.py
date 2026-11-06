@@ -92,8 +92,3 @@ class RandomPlanGenerationStrategy:
                 )
             )
         return GeneratedPlan(exercises=tuple(selections))
-
-
-def get_plan_generation_strategy() -> PlanGenerationStrategy:
-    """Resolve the algorithm behind the stable strategy contract."""
-    return RandomPlanGenerationStrategy()
