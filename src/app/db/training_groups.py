@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import load_only, selectinload
 from sqlalchemy.orm.interfaces import LoaderOption
 
+from app.models.catalogs import TrainingSegment
 from app.models.training import (
     TrainingGroup,
     TrainingGroupSchemaItem,
@@ -37,12 +38,25 @@ def _group_response_query() -> Select[TrainingGroup]:
 
 
 def _group_schema_query() -> Select[TrainingGroup]:
-    """Load only the group schema needed for plan-candidate preparation."""
+    """Load the full group snapshot shared by validation and generation."""
     return select(TrainingGroup).options(
-        load_only(TrainingGroup.min_age, TrainingGroup.max_age),
-        selectinload(TrainingGroup.schema_items).load_only(
+        load_only(
+            TrainingGroup.name,
+            TrainingGroup.min_age,
+            TrainingGroup.max_age,
+            TrainingGroup.duration_minutes,
+        ),
+        selectinload(TrainingGroup.schema_items)
+        .load_only(
             TrainingGroupSchemaItem.segment_id,
             TrainingGroupSchemaItem.position,
+            TrainingGroupSchemaItem.percentage,
+        )
+        .selectinload(TrainingGroupSchemaItem.segment)
+        .load_only(
+            TrainingSegment.id,
+            TrainingSegment.code,
+            TrainingSegment.name,
         ),
     )
 

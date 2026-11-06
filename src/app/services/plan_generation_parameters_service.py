@@ -1,5 +1,6 @@
 """Validate training-plan parameters without generation side effects."""
 
+from dataclasses import dataclass
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,12 +20,21 @@ class InvalidPlanGenerationParametersError(Exception):
         super().__init__(detail)
 
 
+@dataclass(frozen=True)
+class ValidatedPlanGenerationInput:
+    """Visible resources loaded while validating one generation request."""
+
+    group: TrainingGroup
+    equipment: list[Equipment]
+    training_types: list[TrainingType]
+
+
 async def validate_parameters(
     session: AsyncSession,
     trainer_id: UUID,
     parameters: PlanGenerationParameters,
-) -> TrainingGroup:
-    """Verify inputs and return the owned group with its generation schema."""
+) -> ValidatedPlanGenerationInput:
+    """Verify inputs and return the resources needed by generation and snapshots."""
 
     group = await training_groups_db.get_with_schema_for_trainer(
         session, trainer_id, parameters.training_group_id
@@ -42,7 +52,11 @@ async def validate_parameters(
         raise InvalidPlanGenerationParametersError("Unknown available_equipment_ids")
 
     if parameters.training_type_id is None:
-        return group
+        return ValidatedPlanGenerationInput(
+            group=group,
+            equipment=equipment,
+            training_types=[],
+        )
 
     training_types = await catalogs_db.list_visible_by_ids(
         session,
@@ -53,4 +67,8 @@ async def validate_parameters(
     if not training_types:
         raise InvalidPlanGenerationParametersError("Unknown training_type_id")
 
-    return group
+    return ValidatedPlanGenerationInput(
+        group=group,
+        equipment=equipment,
+        training_types=training_types,
+    )

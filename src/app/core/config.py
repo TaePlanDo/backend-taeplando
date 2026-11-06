@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
+    plan_generation_timeout_seconds: int = Field(default=30, gt=0)
 
     refresh_cookie_name: str = "refresh_token"
     # Sent on /api/auth/* via Vite proxy (refresh + logout).

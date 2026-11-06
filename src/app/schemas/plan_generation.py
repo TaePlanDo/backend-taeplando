@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.models.enums import PlanGenerationJobStatus
+
 
 class PlanGenerationParameters(BaseModel):
     """Parameters accepted before a training plan is generated."""
@@ -21,3 +23,18 @@ class PlanGenerationParameters(BaseModel):
         if len(self.available_equipment_ids) != len(set(self.available_equipment_ids)):
             raise ValueError("available_equipment_ids must not contain duplicates")
         return self
+
+
+class PlanGenerationAccepted(BaseModel):
+    """The accepted asynchronous generation request returned to the frontend."""
+
+    id: UUID
+    status: PlanGenerationJobStatus
+
+
+class PlanGenerationStatusResponse(PlanGenerationAccepted):
+    """Current state and terminal outcome of one generation request."""
+
+    plan_id: UUID | None
+    error_code: str | None
+    error_message: str | None

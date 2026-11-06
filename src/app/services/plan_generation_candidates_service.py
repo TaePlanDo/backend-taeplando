@@ -14,12 +14,25 @@ from app.schemas.plan_generation import PlanGenerationParameters
 
 @dataclass(frozen=True)
 class PlanExerciseCandidate:
-    """One exercise configuration eligible for one or more group-schema items."""
+    """Complete planning data for one exercise eligible for group-schema items."""
 
     trainer_exercise_id: UUID
     exercise_id: UUID
     exercise_version_id: UUID | None
+    min_age: int
+    max_age: int
+    min_participants: int
+    max_participants: int
     duration_minutes: int
+    equipment_requirement_mode: EquipmentRequirementMode
+    equipment_ids: tuple[UUID, ...]
+    training_type_ids: tuple[UUID, ...]
+    segment_ids: tuple[int, ...]
+    physical_difficulty: int
+    technical_difficulty: int
+    upper_body_load: int
+    lower_body_load: int
+    core_load: int
     schema_positions: tuple[int, ...]
 
 
@@ -77,7 +90,22 @@ def _candidate_for_source(
         trainer_exercise_id=source.id,
         exercise_id=source.exercise_id,
         exercise_version_id=source.source_version_id,
+        min_age=source.min_age,
+        max_age=source.max_age,
+        min_participants=source.min_participants,
+        max_participants=source.max_participants,
         duration_minutes=source.duration_minutes,
+        equipment_requirement_mode=source.equipment_requirement_mode,
+        equipment_ids=tuple(sorted(equipment.id for equipment in source.equipment)),
+        training_type_ids=tuple(
+            sorted(training_type.id for training_type in source.training_types)
+        ),
+        segment_ids=tuple(sorted(source_segment_ids)),
+        physical_difficulty=source.physical_difficulty,
+        technical_difficulty=source.technical_difficulty,
+        upper_body_load=source.upper_body_load,
+        lower_body_load=source.lower_body_load,
+        core_load=source.core_load,
         schema_positions=schema_positions,
     )
 
