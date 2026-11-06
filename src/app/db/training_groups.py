@@ -47,6 +47,15 @@ def _group_schema_query() -> Select[TrainingGroup]:
     )
 
 
+def _generation_group_query() -> Select[TrainingGroup]:
+    """Load a group with the complete schema snapshot needed to save a plan."""
+    return select(TrainingGroup).options(
+        selectinload(TrainingGroup.schema_items).selectinload(
+            TrainingGroupSchemaItem.segment
+        )
+    )
+
+
 def _group_delete_query() -> Select[TrainingGroup]:
     """Load only the dependent rows required for ORM cascade deletion."""
     return select(TrainingGroup).options(
@@ -139,6 +148,19 @@ async def get_with_schema_for_trainer(
     """Find an owned group with the schema needed to prepare plan candidates."""
     result = await session.execute(
         _group_schema_query().where(
+            TrainingGroup.id == group_id,
+            TrainingGroup.trainer_id == trainer_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_for_generation(
+    session: AsyncSession, trainer_id: UUID, group_id: UUID
+) -> TrainingGroup | None:
+    """Find an owned group with all fields needed for generated-plan snapshots."""
+    result = await session.execute(
+        _generation_group_query().where(
             TrainingGroup.id == group_id,
             TrainingGroup.trainer_id == trainer_id,
         )

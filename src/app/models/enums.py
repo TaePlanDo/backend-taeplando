@@ -39,6 +39,16 @@ class EquipmentRequirementMode(StrEnum):
     ANY = "ANY"
 
 
+class PlanGenerationJobStatus(StrEnum):
+    """Lifecycle states for one asynchronously generated training plan."""
+
+    QUEUED = "QUEUED"
+    RUNNING = "RUNNING"
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
+    TIMED_OUT = "TIMED_OUT"
+
+
 class CatalogVisibility(StrEnum):
     """Publication state of equipment and training-type catalog entries."""
 

@@ -232,6 +232,27 @@ async def list_candidate_sources(
     return list(result.unique())
 
 
+async def list_sources_for_generated_plan(
+    session: AsyncSession, trainer_id: UUID, source_ids: set[UUID]
+) -> dict[UUID, TrainerExercise]:
+    """Load selected trainer configurations and immutable snapshot relations."""
+    if not source_ids:
+        return {}
+    result = await session.scalars(
+        select(TrainerExercise)
+        .where(
+            TrainerExercise.trainer_id == trainer_id,
+            TrainerExercise.id.in_(source_ids),
+        )
+        .options(
+            *_configuration_loader_options(TrainerExercise),
+            selectinload(TrainerExercise.exercise),
+            selectinload(TrainerExercise.source_version),
+        )
+    )
+    return {source.id: source for source in result.unique()}
+
+
 def _filters_for_branch(
     columns: _BranchColumns, filters: ExerciseListFilters
 ) -> list[ColumnElement[bool]]:

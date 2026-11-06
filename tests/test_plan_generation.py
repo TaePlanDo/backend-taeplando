@@ -1,4 +1,4 @@
-"""Coverage for accepting training-plan generation parameters."""
+"""Coverage for asynchronous training-plan generation endpoints."""
 
 import asyncio
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
@@ -7,7 +7,12 @@ from uuid import UUID
 import pytest
 
 from app.models.catalogs import Equipment, TrainingType
-from app.schemas.plan_generation import PlanGenerationParameters
+from app.models.enums import PlanGenerationJobStatus
+from app.schemas.plan_generation import (
+    PlanGenerationAccepted,
+    PlanGenerationParameters,
+    PlanGenerationStatusResponse,
+)
 from app.services import plan_generation_parameters_service
 from app.services.plan_generation_parameters_service import (
     InvalidPlanGenerationParametersError,
@@ -17,6 +22,7 @@ from constants import TRAINER_ID
 GROUP_ID = UUID("0ac590e1-2a46-4cb7-8944-803e364cc46b")
 EQUIPMENT_ID = UUID("2ac590e1-2a46-4cb7-8944-803e364cc46b")
 TRAINING_TYPE_ID = UUID("3ac590e1-2a46-4cb7-8944-803e364cc46b")
+JOB_ID = UUID("4ac590e1-2a46-4cb7-8944-803e364cc46b")
 
 
 def _payload() -> dict[str, object]:
@@ -30,26 +36,33 @@ def _payload() -> dict[str, object]:
     }
 
 
-def test_accept_parameters_returns_an_empty_ok_response(
+def test_accept_parameters_queues_a_job_after_validation(
     client, authenticated_trainer
 ) -> None:
-    """The form endpoint validates input but neither persists nor generates a plan."""
+    """The form endpoint responds before the queued runner generates a plan."""
 
-    group = MagicMock()
     with (
         patch(
             "app.api.plan_generation.plan_generation_parameters_service.validate_parameters",
-            new=AsyncMock(return_value=group),
+            new=AsyncMock(),
         ) as validate_parameters,
         patch(
-            "app.api.plan_generation.plan_generation_candidates_service.prepare_candidates",
+            "app.api.plan_generation.plan_generation_service.enqueue",
+            new=AsyncMock(
+                return_value=PlanGenerationAccepted(
+                    id=JOB_ID, status=PlanGenerationJobStatus.QUEUED
+                )
+            ),
+        ) as enqueue,
+        patch(
+            "app.api.plan_generation.plan_generation_service.run",
             new=AsyncMock(),
-        ) as prepare_candidates,
+        ) as run,
     ):
         response = client.post("/plan-generation/parameters", json=_payload())
 
-    assert response.status_code == 200
-    assert response.content == b""
+    assert response.status_code == 202
+    assert response.json() == {"id": str(JOB_ID), "status": "QUEUED"}
     validate_parameters.assert_awaited_once_with(
         ANY,
         TRAINER_ID,
@@ -60,10 +73,9 @@ def test_accept_parameters_returns_an_empty_ok_response(
             training_type_id=TRAINING_TYPE_ID,
         ),
     )
-    prepare_candidates.assert_awaited_once_with(
+    enqueue.assert_awaited_once_with(
         ANY,
         TRAINER_ID,
-        group,
         PlanGenerationParameters(
             training_group_id=GROUP_ID,
             participant_count=12,
@@ -71,6 +83,7 @@ def test_accept_parameters_returns_an_empty_ok_response(
             training_type_id=TRAINING_TYPE_ID,
         ),
     )
+    run.assert_awaited_once_with(JOB_ID)
 
 
 @pytest.mark.parametrize(
@@ -114,6 +127,51 @@ def test_accept_parameters_returns_validation_errors_from_the_service(
 
     assert response.status_code == 422
     assert response.json() == {"detail": "Unknown training_group_id"}
+
+
+def test_get_generation_status_returns_a_trainer_owned_job(
+    client, authenticated_trainer
+) -> None:
+    """Polling exposes the status handle returned by the accepted request."""
+
+    with patch(
+        "app.api.plan_generation.plan_generation_service.get_status",
+        new=AsyncMock(
+            return_value=PlanGenerationStatusResponse(
+                id=JOB_ID,
+                status=PlanGenerationJobStatus.SUCCEEDED,
+                plan_id=GROUP_ID,
+                error_code=None,
+                error_message=None,
+            )
+        ),
+    ) as get_status:
+        response = client.get(f"/plan-generation/{JOB_ID}")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": str(JOB_ID),
+        "status": "SUCCEEDED",
+        "plan_id": str(GROUP_ID),
+        "error_code": None,
+        "error_message": None,
+    }
+    get_status.assert_awaited_once_with(ANY, TRAINER_ID, JOB_ID)
+
+
+def test_get_generation_status_hides_foreign_or_missing_jobs(
+    client, authenticated_trainer
+) -> None:
+    """Polling does not reveal another trainer's generation job."""
+
+    with patch(
+        "app.api.plan_generation.plan_generation_service.get_status",
+        new=AsyncMock(return_value=None),
+    ):
+        response = client.get(f"/plan-generation/{JOB_ID}")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Plan not found"}
 
 
 def test_validate_parameters_allows_an_empty_equipment_list_and_auto_type() -> None:

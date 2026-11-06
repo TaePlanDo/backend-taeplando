@@ -3,6 +3,7 @@
 from app.models.base import Base
 from app.models.catalogs import Equipment, TrainingSegment, TrainingType
 from app.models.exercises import Exercise, ExerciseVersion, TrainerExercise
+from app.models.plan_generation import PlanGenerationJob
 from app.models.training import (
     TrainingGroup,
     TrainingGroupSchemaItem,
@@ -16,6 +17,7 @@ __all__ = [
     "Equipment",
     "Exercise",
     "ExerciseVersion",
+    "PlanGenerationJob",
     "RefreshToken",
     "TrainerExercise",
     "TrainingGroup",
