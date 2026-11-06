@@ -5,7 +5,7 @@ from uuid import UUID
 
 from sqlalchemy import ColumnElement, Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import load_only, selectinload
 from sqlalchemy.orm.interfaces import LoaderOption
 
 from app.models.training import (
@@ -34,6 +34,17 @@ def _group_response_options() -> tuple[LoaderOption, ...]:
 def _group_response_query() -> Select[TrainingGroup]:
     """Load a group with all relations needed by the public API response."""
     return select(TrainingGroup).options(*_group_response_options())
+
+
+def _group_schema_query() -> Select[TrainingGroup]:
+    """Load only the group schema needed for plan-candidate preparation."""
+    return select(TrainingGroup).options(
+        load_only(TrainingGroup.min_age, TrainingGroup.max_age),
+        selectinload(TrainingGroup.schema_items).load_only(
+            TrainingGroupSchemaItem.segment_id,
+            TrainingGroupSchemaItem.position,
+        ),
+    )
 
 
 def _group_delete_query() -> Select[TrainingGroup]:
@@ -122,19 +133,17 @@ async def get_for_trainer(
     return result.scalar_one_or_none()
 
 
-async def exists_for_trainer(
+async def get_with_schema_for_trainer(
     session: AsyncSession, trainer_id: UUID, group_id: UUID
-) -> bool:
-    """Return whether a group belongs to the trainer without loading relations."""
+) -> TrainingGroup | None:
+    """Find an owned group with the schema needed to prepare plan candidates."""
     result = await session.execute(
-        select(TrainingGroup.id)
-        .where(
+        _group_schema_query().where(
             TrainingGroup.id == group_id,
             TrainingGroup.trainer_id == trainer_id,
         )
-        .limit(1)
     )
-    return result.scalar_one_or_none() is not None
+    return result.scalar_one_or_none()
 
 
 async def list_for_deletion(

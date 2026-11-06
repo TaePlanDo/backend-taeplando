@@ -9,7 +9,10 @@ from app.db.session import get_db
 from app.dependencies.auth import get_current_user
 from app.models.users import User
 from app.schemas.plan_generation import PlanGenerationParameters
-from app.services import plan_generation_parameters_service
+from app.services import (
+    plan_generation_candidates_service,
+    plan_generation_parameters_service,
+)
 
 router = APIRouter(prefix="/plan-generation", tags=["plan-generation"])
 
@@ -22,10 +25,10 @@ async def accept_parameters(
     current_trainer: CurrentTrainer,
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
-    """Accept validated form parameters without generating or persisting a plan."""
+    """Validate parameters and prepare candidates without persisting a plan."""
 
     try:
-        await plan_generation_parameters_service.validate_parameters(
+        group = await plan_generation_parameters_service.validate_parameters(
             session, current_trainer.id, parameters
         )
     except (
@@ -35,4 +38,7 @@ async def accept_parameters(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=exc.detail,
         ) from exc
+    await plan_generation_candidates_service.prepare_candidates(
+        session, current_trainer.id, group, parameters
+    )
     return Response(status_code=status.HTTP_200_OK)

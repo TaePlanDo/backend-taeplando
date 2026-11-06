@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import catalogs as catalogs_db
 from app.db import training_groups as training_groups_db
 from app.models.catalogs import Equipment, TrainingType
+from app.models.training import TrainingGroup
 from app.schemas.plan_generation import PlanGenerationParameters
 
 
@@ -22,13 +23,13 @@ async def validate_parameters(
     session: AsyncSession,
     trainer_id: UUID,
     parameters: PlanGenerationParameters,
-) -> None:
-    """Verify a trainer can use the supplied parameters in a future generation step."""
+) -> TrainingGroup:
+    """Verify inputs and return the owned group with its generation schema."""
 
-    group_exists = await training_groups_db.exists_for_trainer(
+    group = await training_groups_db.get_with_schema_for_trainer(
         session, trainer_id, parameters.training_group_id
     )
-    if not group_exists:
+    if group is None:
         raise InvalidPlanGenerationParametersError("Unknown training_group_id")
 
     equipment = await catalogs_db.list_visible_by_ids(
@@ -41,7 +42,7 @@ async def validate_parameters(
         raise InvalidPlanGenerationParametersError("Unknown available_equipment_ids")
 
     if parameters.training_type_id is None:
-        return
+        return group
 
     training_types = await catalogs_db.list_visible_by_ids(
         session,
@@ -51,3 +52,5 @@ async def validate_parameters(
     )
     if not training_types:
         raise InvalidPlanGenerationParametersError("Unknown training_type_id")
+
+    return group

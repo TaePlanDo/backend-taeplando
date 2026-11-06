@@ -35,10 +35,17 @@ def test_accept_parameters_returns_an_empty_ok_response(
 ) -> None:
     """The form endpoint validates input but neither persists nor generates a plan."""
 
-    with patch(
-        "app.api.plan_generation.plan_generation_parameters_service.validate_parameters",
-        new=AsyncMock(),
-    ) as validate_parameters:
+    group = MagicMock()
+    with (
+        patch(
+            "app.api.plan_generation.plan_generation_parameters_service.validate_parameters",
+            new=AsyncMock(return_value=group),
+        ) as validate_parameters,
+        patch(
+            "app.api.plan_generation.plan_generation_candidates_service.prepare_candidates",
+            new=AsyncMock(),
+        ) as prepare_candidates,
+    ):
         response = client.post("/plan-generation/parameters", json=_payload())
 
     assert response.status_code == 200
@@ -46,6 +53,17 @@ def test_accept_parameters_returns_an_empty_ok_response(
     validate_parameters.assert_awaited_once_with(
         ANY,
         TRAINER_ID,
+        PlanGenerationParameters(
+            training_group_id=GROUP_ID,
+            participant_count=12,
+            available_equipment_ids=[EQUIPMENT_ID],
+            training_type_id=TRAINING_TYPE_ID,
+        ),
+    )
+    prepare_candidates.assert_awaited_once_with(
+        ANY,
+        TRAINER_ID,
+        group,
         PlanGenerationParameters(
             training_group_id=GROUP_ID,
             participant_count=12,
@@ -110,8 +128,8 @@ def test_validate_parameters_allows_an_empty_equipment_list_and_auto_type() -> N
     )
     with (
         patch(
-            "app.services.plan_generation_parameters_service.training_groups_db.exists_for_trainer",
-            new=AsyncMock(return_value=True),
+            "app.services.plan_generation_parameters_service.training_groups_db.get_with_schema_for_trainer",
+            new=AsyncMock(return_value=MagicMock()),
         ),
         patch(
             "app.services.plan_generation_parameters_service.catalogs_db.list_visible_by_ids",
@@ -140,8 +158,8 @@ def test_validate_parameters_accepts_visible_non_empty_selections() -> None:
     )
     with (
         patch(
-            "app.services.plan_generation_parameters_service.training_groups_db.exists_for_trainer",
-            new=AsyncMock(return_value=True),
+            "app.services.plan_generation_parameters_service.training_groups_db.get_with_schema_for_trainer",
+            new=AsyncMock(return_value=MagicMock()),
         ),
         patch(
             "app.services.plan_generation_parameters_service.catalogs_db.list_visible_by_ids",
@@ -165,15 +183,15 @@ def test_validate_parameters_accepts_visible_non_empty_selections() -> None:
 
 
 @pytest.mark.parametrize(
-    ("group_exists", "catalog_results", "detail"),
+    ("group", "catalog_results", "detail"),
     [
-        (False, [], "Unknown training_group_id"),
+        (None, [], "Unknown training_group_id"),
         (True, [[]], "Unknown available_equipment_ids"),
         (True, [[MagicMock()], []], "Unknown training_type_id"),
     ],
 )
 def test_validate_parameters_rejects_inaccessible_resources(
-    group_exists, catalog_results, detail
+    group, catalog_results, detail
 ) -> None:
     """Do not accept a foreign or missing group, equipment, or training type."""
 
@@ -186,8 +204,8 @@ def test_validate_parameters_rejects_inaccessible_resources(
     )
     with (
         patch(
-            "app.services.plan_generation_parameters_service.training_groups_db.exists_for_trainer",
-            new=AsyncMock(return_value=group_exists),
+            "app.services.plan_generation_parameters_service.training_groups_db.get_with_schema_for_trainer",
+            new=AsyncMock(return_value=MagicMock() if group else None),
         ),
         patch(
             "app.services.plan_generation_parameters_service.catalogs_db.list_visible_by_ids",

@@ -313,28 +313,28 @@ def test_list_for_trainer_out_of_range_page_still_reports_the_real_total() -> No
 
 
 @pytest.mark.parametrize(
-    ("group_id", "expected"),
-    [(GROUP_ID, True), (None, False)],
+    "group",
+    [_training_group(), None],
 )
-def test_exists_for_trainer_checks_ownership_without_loading_relations(
-    group_id: UUID | None, expected: bool
+def test_get_with_schema_for_trainer_loads_an_owned_group_schema(
+    group: TrainingGroup | None,
 ) -> None:
-    """Use the lightweight ownership lookup where no group data is needed."""
+    """Candidate preparation receives only the group relations it needs."""
 
     session = AsyncMock()
     result = MagicMock()
-    result.scalar_one_or_none.return_value = group_id
+    result.scalar_one_or_none.return_value = group
     session.execute = AsyncMock(return_value=result)
 
-    exists = asyncio.run(
-        training_groups_db.exists_for_trainer(session, TRAINER_ID, GROUP_ID)
+    found = asyncio.run(
+        training_groups_db.get_with_schema_for_trainer(session, TRAINER_ID, GROUP_ID)
     )
 
-    assert exists is expected
+    assert found is group
     statement = str(session.execute.await_args.args[0]).lower()
     assert "training_groups.id" in statement
     assert "training_groups.trainer_id" in statement
-    assert "limit" in statement
+    session.execute.assert_awaited_once()
 
 
 def test_create_group_uses_authenticated_trainer_and_returns_service_response(
