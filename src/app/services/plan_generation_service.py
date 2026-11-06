@@ -11,7 +11,6 @@ from app.core.config import get_settings
 from app.db import catalogs as catalogs_db
 from app.db import exercises as exercises_db
 from app.db import plan_generation_jobs as jobs_db
-from app.db import training_groups as training_groups_db
 from app.db.session import get_session_factory
 from app.models.catalogs import Equipment, TrainingType
 from app.models.exercises import TrainerExercise
@@ -22,7 +21,10 @@ from app.schemas.plan_generation import (
     PlanGenerationParameters,
     PlanGenerationStatusResponse,
 )
-from app.services import plan_generation_candidates_service
+from app.services import (
+    plan_generation_candidates_service,
+    plan_generation_parameters_service,
+)
 from app.services.plan_generation_strategies import (
     GeneratedPlan,
     GeneratedPlanExercise,
@@ -46,7 +48,10 @@ async def enqueue(
     job = await jobs_db.create(
         session,
         trainer_id,
-        parameters,
+        training_group_id=parameters.training_group_id,
+        participant_count=parameters.participant_count,
+        available_equipment_ids=parameters.available_equipment_ids,
+        training_type_id=parameters.training_type_id,
         timeout_seconds=get_settings().plan_generation_timeout_seconds,
     )
     return _accepted(job)
@@ -131,11 +136,16 @@ async def _generate_plan(
         available_equipment_ids=[UUID(item) for item in job.available_equipment_ids],
         training_type_id=job.training_type_id,
     )
-    group = await training_groups_db.get_for_generation(
-        session, job.trainer_id, job.training_group_id
-    )
-    if group is None:
-        raise PlanGenerationError("Training group is no longer available")
+    try:
+        group = await plan_generation_parameters_service.validate_parameters(
+            session, job.trainer_id, parameters
+        )
+    except (
+        plan_generation_parameters_service.InvalidPlanGenerationParametersError
+    ) as exc:
+        raise PlanGenerationError(
+            "Generation parameters are no longer available"
+        ) from exc
 
     candidates = await plan_generation_candidates_service.prepare_candidates(
         session, job.trainer_id, group, parameters

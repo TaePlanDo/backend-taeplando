@@ -9,26 +9,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.base import utc_now
 from app.models.enums import PlanGenerationJobStatus
 from app.models.plan_generation import PlanGenerationJob
-from app.schemas.plan_generation import PlanGenerationParameters
 
 
 async def create(
     session: AsyncSession,
     trainer_id: UUID,
-    parameters: PlanGenerationParameters,
     *,
+    training_group_id: UUID,
+    participant_count: int,
+    available_equipment_ids: list[UUID],
+    training_type_id: UUID | None,
     timeout_seconds: int,
 ) -> PlanGenerationJob:
     """Persist one accepted request before its background runner starts."""
     now = utc_now()
     job = PlanGenerationJob(
         trainer_id=trainer_id,
-        training_group_id=parameters.training_group_id,
-        participant_count=parameters.participant_count,
-        available_equipment_ids=[
-            str(item) for item in parameters.available_equipment_ids
-        ],
-        training_type_id=parameters.training_type_id,
+        training_group_id=training_group_id,
+        participant_count=participant_count,
+        available_equipment_ids=[str(item) for item in available_equipment_ids],
+        training_type_id=training_type_id,
         status=PlanGenerationJobStatus.QUEUED,
         deadline_at=now + timedelta(seconds=timeout_seconds),
     )

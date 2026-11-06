@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import load_only, selectinload
 from sqlalchemy.orm.interfaces import LoaderOption
 
+from app.models.catalogs import TrainingSegment
 from app.models.training import (
     TrainingGroup,
     TrainingGroupSchemaItem,
@@ -37,22 +38,26 @@ def _group_response_query() -> Select[TrainingGroup]:
 
 
 def _group_schema_query() -> Select[TrainingGroup]:
-    """Load only the group schema needed for plan-candidate preparation."""
+    """Load the full group snapshot shared by validation and generation."""
     return select(TrainingGroup).options(
-        load_only(TrainingGroup.min_age, TrainingGroup.max_age),
-        selectinload(TrainingGroup.schema_items).load_only(
+        load_only(
+            TrainingGroup.name,
+            TrainingGroup.min_age,
+            TrainingGroup.max_age,
+            TrainingGroup.duration_minutes,
+        ),
+        selectinload(TrainingGroup.schema_items)
+        .load_only(
             TrainingGroupSchemaItem.segment_id,
             TrainingGroupSchemaItem.position,
-        ),
-    )
-
-
-def _generation_group_query() -> Select[TrainingGroup]:
-    """Load a group with the complete schema snapshot needed to save a plan."""
-    return select(TrainingGroup).options(
-        selectinload(TrainingGroup.schema_items).selectinload(
-            TrainingGroupSchemaItem.segment
+            TrainingGroupSchemaItem.percentage,
         )
+        .selectinload(TrainingGroupSchemaItem.segment)
+        .load_only(
+            TrainingSegment.id,
+            TrainingSegment.code,
+            TrainingSegment.name,
+        ),
     )
 
 
@@ -148,19 +153,6 @@ async def get_with_schema_for_trainer(
     """Find an owned group with the schema needed to prepare plan candidates."""
     result = await session.execute(
         _group_schema_query().where(
-            TrainingGroup.id == group_id,
-            TrainingGroup.trainer_id == trainer_id,
-        )
-    )
-    return result.scalar_one_or_none()
-
-
-async def get_for_generation(
-    session: AsyncSession, trainer_id: UUID, group_id: UUID
-) -> TrainingGroup | None:
-    """Find an owned group with all fields needed for generated-plan snapshots."""
-    result = await session.execute(
-        _generation_group_query().where(
             TrainingGroup.id == group_id,
             TrainingGroup.trainer_id == trainer_id,
         )
