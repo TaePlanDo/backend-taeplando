@@ -8,7 +8,6 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.db import catalogs as catalogs_db
 from app.db import exercises as exercises_db
 from app.db import plan_generation_jobs as jobs_db
 from app.db.session import get_session_factory
@@ -127,7 +126,7 @@ async def _generate_plan(
         training_type_id=job.training_type_id,
     )
     try:
-        group = await plan_generation_parameters_service.validate_parameters(
+        validated_input = await plan_generation_parameters_service.validate_parameters(
             session, job.trainer_id, parameters
         )
     except (
@@ -136,13 +135,14 @@ async def _generate_plan(
         raise PlanGenerationError(
             "Generation parameters are no longer available"
         ) from exc
+    group = validated_input.group
 
     candidates = await plan_generation_candidates_service.prepare_candidates(
         session, job.trainer_id, group, parameters
     )
     context = _generation_context(job, group, candidates)
     generated = await asyncio.to_thread(strategy.generate, context)
-    return await _persist_plan(session, job, group, parameters, generated)
+    return await _persist_plan(session, job, validated_input, parameters, generated)
 
 
 def _generation_context(
@@ -170,11 +170,12 @@ def _generation_context(
 async def _persist_plan(
     session: AsyncSession,
     job: PlanGenerationJob,
-    group: TrainingGroup,
+    validated_input: plan_generation_parameters_service.ValidatedPlanGenerationInput,
     parameters: PlanGenerationParameters,
     generated: GeneratedPlan,
 ) -> TrainingPlan:
     """Write immutable plan snapshots from the strategy's selected candidates."""
+    group = validated_input.group
     selected_sources = await exercises_db.list_sources_for_generated_plan(
         session,
         job.trainer_id,
@@ -185,20 +186,6 @@ async def _persist_plan(
     ):
         raise PlanGenerationError("A selected exercise is no longer available")
 
-    equipment = await catalogs_db.list_visible_by_ids(
-        session,
-        job.trainer_id,
-        catalog=Equipment,
-        ids=parameters.available_equipment_ids,
-    )
-    training_types = await catalogs_db.list_visible_by_ids(
-        session,
-        job.trainer_id,
-        catalog=TrainingType,
-        ids=[]
-        if parameters.training_type_id is None
-        else [parameters.training_type_id],
-    )
     plan = TrainingPlan(
         trainer_id=job.trainer_id,
         training_group_id=group.id,
@@ -208,8 +195,8 @@ async def _persist_plan(
         group_min_age_snapshot=group.min_age,
         group_max_age_snapshot=group.max_age,
         training_duration_snapshot=group.duration_minutes,
-        available_equipment_snapshot=_catalog_snapshot(equipment),
-        training_types_snapshot=_catalog_snapshot(training_types),
+        available_equipment_snapshot=_catalog_snapshot(validated_input.equipment),
+        training_types_snapshot=_catalog_snapshot(validated_input.training_types),
         schema_snapshot=_schema_snapshot(group),
     )
     plan.exercises = [

@@ -205,9 +205,12 @@ def test_validate_parameters_allows_an_empty_equipment_list_and_auto_type() -> N
 
 
 def test_validate_parameters_accepts_visible_non_empty_selections() -> None:
-    """Validate every selected catalog item before accepting the form."""
+    """Return the validated resources without loading the same catalogs again."""
 
     session = AsyncMock()
+    group = MagicMock()
+    equipment = MagicMock()
+    training_type = MagicMock()
     parameters = PlanGenerationParameters(
         training_group_id=GROUP_ID,
         participant_count=12,
@@ -217,14 +220,14 @@ def test_validate_parameters_accepts_visible_non_empty_selections() -> None:
     with (
         patch(
             "app.services.plan_generation_parameters_service.training_groups_db.get_with_schema_for_trainer",
-            new=AsyncMock(return_value=MagicMock()),
+            new=AsyncMock(return_value=group),
         ),
         patch(
             "app.services.plan_generation_parameters_service.catalogs_db.list_visible_by_ids",
-            new=AsyncMock(side_effect=[[MagicMock()], [MagicMock()]]),
+            new=AsyncMock(side_effect=[[equipment], [training_type]]),
         ) as list_visible_by_ids,
     ):
-        asyncio.run(
+        validated_input = asyncio.run(
             plan_generation_parameters_service.validate_parameters(
                 session, TRAINER_ID, parameters
             )
@@ -238,6 +241,9 @@ def test_validate_parameters_accepts_visible_non_empty_selections() -> None:
         Equipment,
         TrainingType,
     ]
+    assert validated_input.group is group
+    assert validated_input.equipment == [equipment]
+    assert validated_input.training_types == [training_type]
 
 
 @pytest.mark.parametrize(
