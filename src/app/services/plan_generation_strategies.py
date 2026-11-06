@@ -4,7 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from random import Random
-from typing import Protocol
+from typing import ClassVar, Protocol
 
 from app.services.plan_generation_candidates_service import PlanExerciseCandidate
 
@@ -12,13 +12,17 @@ from app.services.plan_generation_candidates_service import PlanExerciseCandidat
 class PlanGenerationError(Exception):
     """Base error raised by an algorithm before a plan can be persisted."""
 
+    error_code: ClassVar[str] = "GENERATION_ERROR"
+
 
 class NoCandidateForSchemaPositionError(PlanGenerationError):
     """Raised when no filtered exercise can fill one schema position."""
 
+    error_code = "NO_CANDIDATE"
+
     def __init__(self, schema_position: int) -> None:
         self.schema_position = schema_position
-        super().__init__(f"No candidate for schema position {schema_position}")
+        super().__init__(f"No exercise can fill schema position {schema_position}")
 
 
 @dataclass(frozen=True)

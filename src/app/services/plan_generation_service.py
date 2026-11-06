@@ -30,15 +30,10 @@ from app.services.plan_generation_strategies import (
     GeneratedPlanExercise,
     GenerationContext,
     GenerationSchemaItem,
-    NoCandidateForSchemaPositionError,
     PlanGenerationError,
     PlanGenerationStrategy,
     get_plan_generation_strategy,
 )
-
-_NO_CANDIDATE_CODE = "NO_CANDIDATE"
-_GENERATION_ERROR_CODE = "GENERATION_ERROR"
-_TIMEOUT_CODE = "TIMEOUT"
 
 
 async def enqueue(
@@ -90,20 +85,12 @@ async def run(job_id: UUID) -> None:
         except TimeoutError:
             await session.rollback()
             await jobs_db.mark_timed_out(session, job_id)
-        except NoCandidateForSchemaPositionError as exc:
-            await session.rollback()
-            await _mark_failure(
-                session,
-                job_id,
-                code=_NO_CANDIDATE_CODE,
-                message=f"No exercise can fill schema position {exc.schema_position}",
-            )
         except PlanGenerationError as exc:
             await session.rollback()
             await _mark_failure(
                 session,
                 job_id,
-                code=_GENERATION_ERROR_CODE,
+                code=exc.error_code,
                 message=str(exc),
             )
         except Exception:
@@ -111,7 +98,7 @@ async def run(job_id: UUID) -> None:
             await _mark_failure(
                 session,
                 job_id,
-                code=_GENERATION_ERROR_CODE,
+                code=PlanGenerationError.error_code,
                 message="Plan generation failed",
             )
 

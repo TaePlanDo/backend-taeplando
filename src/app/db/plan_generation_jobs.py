@@ -152,12 +152,6 @@ async def mark_timed_out(session: AsyncSession, job_id: UUID) -> None:
         await session.commit()
 
 
-_TERMINAL_STATUSES = {
-    PlanGenerationJobStatus.SUCCEEDED,
-    PlanGenerationJobStatus.FAILED,
-    PlanGenerationJobStatus.TIMED_OUT,
-}
-
 _ACTIVE_STATUSES = {
     PlanGenerationJobStatus.QUEUED,
     PlanGenerationJobStatus.RUNNING,
@@ -165,4 +159,4 @@ _ACTIVE_STATUSES = {
 
 
 def _is_expired(job: PlanGenerationJob) -> bool:
-    return job.status not in _TERMINAL_STATUSES and job.deadline_at <= utc_now()
+    return job.status in _ACTIVE_STATUSES and job.deadline_at <= utc_now()
