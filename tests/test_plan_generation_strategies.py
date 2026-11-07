@@ -7,10 +7,11 @@ import pytest
 
 from app.models.enums import EquipmentRequirementMode
 from app.services.plan_generation_candidates_service import PlanExerciseCandidate
+from app.services.plan_generation_errors import NoCandidateForSchemaPositionError
+from app.services.plan_generation_population_service import build_initial_population
 from app.services.plan_generation_strategies import (
     GenerationContext,
     GenerationSchemaItem,
-    NoCandidateForSchemaPositionError,
     RandomPlanGenerationStrategy,
 )
 
@@ -24,7 +25,7 @@ def _candidate(identifier: str, positions: tuple[int, ...]) -> PlanExerciseCandi
         max_age=14,
         min_participants=1,
         max_participants=20,
-        duration_minutes=10,
+        default_duration_minutes=10,
         equipment_requirement_mode=EquipmentRequirementMode.ALL,
         equipment_ids=(),
         training_type_ids=(),
@@ -57,9 +58,10 @@ def test_random_strategy_selects_one_eligible_candidate_per_schema_position() ->
     )
 
     strategy = RandomPlanGenerationStrategy()
-    generated = strategy.generate(context)
+    population = build_initial_population(context, population_size=3)
+    generated = strategy.generate(context, population)
 
-    assert generated == strategy.generate(context)
+    assert generated == strategy.generate(context, population)
     assert [item.schema_position for item in generated.exercises] == [1, 2, 3]
     assert all(
         item.schema_position in item.candidate.schema_positions
@@ -82,4 +84,4 @@ def test_random_strategy_rejects_a_schema_position_without_candidates() -> None:
     )
 
     with pytest.raises(NoCandidateForSchemaPositionError, match="2"):
-        RandomPlanGenerationStrategy().generate(context)
+        build_initial_population(context)

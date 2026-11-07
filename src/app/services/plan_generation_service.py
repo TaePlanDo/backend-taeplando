@@ -24,12 +24,15 @@ from app.services import (
     plan_generation_candidates_service,
     plan_generation_parameters_service,
 )
+from app.services.plan_generation_errors import PlanGenerationError
+from app.services.plan_generation_population_service import (
+    PlanExerciseSelection,
+    build_initial_population,
+)
 from app.services.plan_generation_strategies import (
     GeneratedPlan,
-    GeneratedPlanExercise,
     GenerationContext,
     GenerationSchemaItem,
-    PlanGenerationError,
     PlanGenerationStrategy,
     RandomPlanGenerationStrategy,
 )
@@ -141,7 +144,8 @@ async def _generate_plan(
         session, job.trainer_id, group, parameters
     )
     context = _generation_context(job, group, candidates)
-    generated = await asyncio.to_thread(strategy.generate, context)
+    population = await asyncio.to_thread(build_initial_population, context)
+    generated = await asyncio.to_thread(strategy.generate, context, population)
     return await _persist_plan(session, job, validated_input, parameters, generated)
 
 
@@ -215,7 +219,7 @@ async def _persist_plan(
 
 def _plan_exercise(
     position: int,
-    selected: GeneratedPlanExercise,
+    selected: PlanExerciseSelection,
     source: TrainerExercise,
 ) -> TrainingPlanExercise:
     """Create one immutable exercise occurrence from a selected configuration."""
@@ -233,7 +237,7 @@ def _plan_exercise(
         max_age_snapshot=source.max_age,
         min_participants_snapshot=source.min_participants,
         max_participants_snapshot=source.max_participants,
-        duration_minutes_snapshot=source.duration_minutes,
+        duration_minutes_snapshot=selected.allocated_duration_minutes,
         physical_difficulty_snapshot=source.physical_difficulty,
         technical_difficulty_snapshot=source.technical_difficulty,
         upper_body_load_snapshot=source.upper_body_load,
