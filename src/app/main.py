@@ -14,6 +14,7 @@ from app.api.exercises import router as exercises_router
 from app.api.health import router as health_router
 from app.api.plan_generation import router as plan_generation_router
 from app.api.training_groups import router as training_groups_router
+from app.api.training_plans import router as training_plans_router
 from app.api.training_segments import router as training_segments_router
 from app.api.training_types import router as training_types_router
 from app.core.config import get_settings
@@ -63,6 +64,7 @@ app.include_router(equipment_router)
 app.include_router(exercises_router)
 app.include_router(plan_generation_router)
 app.include_router(training_groups_router)
+app.include_router(training_plans_router)
 app.include_router(training_segments_router)
 app.include_router(training_types_router)
 

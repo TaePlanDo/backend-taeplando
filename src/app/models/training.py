@@ -13,6 +13,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     Numeric,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
@@ -22,6 +23,10 @@ from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, utc_now
+from app.models.exercises import (
+    PLANNING_ATTRIBUTE_COLUMNS,
+    planning_attribute_constraints,
+)
 
 if TYPE_CHECKING:
     from app.models.catalogs import TrainingSegment
@@ -147,6 +152,12 @@ class TrainingPlanExercise(Base):
             "duration_minutes_snapshot > 0",
             name="ck_plan_exercises_duration_minutes",
         ),
+        *planning_attribute_constraints(
+            "plan_exercises",
+            tuple(
+                f"{column_name}_snapshot" for column_name in PLANNING_ATTRIBUTE_COLUMNS
+            ),
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(
@@ -164,11 +175,27 @@ class TrainingPlanExercise(Base):
     schema_position: Mapped[int] = mapped_column(Integer)
     name_snapshot: Mapped[str] = mapped_column(String(255))
     description_snapshot: Mapped[str] = mapped_column(Text)
+    image_url_snapshot: Mapped[str | None] = mapped_column(Text)
     min_age_snapshot: Mapped[int] = mapped_column(Integer)
     max_age_snapshot: Mapped[int] = mapped_column(Integer)
     min_participants_snapshot: Mapped[int] = mapped_column(Integer)
     max_participants_snapshot: Mapped[int] = mapped_column(Integer)
     duration_minutes_snapshot: Mapped[int] = mapped_column(Integer)
+    physical_difficulty_snapshot: Mapped[int] = mapped_column(
+        SmallInteger, default=3, server_default="3"
+    )
+    technical_difficulty_snapshot: Mapped[int] = mapped_column(
+        SmallInteger, default=3, server_default="3"
+    )
+    upper_body_load_snapshot: Mapped[int] = mapped_column(
+        SmallInteger, default=3, server_default="3"
+    )
+    lower_body_load_snapshot: Mapped[int] = mapped_column(
+        SmallInteger, default=3, server_default="3"
+    )
+    core_load_snapshot: Mapped[int] = mapped_column(
+        SmallInteger, default=3, server_default="3"
+    )
     equipment_snapshot: Mapped[list[dict[str, object]]] = mapped_column(JSONB)
     training_types_snapshot: Mapped[list[dict[str, object]]] = mapped_column(JSONB)
     segments_snapshot: Mapped[list[dict[str, object]]] = mapped_column(JSONB)

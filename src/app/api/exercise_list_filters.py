@@ -3,21 +3,11 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import HTTPException, Query, status
+from fastapi import Query
 
 from app.api.query_lists import parse_csv
+from app.api.range_filters import reject_inverted_range
 from app.schemas.exercise_list_filters import ExerciseListFilters
-
-
-def _reject_inverted_range(
-    min_value: int | None, max_value: int | None, *, label: str
-) -> None:
-    """Reject impossible inclusive filter ranges when both bounds are set."""
-    if min_value is not None and max_value is not None and min_value > max_value:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail=f"min_{label} must be less than or equal to max_{label}",
-        )
 
 
 def get_exercise_list_filters(
@@ -31,8 +21,8 @@ def get_exercise_list_filters(
     segment_ids: Annotated[str | None, Query()] = None,
 ) -> ExerciseListFilters:
     """Parse and validate list filters for GET /exercises."""
-    _reject_inverted_range(min_age, max_age, label="age")
-    _reject_inverted_range(min_participants, max_participants, label="participants")
+    reject_inverted_range(min_age, max_age, label="age")
+    reject_inverted_range(min_participants, max_participants, label="participants")
     trimmed = name.strip() if name else ""
     return ExerciseListFilters(
         name=trimmed or None,

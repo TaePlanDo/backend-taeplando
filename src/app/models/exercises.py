@@ -46,21 +46,27 @@ if TYPE_CHECKING:
     from app.models.users import User
 
 
-def _planning_attribute_constraints(table_name: str) -> tuple[CheckConstraint, ...]:
-    """Build the shared 1–5 constraints for exercise planning attributes."""
+PLANNING_ATTRIBUTE_COLUMNS = (
+    "physical_difficulty",
+    "technical_difficulty",
+    "upper_body_load",
+    "lower_body_load",
+    "core_load",
+)
+
+
+def planning_attribute_constraints(
+    table_name: str,
+    columns: tuple[str, ...] = PLANNING_ATTRIBUTE_COLUMNS,
+) -> tuple[CheckConstraint, ...]:
+    """Build shared 1–5 constraints for live or snapshotted planning attributes."""
 
     return tuple(
         CheckConstraint(
             f"{column_name} BETWEEN 1 AND 5",
             name=f"ck_{table_name}_{column_name}",
         )
-        for column_name in (
-            "physical_difficulty",
-            "technical_difficulty",
-            "upper_body_load",
-            "lower_body_load",
-            "core_load",
-        )
+        for column_name in columns
     )
 
 
@@ -154,7 +160,7 @@ class ExerciseVersion(ExercisePlanningAttributesMixin, Base):
         CheckConstraint(
             "duration_minutes > 0", name="ck_exercise_versions_duration_minutes"
         ),
-        *_planning_attribute_constraints("exercise_versions"),
+        *planning_attribute_constraints("exercise_versions"),
         Index(
             "uq_exercise_versions_pending",
             "exercise_id",
@@ -222,7 +228,7 @@ class TrainerExercise(ExercisePlanningAttributesMixin, Base):
         CheckConstraint(
             "duration_minutes > 0", name="ck_trainer_exercises_duration_minutes"
         ),
-        *_planning_attribute_constraints("trainer_exercises"),
+        *planning_attribute_constraints("trainer_exercises"),
     )
 
     id: Mapped[UUID] = mapped_column(

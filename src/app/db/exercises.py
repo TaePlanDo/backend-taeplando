@@ -18,6 +18,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.interfaces import LoaderOption
 
 from app.db import catalogs as catalogs_db
+from app.db.sql_filters import ilike_contains
 from app.models.associations import (
     exercise_version_equipment,
     exercise_version_segments,
@@ -259,7 +260,7 @@ def _filters_for_branch(
     """Build scalar + catalog predicates for one union branch."""
     predicates: list[ColumnElement[bool]] = []
     if filters.name is not None:
-        predicates.append(_ilike_contains(columns.name, filters.name))
+        predicates.append(ilike_contains(columns.name, filters.name))
     if filters.min_age is not None:
         predicates.append(columns.max_age >= filters.min_age)
     if filters.max_age is not None:
@@ -288,14 +289,6 @@ def _filters_for_branch(
                 )
             )
     return predicates
-
-
-def _ilike_contains(
-    column: SQLColumnExpression[str], value: str
-) -> ColumnElement[bool]:
-    """Case-insensitive substring match with LIKE metacharacters escaped."""
-    escaped = value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-    return column.ilike(f"%{escaped}%", escape="\\")
 
 
 async def resolve_configuration(
