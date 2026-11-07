@@ -23,7 +23,7 @@ class PlanExerciseCandidate:
     max_age: int
     min_participants: int
     max_participants: int
-    duration_minutes: int
+    default_duration_minutes: int
     equipment_requirement_mode: EquipmentRequirementMode
     equipment_ids: tuple[UUID, ...]
     training_type_ids: tuple[UUID, ...]
@@ -94,7 +94,7 @@ def _candidate_for_source(
         max_age=source.max_age,
         min_participants=source.min_participants,
         max_participants=source.max_participants,
-        duration_minutes=source.duration_minutes,
+        default_duration_minutes=source.duration_minutes,
         equipment_requirement_mode=source.equipment_requirement_mode,
         equipment_ids=tuple(sorted(equipment.id for equipment in source.equipment)),
         training_type_ids=tuple(
