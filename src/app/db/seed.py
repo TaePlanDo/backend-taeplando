@@ -45,6 +45,7 @@ from app.models.enums import (
     CatalogVisibility,
 )
 from app.models.exercises import Exercise, ExerciseVersion, TrainerExercise
+from app.models.plan_generation import PlanGenerationJob
 from app.models.training import (
     TrainingGroup,
     TrainingGroupSchemaItem,
@@ -143,6 +144,11 @@ async def seed_training_segments(session: AsyncSession) -> None:
 async def _clear_global_training_types(session: AsyncSession) -> None:
     global_training_type_ids = select(TrainingType.id).where(
         TrainingType.visibility == CatalogVisibility.GLOBAL
+    )
+    await session.execute(
+        delete(PlanGenerationJob).where(
+            PlanGenerationJob.training_type_id.in_(global_training_type_ids)
+        )
     )
     for association_table in (
         exercise_version_training_types,
