@@ -1,6 +1,5 @@
 """Database-free contracts shared by candidate preparation and generation."""
 
-from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -11,7 +10,7 @@ from app.models.enums import EquipmentRequirementMode
 
 @dataclass(frozen=True)
 class PlanExerciseCandidate:
-    """Complete planning data for one exercise eligible for group-schema items."""
+    """Complete planning data for one exercise eligible for its segments."""
 
     trainer_exercise_id: UUID
     exercise_id: UUID
@@ -30,7 +29,6 @@ class PlanExerciseCandidate:
     upper_body_load: int
     lower_body_load: int
     core_load: int
-    schema_positions: tuple[int, ...]
 
 
 @dataclass(frozen=True)
@@ -44,7 +42,7 @@ class GenerationSchemaItem:
 
 @dataclass(frozen=True)
 class GenerationContext:
-    """Immutable input shared by initial-population and generation algorithms."""
+    """Immutable input for one independently generated training segment."""
 
     participant_count: int
     available_equipment_ids: tuple[UUID, ...]
@@ -55,8 +53,9 @@ class GenerationContext:
     group_max_age: int
     group_duration_minutes: int
     deadline_at: datetime
-    schema: tuple[GenerationSchemaItem, ...]
-    candidates_by_position: Mapping[int, tuple[PlanExerciseCandidate, ...]]
+    segment: GenerationSchemaItem
+    segment_duration_minutes: int
+    candidates: tuple[PlanExerciseCandidate, ...]
     random_seed: int
 
 

@@ -129,48 +129,48 @@ def test_prepare_candidates_applies_equipment_and_segment_rules() -> None:
             )
         )
 
-    assert candidates == [
-        PlanExerciseCandidate(
-            trainer_exercise_id=all_requirement.id,
-            exercise_id=EXERCISE_ID,
-            exercise_version_id=EXERCISE_VERSION_ID,
-            min_age=7,
-            max_age=14,
-            min_participants=1,
-            max_participants=20,
-            default_duration_minutes=15,
-            equipment_requirement_mode=EquipmentRequirementMode.ALL,
-            equipment_ids=(EQUIPMENT_ID,),
-            training_type_ids=(TRAINING_TYPE_ID,),
-            segment_ids=(1, 2),
-            physical_difficulty=3,
-            technical_difficulty=3,
-            upper_body_load=3,
-            lower_body_load=3,
-            core_load=3,
-            schema_positions=(1, 2),
-        ),
-        PlanExerciseCandidate(
-            trainer_exercise_id=any_requirement.id,
-            exercise_id=any_requirement.id,
-            exercise_version_id=None,
-            min_age=7,
-            max_age=14,
-            min_participants=1,
-            max_participants=20,
-            default_duration_minutes=10,
-            equipment_requirement_mode=EquipmentRequirementMode.ANY,
-            equipment_ids=(EQUIPMENT_ID, OTHER_EQUIPMENT_ID),
-            training_type_ids=(TRAINING_TYPE_ID,),
-            segment_ids=(2,),
-            physical_difficulty=3,
-            technical_difficulty=3,
-            upper_body_load=3,
-            lower_body_load=3,
-            core_load=3,
-            schema_positions=(2,),
-        ),
-    ]
+    all_candidate = PlanExerciseCandidate(
+        trainer_exercise_id=all_requirement.id,
+        exercise_id=EXERCISE_ID,
+        exercise_version_id=EXERCISE_VERSION_ID,
+        min_age=7,
+        max_age=14,
+        min_participants=1,
+        max_participants=20,
+        default_duration_minutes=15,
+        equipment_requirement_mode=EquipmentRequirementMode.ALL,
+        equipment_ids=(EQUIPMENT_ID,),
+        training_type_ids=(TRAINING_TYPE_ID,),
+        segment_ids=(1, 2),
+        physical_difficulty=3,
+        technical_difficulty=3,
+        upper_body_load=3,
+        lower_body_load=3,
+        core_load=3,
+    )
+    any_candidate = PlanExerciseCandidate(
+        trainer_exercise_id=any_requirement.id,
+        exercise_id=any_requirement.id,
+        exercise_version_id=None,
+        min_age=7,
+        max_age=14,
+        min_participants=1,
+        max_participants=20,
+        default_duration_minutes=10,
+        equipment_requirement_mode=EquipmentRequirementMode.ANY,
+        equipment_ids=(EQUIPMENT_ID, OTHER_EQUIPMENT_ID),
+        training_type_ids=(TRAINING_TYPE_ID,),
+        segment_ids=(2,),
+        physical_difficulty=3,
+        technical_difficulty=3,
+        upper_body_load=3,
+        lower_body_load=3,
+        core_load=3,
+    )
+    assert candidates == {
+        1: (all_candidate,),
+        2: (all_candidate, any_candidate),
+    }
     list_candidate_sources.assert_awaited_once_with(
         session,
         TRAINER_ID,
@@ -204,17 +204,19 @@ def test_prepare_candidates_keeps_every_training_type_for_fitness() -> None:
         training_type_ids=[],
         segment_ids=[1],
     )
+    group = _group()
+    group.schema_items = [SimpleNamespace(position=1, segment_id=1)]
     with patch(
         "app.services.plan_generation_candidates_service.exercises_db.list_candidate_sources",
         new=AsyncMock(return_value=[matching_type, another_type, untyped]),
     ):
         candidates = asyncio.run(
             plan_generation_candidates_service.prepare_candidates(
-                AsyncMock(), TRAINER_ID, _group(), _parameters()
+                AsyncMock(), TRAINER_ID, group, _parameters()
             )
         )
 
-    assert [item.trainer_exercise_id for item in candidates] == [
+    assert [item.trainer_exercise_id for item in candidates[1]] == [
         matching_type.id,
         another_type.id,
         untyped.id,

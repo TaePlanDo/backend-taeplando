@@ -1,7 +1,7 @@
 """Queue, execute, persist, and report asynchronous training-plan generation."""
 
 import asyncio
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -32,7 +32,10 @@ from app.services.plan_generation_domain import (
     PlanIndividual,
 )
 from app.services.plan_generation_errors import PlanGenerationError
-from app.services.plan_generation_population_service import build_initial_population
+from app.services.plan_generation_population_service import (
+    allocate_segment_durations,
+    build_initial_population,
+)
 from app.services.plan_generation_strategies import (
     PlanGenerationStrategy,
     RandomPlanGenerationStrategy,
@@ -141,22 +144,35 @@ async def _generate_plan(
         ) from exc
     group = validated_input.group
 
-    candidates = await plan_generation_candidates_service.prepare_candidates(
-        session, job.trainer_id, group, parameters
+    candidates_by_position = (
+        await plan_generation_candidates_service.prepare_candidates(
+            session, job.trainer_id, group, parameters
+        )
     )
-    context = _generation_context(job, group, parameters, candidates)
-    population = await asyncio.to_thread(build_initial_population, context)
-    generated = await asyncio.to_thread(strategy.generate, context, population)
+    contexts = _generation_contexts(job, group, parameters, candidates_by_position)
+    generated = _merge_segment_individuals(
+        await asyncio.gather(
+            *(_generate_segment(strategy, context) for context in contexts)
+        )
+    )
     return await _persist_plan(session, job, validated_input, parameters, generated)
 
 
-def _generation_context(
+async def _generate_segment(
+    strategy: PlanGenerationStrategy, context: GenerationContext
+) -> PlanIndividual:
+    """Build and generate one segment independently of every other segment."""
+    population = await asyncio.to_thread(build_initial_population, context)
+    return await asyncio.to_thread(strategy.generate, context, population)
+
+
+def _generation_contexts(
     job: PlanGenerationJob,
     group: TrainingGroup,
     parameters: PlanGenerationParameters,
-    candidates: list[PlanExerciseCandidate],
-) -> GenerationContext:
-    """Adapt database-backed preparation into the strategy's immutable contract."""
+    candidates_by_position: Mapping[int, tuple[PlanExerciseCandidate, ...]],
+) -> tuple[GenerationContext, ...]:
+    """Adapt every schema segment into an isolated immutable algorithm contract."""
     schema = tuple(
         GenerationSchemaItem(
             position=item.position,
@@ -165,21 +181,38 @@ def _generation_context(
         )
         for item in sorted(group.schema_items, key=lambda item: item.position)
     )
-    return GenerationContext(
-        participant_count=parameters.participant_count,
-        available_equipment_ids=tuple(sorted(parameters.available_equipment_ids)),
-        preferred_training_type_id=parameters.training_type_id,
-        training_group_id=group.id,
-        training_group_name=group.name,
-        group_min_age=group.min_age,
-        group_max_age=group.max_age,
-        group_duration_minutes=group.duration_minutes,
-        deadline_at=job.deadline_at,
-        schema=schema,
-        candidates_by_position=plan_generation_candidates_service.build_candidates_by_position(
-            schema, candidates
-        ),
-        random_seed=job.id.int,
+    segment_durations = allocate_segment_durations(group.duration_minutes, schema)
+    return tuple(
+        GenerationContext(
+            participant_count=parameters.participant_count,
+            available_equipment_ids=tuple(sorted(parameters.available_equipment_ids)),
+            preferred_training_type_id=parameters.training_type_id,
+            training_group_id=group.id,
+            training_group_name=group.name,
+            group_min_age=group.min_age,
+            group_max_age=group.max_age,
+            group_duration_minutes=group.duration_minutes,
+            deadline_at=job.deadline_at,
+            segment=schema_item,
+            segment_duration_minutes=segment_durations[schema_item.position],
+            candidates=candidates_by_position[schema_item.position],
+            random_seed=job.id.int ^ schema_item.position,
+        )
+        for schema_item in schema
+    )
+
+
+def _merge_segment_individuals(
+    segments: Sequence[PlanIndividual],
+) -> PlanIndividual:
+    """Restore one plan from independently generated segment selections."""
+    return PlanIndividual(
+        selections=tuple(
+            sorted(
+                (selection for segment in segments for selection in segment.selections),
+                key=lambda selection: selection.schema_position,
+            )
+        )
     )
 
 

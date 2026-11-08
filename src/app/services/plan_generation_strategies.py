@@ -12,12 +12,12 @@ from app.services.plan_generation_errors import PlanGenerationError
 
 
 class PlanGenerationStrategy(Protocol):
-    """Select exercises without performing I/O or changing persistent state."""
+    """Stateless segment strategy safe to invoke concurrently without I/O."""
 
     def generate(
         self, context: GenerationContext, population: InitialPopulation
     ) -> PlanIndividual:
-        """Choose one plan from the prepared population without performing I/O."""
+        """Choose one segment plan from the prepared population without I/O."""
 
 
 class RandomPlanGenerationStrategy:

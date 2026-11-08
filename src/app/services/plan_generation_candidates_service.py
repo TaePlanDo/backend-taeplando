@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import exercises as exercises_db
 from app.models.enums import EquipmentRequirementMode
 from app.models.exercises import TrainerExercise
-from app.models.training import TrainingGroup
+from app.models.training import TrainingGroup, TrainingGroupSchemaItem
 from app.schemas.plan_generation import PlanGenerationParameters
 from app.services.plan_generation_domain import (
     GenerationSchemaItem,
@@ -24,8 +24,8 @@ async def prepare_candidates(
     trainer_id: UUID,
     group: TrainingGroup,
     parameters: PlanGenerationParameters,
-) -> list[PlanExerciseCandidate]:
-    """Build disposable candidates after request validation and before generation."""
+) -> Mapping[int, tuple[PlanExerciseCandidate, ...]]:
+    """Build one hard-filtered candidate pool for every group-schema segment."""
     sources = await exercises_db.list_candidate_sources(
         session,
         trainer_id,
@@ -36,18 +36,14 @@ async def prepare_candidates(
     available_equipment_ids = set(parameters.available_equipment_ids)
     candidates: list[PlanExerciseCandidate] = []
     for source in sources:
-        candidate = _candidate_for_source(
-            source,
-            group,
-            available_equipment_ids,
-        )
+        candidate = _candidate_for_source(source, available_equipment_ids)
         if candidate is not None:
             candidates.append(candidate)
-    return candidates
+    return build_candidates_by_position(group.schema_items, candidates)
 
 
 def build_candidates_by_position(
-    schema: Sequence[GenerationSchemaItem],
+    schema: Sequence[GenerationSchemaItem | TrainingGroupSchemaItem],
     candidates: Sequence[PlanExerciseCandidate],
 ) -> Mapping[int, tuple[PlanExerciseCandidate, ...]]:
     """Index structurally valid candidates once for all generation phases."""
@@ -55,8 +51,9 @@ def build_candidates_by_position(
     for candidate in candidates:
         if candidate.default_duration_minutes < 1:
             continue
-        for schema_position in candidate.schema_positions:
-            candidates_by_position[schema_position].append(candidate)
+        for schema_item in schema:
+            if schema_item.segment_id in candidate.segment_ids:
+                candidates_by_position[schema_item.position].append(candidate)
 
     for schema_item in schema:
         if not candidates_by_position[schema_item.position]:
@@ -71,22 +68,12 @@ def build_candidates_by_position(
 
 def _candidate_for_source(
     source: TrainerExercise,
-    group: TrainingGroup,
     available_equipment_ids: set[UUID],
 ) -> PlanExerciseCandidate | None:
     """Return one source only when its catalog requirements fit this request."""
     if not _has_required_equipment(source, available_equipment_ids):
         return None
     source_segment_ids = {segment.id for segment in source.segments}
-    schema_positions = tuple(
-        sorted(
-            item.position
-            for item in group.schema_items
-            if item.segment_id in source_segment_ids
-        )
-    )
-    if not schema_positions:
-        return None
     return PlanExerciseCandidate(
         trainer_exercise_id=source.id,
         exercise_id=source.exercise_id,
@@ -107,7 +94,6 @@ def _candidate_for_source(
         upper_body_load=source.upper_body_load,
         lower_body_load=source.lower_body_load,
         core_load=source.core_load,
-        schema_positions=schema_positions,
     )
 
 

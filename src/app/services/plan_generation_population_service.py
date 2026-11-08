@@ -8,12 +8,16 @@ from random import Random
 
 from app.services.plan_generation_domain import (
     GenerationContext,
+    GenerationSchemaItem,
     InitialPopulation,
     PlanExerciseCandidate,
     PlanExerciseSelection,
     PlanIndividual,
 )
-from app.services.plan_generation_errors import NoDurationForSchemaPositionError
+from app.services.plan_generation_errors import (
+    NoCandidateForSchemaPositionError,
+    NoDurationForSchemaPositionError,
+)
 
 INITIAL_POPULATION_SIZE = 20
 
@@ -26,33 +30,36 @@ def build_initial_population(
     """Create deterministic, structurally valid plans from eligible candidates."""
     if population_size < 1:
         raise ValueError("Population size must be positive")
+    candidates = tuple(
+        candidate
+        for candidate in context.candidates
+        if candidate.default_duration_minutes > 0
+    )
+    if not candidates:
+        raise NoCandidateForSchemaPositionError(context.segment.position)
 
     random = Random(context.random_seed)
-    durations_by_position = _durations_by_position(context)
+    if context.segment_duration_minutes < 1:
+        raise NoDurationForSchemaPositionError(context.segment.position)
     return InitialPopulation(
         individuals=tuple(
-            _individual(context, durations_by_position, random)
-            for _ in range(population_size)
+            _individual(context, candidates, random) for _ in range(population_size)
         )
     )
 
 
 def _individual(
     context: GenerationContext,
-    durations_by_position: dict[int, int],
+    candidates: tuple[PlanExerciseCandidate, ...],
     random: Random,
 ) -> PlanIndividual:
-    """Greedily fill every schema position up to its allocated duration."""
+    """Greedily fill this context's one segment up to its allocated duration."""
     return PlanIndividual(
-        selections=tuple(
-            selection
-            for schema_item in context.schema
-            for selection in _selections_for_position(
-                schema_position=schema_item.position,
-                target_duration=durations_by_position[schema_item.position],
-                candidates=context.candidates_by_position[schema_item.position],
-                random=random,
-            )
+        selections=_selections_for_position(
+            schema_position=context.segment.position,
+            target_duration=context.segment_duration_minutes,
+            candidates=candidates,
+            random=random,
         )
     )
 
@@ -133,19 +140,22 @@ def _closest_candidate(
     )
 
 
-def _durations_by_position(context: GenerationContext) -> dict[int, int]:
-    """Split the plan duration by schema percentages without losing minutes."""
+def allocate_segment_durations(
+    group_duration_minutes: int,
+    schema: tuple[GenerationSchemaItem, ...],
+) -> dict[int, int]:
+    """Split one plan duration by schema percentages without losing minutes."""
     exact_durations = {
         item.position: (
-            Decimal(context.group_duration_minutes) * item.percentage / Decimal("100")
+            Decimal(group_duration_minutes) * item.percentage / Decimal("100")
         )
-        for item in context.schema
+        for item in schema
     }
     durations = {
         position: int(exact_duration)
         for position, exact_duration in exact_durations.items()
     }
-    remaining_minutes = context.group_duration_minutes - sum(durations.values())
+    remaining_minutes = group_duration_minutes - sum(durations.values())
     positions_by_remainder = sorted(
         exact_durations,
         key=lambda position: (
