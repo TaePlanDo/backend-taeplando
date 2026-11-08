@@ -57,7 +57,6 @@ async def prepare_candidates(
             source,
             group,
             available_equipment_ids,
-            parameters.training_type_id,
         )
         if candidate is not None:
             candidates.append(candidate)
@@ -68,14 +67,10 @@ def _candidate_for_source(
     source: TrainerExercise,
     group: TrainingGroup,
     available_equipment_ids: set[UUID],
-    training_type_id: UUID | None,
 ) -> PlanExerciseCandidate | None:
     """Return one source only when its catalog requirements fit this request."""
     if not _has_required_equipment(source, available_equipment_ids):
         return None
-    if not _has_training_type(source, training_type_id):
-        return None
-
     source_segment_ids = {segment.id for segment in source.segments}
     schema_positions = tuple(
         sorted(
@@ -119,16 +114,4 @@ def _has_required_equipment(
         return required_equipment_ids <= available_equipment_ids
     return not required_equipment_ids or bool(
         required_equipment_ids & available_equipment_ids
-    )
-
-
-def _has_training_type(source: TrainerExercise, training_type_id: UUID | None) -> bool:
-    """Treat an untyped exercise as universal for every training type."""
-    return (
-        training_type_id is None
-        or not source.training_types
-        or any(
-            training_type.id == training_type_id
-            for training_type in source.training_types
-        )
     )

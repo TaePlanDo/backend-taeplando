@@ -76,7 +76,7 @@ def _source(
     )
 
 
-def test_prepare_candidates_applies_equipment_type_and_segment_rules() -> None:
+def test_prepare_candidates_applies_equipment_and_segment_rules() -> None:
     """Keep only active-source candidates usable by this exact request."""
 
     all_requirement = _source(
@@ -103,13 +103,6 @@ def test_prepare_candidates_applies_equipment_type_and_segment_rules() -> None:
         training_type_ids=[TRAINING_TYPE_ID],
         segment_ids=[1],
     )
-    wrong_type = _source(
-        UUID("9ac590e1-2a46-4cb7-8944-803e364cc46b"),
-        equipment_ids=[],
-        equipment_mode=EquipmentRequirementMode.ALL,
-        training_type_ids=[OTHER_TRAINING_TYPE_ID],
-        segment_ids=[1],
-    )
     unmatched_segment = _source(
         UUID("aac590e1-2a46-4cb7-8944-803e364cc46b"),
         equipment_ids=[],
@@ -125,7 +118,6 @@ def test_prepare_candidates_applies_equipment_type_and_segment_rules() -> None:
                 all_requirement,
                 any_requirement,
                 missing_required_equipment,
-                wrong_type,
                 unmatched_segment,
             ]
         ),
@@ -187,34 +179,25 @@ def test_prepare_candidates_applies_equipment_type_and_segment_rules() -> None:
     )
 
 
-def test_prepare_candidates_skips_type_filter_for_automatic_selection() -> None:
-    """An omitted training type leaves all configured types eligible."""
+def test_prepare_candidates_keeps_every_training_type_for_fitness() -> None:
+    """A requested type is a fitness preference, never an eligibility filter."""
 
-    source = _source(
+    matching_type = _source(
         UUID("bac590e1-2a46-4cb7-8944-803e364cc46b"),
+        equipment_ids=[],
+        equipment_mode=EquipmentRequirementMode.ALL,
+        training_type_ids=[TRAINING_TYPE_ID],
+        segment_ids=[1],
+    )
+    another_type = _source(
+        UUID("cac590e1-2a46-4cb7-8944-803e364cc46b"),
         equipment_ids=[],
         equipment_mode=EquipmentRequirementMode.ALL,
         training_type_ids=[OTHER_TRAINING_TYPE_ID],
         segment_ids=[1],
     )
-    with patch(
-        "app.services.plan_generation_candidates_service.exercises_db.list_candidate_sources",
-        new=AsyncMock(return_value=[source]),
-    ):
-        candidates = asyncio.run(
-            plan_generation_candidates_service.prepare_candidates(
-                AsyncMock(), TRAINER_ID, _group(), _parameters(training_type_id=None)
-            )
-        )
-
-    assert [item.trainer_exercise_id for item in candidates] == [source.id]
-
-
-def test_prepare_candidates_treats_an_untyped_exercise_as_universal() -> None:
-    """An exercise without types remains eligible for a selected training type."""
-
-    source = _source(
-        UUID("cac590e1-2a46-4cb7-8944-803e364cc46b"),
+    untyped = _source(
+        UUID("dac590e1-2a46-4cb7-8944-803e364cc46b"),
         equipment_ids=[],
         equipment_mode=EquipmentRequirementMode.ALL,
         training_type_ids=[],
@@ -222,7 +205,7 @@ def test_prepare_candidates_treats_an_untyped_exercise_as_universal() -> None:
     )
     with patch(
         "app.services.plan_generation_candidates_service.exercises_db.list_candidate_sources",
-        new=AsyncMock(return_value=[source]),
+        new=AsyncMock(return_value=[matching_type, another_type, untyped]),
     ):
         candidates = asyncio.run(
             plan_generation_candidates_service.prepare_candidates(
@@ -230,7 +213,11 @@ def test_prepare_candidates_treats_an_untyped_exercise_as_universal() -> None:
             )
         )
 
-    assert [item.trainer_exercise_id for item in candidates] == [source.id]
+    assert [item.trainer_exercise_id for item in candidates] == [
+        matching_type.id,
+        another_type.id,
+        untyped.id,
+    ]
 
 
 def test_list_candidate_sources_accepts_exercises_with_an_age_range_overlap() -> None:
