@@ -24,15 +24,16 @@ from app.services import (
     plan_generation_candidates_service,
     plan_generation_parameters_service,
 )
-from app.services.plan_generation_errors import PlanGenerationError
-from app.services.plan_generation_population_service import (
-    PlanExerciseSelection,
-    build_initial_population,
-)
-from app.services.plan_generation_strategies import (
-    GeneratedPlan,
+from app.services.plan_generation_domain import (
     GenerationContext,
     GenerationSchemaItem,
+    PlanExerciseCandidate,
+    PlanExerciseSelection,
+    PlanIndividual,
+)
+from app.services.plan_generation_errors import PlanGenerationError
+from app.services.plan_generation_population_service import build_initial_population
+from app.services.plan_generation_strategies import (
     PlanGenerationStrategy,
     RandomPlanGenerationStrategy,
 )
@@ -153,7 +154,7 @@ def _generation_context(
     job: PlanGenerationJob,
     group: TrainingGroup,
     parameters: PlanGenerationParameters,
-    candidates: list[plan_generation_candidates_service.PlanExerciseCandidate],
+    candidates: list[PlanExerciseCandidate],
 ) -> GenerationContext:
     """Adapt database-backed preparation into the strategy's immutable contract."""
     return GenerationContext(
@@ -184,17 +185,17 @@ async def _persist_plan(
     job: PlanGenerationJob,
     validated_input: plan_generation_parameters_service.ValidatedPlanGenerationInput,
     parameters: PlanGenerationParameters,
-    generated: GeneratedPlan,
+    generated: PlanIndividual,
 ) -> TrainingPlan:
     """Write immutable plan snapshots from the strategy's selected candidates."""
     group = validated_input.group
     selected_sources = await exercises_db.list_sources_for_generated_plan(
         session,
         job.trainer_id,
-        {item.candidate.trainer_exercise_id for item in generated.exercises},
+        {item.candidate.trainer_exercise_id for item in generated.selections},
     )
     if len(selected_sources) != len(
-        {item.candidate.trainer_exercise_id for item in generated.exercises}
+        {item.candidate.trainer_exercise_id for item in generated.selections}
     ):
         raise PlanGenerationError("A selected exercise is no longer available")
 
@@ -216,7 +217,7 @@ async def _persist_plan(
             position, item, selected_sources[item.candidate.trainer_exercise_id]
         )
         for position, item in enumerate(
-            sorted(generated.exercises, key=lambda item: item.schema_position),
+            sorted(generated.selections, key=lambda item: item.schema_position),
             start=1,
         )
     ]

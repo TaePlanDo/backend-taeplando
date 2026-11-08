@@ -1,23 +1,18 @@
 """Coverage for creation of the genetic algorithm's first generation."""
 
 from datetime import UTC, datetime
-from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
 
 from app.models.enums import EquipmentRequirementMode
-from app.services import plan_generation_service
-from app.services.plan_generation_candidates_service import PlanExerciseCandidate
-from app.services.plan_generation_errors import NoCandidateForSchemaPositionError
-from app.services.plan_generation_population_service import (
-    PlanExerciseSelection,
-    build_initial_population,
-)
-from app.services.plan_generation_strategies import (
+from app.services.plan_generation_domain import (
     GenerationContext,
     GenerationSchemaItem,
+    PlanExerciseCandidate,
 )
+from app.services.plan_generation_errors import NoCandidateForSchemaPositionError
+from app.services.plan_generation_population_service import build_initial_population
 
 
 def _candidate(
@@ -107,37 +102,3 @@ def test_population_rejects_non_positive_duration_candidates() -> None:
 
     with pytest.raises(NoCandidateForSchemaPositionError, match="1"):
         build_initial_population(_context(invalid))
-
-
-def test_persisted_selection_uses_its_allocated_duration() -> None:
-    """The generated plan snapshots the duration gene, not the source default."""
-    candidate = _candidate("5ac590e1-2a46-4cb7-8944-803e364cc46b", (1,), duration=10)
-    selection = PlanExerciseSelection(
-        schema_position=1,
-        candidate=candidate,
-        allocated_duration_minutes=7,
-    )
-    source = SimpleNamespace(
-        id=candidate.trainer_exercise_id,
-        exercise_id=candidate.exercise_id,
-        source_version_id=None,
-        exercise=SimpleNamespace(name="Ćwiczenie", description="Opis", image_url=None),
-        min_age=7,
-        max_age=14,
-        min_participants=1,
-        max_participants=20,
-        duration_minutes=10,
-        physical_difficulty=3,
-        technical_difficulty=3,
-        upper_body_load=3,
-        lower_body_load=3,
-        core_load=3,
-        equipment=[],
-        training_types=[],
-        segments=[],
-        source_version=None,
-    )
-
-    plan_exercise = plan_generation_service._plan_exercise(1, selection, source)
-
-    assert plan_exercise.duration_minutes_snapshot == 7

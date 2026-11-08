@@ -1,6 +1,5 @@
 """Prepare eligible exercises for the future plan-generation algorithm."""
 
-from dataclasses import dataclass
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,30 +9,7 @@ from app.models.enums import EquipmentRequirementMode
 from app.models.exercises import TrainerExercise
 from app.models.training import TrainingGroup
 from app.schemas.plan_generation import PlanGenerationParameters
-
-
-@dataclass(frozen=True)
-class PlanExerciseCandidate:
-    """Complete planning data for one exercise eligible for group-schema items."""
-
-    trainer_exercise_id: UUID
-    exercise_id: UUID
-    exercise_version_id: UUID | None
-    min_age: int
-    max_age: int
-    min_participants: int
-    max_participants: int
-    default_duration_minutes: int
-    equipment_requirement_mode: EquipmentRequirementMode
-    equipment_ids: tuple[UUID, ...]
-    training_type_ids: tuple[UUID, ...]
-    segment_ids: tuple[int, ...]
-    physical_difficulty: int
-    technical_difficulty: int
-    upper_body_load: int
-    lower_body_load: int
-    core_load: int
-    schema_positions: tuple[int, ...]
+from app.services.plan_generation_domain import PlanExerciseCandidate
 
 
 async def prepare_candidates(

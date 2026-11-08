@@ -3,41 +3,18 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass
 from random import Random
-from typing import TYPE_CHECKING
 
-from app.services.plan_generation_candidates_service import PlanExerciseCandidate
+from app.services.plan_generation_domain import (
+    GenerationContext,
+    InitialPopulation,
+    PlanExerciseCandidate,
+    PlanExerciseSelection,
+    PlanIndividual,
+)
 from app.services.plan_generation_errors import NoCandidateForSchemaPositionError
 
-if TYPE_CHECKING:
-    from app.services.plan_generation_strategies import GenerationContext
-
-
 INITIAL_POPULATION_SIZE = 20
-
-
-@dataclass(frozen=True)
-class PlanExerciseSelection:
-    """One exercise gene assigned to one schema position in a plan individual."""
-
-    schema_position: int
-    candidate: PlanExerciseCandidate
-    allocated_duration_minutes: int
-
-
-@dataclass(frozen=True)
-class PlanIndividual:
-    """One complete candidate plan in the genetic population."""
-
-    selections: tuple[PlanExerciseSelection, ...]
-
-
-@dataclass(frozen=True)
-class InitialPopulation:
-    """The first generation supplied to the genetic algorithm."""
-
-    individuals: tuple[PlanIndividual, ...]
 
 
 def build_initial_population(

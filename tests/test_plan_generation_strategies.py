@@ -6,14 +6,14 @@ from uuid import UUID
 import pytest
 
 from app.models.enums import EquipmentRequirementMode
-from app.services.plan_generation_candidates_service import PlanExerciseCandidate
-from app.services.plan_generation_errors import NoCandidateForSchemaPositionError
-from app.services.plan_generation_population_service import build_initial_population
-from app.services.plan_generation_strategies import (
+from app.services.plan_generation_domain import (
     GenerationContext,
     GenerationSchemaItem,
-    RandomPlanGenerationStrategy,
+    PlanExerciseCandidate,
 )
+from app.services.plan_generation_errors import NoCandidateForSchemaPositionError
+from app.services.plan_generation_population_service import build_initial_population
+from app.services.plan_generation_strategies import RandomPlanGenerationStrategy
 
 
 def _candidate(identifier: str, positions: tuple[int, ...]) -> PlanExerciseCandidate:
@@ -69,10 +69,10 @@ def test_random_strategy_selects_one_eligible_candidate_per_schema_position() ->
     generated = strategy.generate(context, population)
 
     assert generated == strategy.generate(context, population)
-    assert [item.schema_position for item in generated.exercises] == [1, 2, 3]
+    assert [item.schema_position for item in generated.selections] == [1, 2, 3]
     assert all(
         item.schema_position in item.candidate.schema_positions
-        for item in generated.exercises
+        for item in generated.selections
     )
 
 

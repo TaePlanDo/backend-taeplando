@@ -1,64 +1,14 @@
-"""Interchangeable algorithms for selecting exercises for a generated plan."""
+"""Interchangeable algorithms for selecting a plan from a population."""
 
-from dataclasses import dataclass
-from datetime import datetime
 from random import Random
 from typing import Protocol
-from uuid import UUID
 
-from app.services.plan_generation_candidates_service import PlanExerciseCandidate
-from app.services.plan_generation_errors import (
-    NoCandidateForSchemaPositionError,
-    PlanGenerationError,
-)
-from app.services.plan_generation_population_service import (
+from app.services.plan_generation_domain import (
+    GenerationContext,
     InitialPopulation,
-    PlanExerciseSelection,
+    PlanIndividual,
 )
-
-__all__ = [
-    "GeneratedPlan",
-    "GenerationContext",
-    "GenerationSchemaItem",
-    "NoCandidateForSchemaPositionError",
-    "PlanGenerationError",
-    "PlanGenerationStrategy",
-    "RandomPlanGenerationStrategy",
-]
-
-
-@dataclass(frozen=True)
-class GenerationSchemaItem:
-    """One segment allocation available to a plan-generation strategy."""
-
-    position: int
-    segment_id: int
-    percentage: float
-
-
-@dataclass(frozen=True)
-class GenerationContext:
-    """Immutable, database-free input shared by every generation strategy."""
-
-    participant_count: int
-    available_equipment_ids: tuple[UUID, ...]
-    preferred_training_type_id: UUID | None
-    training_group_id: UUID
-    training_group_name: str
-    group_min_age: int
-    group_max_age: int
-    group_duration_minutes: int
-    deadline_at: datetime
-    schema: tuple[GenerationSchemaItem, ...]
-    candidates: tuple[PlanExerciseCandidate, ...]
-    random_seed: int
-
-
-@dataclass(frozen=True)
-class GeneratedPlan:
-    """Algorithm output that the runner can persist without rerunning selection."""
-
-    exercises: tuple[PlanExerciseSelection, ...]
+from app.services.plan_generation_errors import PlanGenerationError
 
 
 class PlanGenerationStrategy(Protocol):
@@ -66,7 +16,7 @@ class PlanGenerationStrategy(Protocol):
 
     def generate(
         self, context: GenerationContext, population: InitialPopulation
-    ) -> GeneratedPlan:
+    ) -> PlanIndividual:
         """Choose one plan from the prepared population without performing I/O."""
 
 
@@ -75,10 +25,9 @@ class RandomPlanGenerationStrategy:
 
     def generate(
         self, context: GenerationContext, population: InitialPopulation
-    ) -> GeneratedPlan:
+    ) -> PlanIndividual:
         """Choose one prepared plan until the genetic strategy replaces this stub."""
         if not population.individuals:
             raise PlanGenerationError("Initial population is empty")
         random = Random(context.random_seed)
-        individual = random.choice(population.individuals)
-        return GeneratedPlan(exercises=individual.selections)
+        return random.choice(population.individuals)

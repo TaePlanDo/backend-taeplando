@@ -11,6 +11,7 @@ from app.db import exercises as exercises_db
 from app.models.enums import EquipmentRequirementMode
 from app.schemas.plan_generation import PlanGenerationParameters
 from app.services import plan_generation_candidates_service
+from app.services.plan_generation_domain import PlanExerciseCandidate
 from constants import TRAINER_ID
 
 GROUP_ID = UUID("0ac590e1-2a46-4cb7-8944-803e364cc46b")
@@ -129,7 +130,7 @@ def test_prepare_candidates_applies_equipment_and_segment_rules() -> None:
         )
 
     assert candidates == [
-        plan_generation_candidates_service.PlanExerciseCandidate(
+        PlanExerciseCandidate(
             trainer_exercise_id=all_requirement.id,
             exercise_id=EXERCISE_ID,
             exercise_version_id=EXERCISE_VERSION_ID,
@@ -149,7 +150,7 @@ def test_prepare_candidates_applies_equipment_and_segment_rules() -> None:
             core_load=3,
             schema_positions=(1, 2),
         ),
-        plan_generation_candidates_service.PlanExerciseCandidate(
+        PlanExerciseCandidate(
             trainer_exercise_id=any_requirement.id,
             exercise_id=any_requirement.id,
             exercise_version_id=None,

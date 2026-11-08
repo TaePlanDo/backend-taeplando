@@ -7,8 +7,14 @@ from types import SimpleNamespace
 from unittest.mock import ANY, AsyncMock, patch
 from uuid import UUID
 
+from app.models.enums import EquipmentRequirementMode
+from app.schemas.plan_generation import PlanGenerationParameters
 from app.services import plan_generation_service
-from app.services.plan_generation_strategies import NoCandidateForSchemaPositionError
+from app.services.plan_generation_domain import (
+    PlanExerciseCandidate,
+    PlanExerciseSelection,
+)
+from app.services.plan_generation_errors import NoCandidateForSchemaPositionError
 
 JOB_ID = UUID("0ac590e1-2a46-4cb7-8944-803e364cc46b")
 PLAN_ID = UUID("1ac590e1-2a46-4cb7-8944-803e364cc46b")
@@ -32,7 +38,7 @@ def _job():
 
 def test_generation_context_contains_all_form_and_group_fitness_inputs() -> None:
     """Fitness and evolution receive request values plus the current group profile."""
-    parameters = plan_generation_service.PlanGenerationParameters(
+    parameters = PlanGenerationParameters(
         training_group_id=PLAN_ID,
         participant_count=12,
         available_equipment_ids=[
@@ -62,6 +68,59 @@ def test_generation_context_contains_all_form_and_group_fitness_inputs() -> None
     assert context.training_group_name == "Jaworzyna gr. 1"
     assert (context.group_min_age, context.group_max_age) == (7, 14)
     assert context.group_duration_minutes == 60
+
+
+def test_persisted_selection_uses_its_allocated_duration() -> None:
+    """The generated plan snapshots the duration gene, not the source default."""
+    candidate = PlanExerciseCandidate(
+        trainer_exercise_id=PLAN_ID,
+        exercise_id=PLAN_ID,
+        exercise_version_id=None,
+        min_age=7,
+        max_age=14,
+        min_participants=1,
+        max_participants=20,
+        default_duration_minutes=10,
+        equipment_requirement_mode=EquipmentRequirementMode.ALL,
+        equipment_ids=(),
+        training_type_ids=(),
+        segment_ids=(),
+        physical_difficulty=3,
+        technical_difficulty=3,
+        upper_body_load=3,
+        lower_body_load=3,
+        core_load=3,
+        schema_positions=(1,),
+    )
+    selection = PlanExerciseSelection(
+        schema_position=1,
+        candidate=candidate,
+        allocated_duration_minutes=7,
+    )
+    source = SimpleNamespace(
+        id=candidate.trainer_exercise_id,
+        exercise_id=candidate.exercise_id,
+        source_version_id=None,
+        exercise=SimpleNamespace(name="Ćwiczenie", description="Opis", image_url=None),
+        min_age=7,
+        max_age=14,
+        min_participants=1,
+        max_participants=20,
+        duration_minutes=10,
+        physical_difficulty=3,
+        technical_difficulty=3,
+        upper_body_load=3,
+        lower_body_load=3,
+        core_load=3,
+        equipment=[],
+        training_types=[],
+        segments=[],
+        source_version=None,
+    )
+
+    plan_exercise = plan_generation_service._plan_exercise(1, selection, source)
+
+    assert plan_exercise.duration_minutes_snapshot == 7
 
 
 def test_runner_marks_a_persisted_plan_as_succeeded() -> None:
