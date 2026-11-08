@@ -50,6 +50,13 @@ def _candidate(
 
 def _context(*candidates: PlanExerciseCandidate) -> GenerationContext:
     return GenerationContext(
+        participant_count=12,
+        available_equipment_ids=(),
+        preferred_training_type_id=None,
+        training_group_id=UUID("6ac590e1-2a46-4cb7-8944-803e364cc46b"),
+        training_group_name="Grupa",
+        group_min_age=7,
+        group_max_age=14,
         group_duration_minutes=60,
         deadline_at=datetime(2026, 11, 7, 12, 0, tzinfo=UTC),
         schema=(

@@ -43,6 +43,13 @@ def test_random_strategy_selects_one_eligible_candidate_per_schema_position() ->
     """The temporary strategy has a stable random-looking result for one job seed."""
 
     context = GenerationContext(
+        participant_count=12,
+        available_equipment_ids=(),
+        preferred_training_type_id=None,
+        training_group_id=UUID("3ac590e1-2a46-4cb7-8944-803e364cc46b"),
+        training_group_name="Grupa",
+        group_min_age=7,
+        group_max_age=14,
         group_duration_minutes=60,
         deadline_at=datetime(2026, 11, 6, 12, 0, tzinfo=UTC),
         schema=(
@@ -73,6 +80,13 @@ def test_random_strategy_rejects_a_schema_position_without_candidates() -> None:
     """The runner can turn an incomplete plan into a typed failed job state."""
 
     context = GenerationContext(
+        participant_count=12,
+        available_equipment_ids=(),
+        preferred_training_type_id=None,
+        training_group_id=UUID("4ac590e1-2a46-4cb7-8944-803e364cc46b"),
+        training_group_name="Grupa",
+        group_min_age=7,
+        group_max_age=14,
         group_duration_minutes=60,
         deadline_at=datetime(2026, 11, 6, 12, 0, tzinfo=UTC),
         schema=(

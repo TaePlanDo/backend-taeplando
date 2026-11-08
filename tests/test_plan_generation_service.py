@@ -30,6 +30,40 @@ def _job():
     )
 
 
+def test_generation_context_contains_all_form_and_group_fitness_inputs() -> None:
+    """Fitness and evolution receive request values plus the current group profile."""
+    parameters = plan_generation_service.PlanGenerationParameters(
+        training_group_id=PLAN_ID,
+        participant_count=12,
+        available_equipment_ids=[
+            UUID("2ac590e1-2a46-4cb7-8944-803e364cc46b"),
+            UUID("1ac590e1-2a46-4cb7-8944-803e364cc46b"),
+        ],
+        training_type_id=UUID("3ac590e1-2a46-4cb7-8944-803e364cc46b"),
+    )
+    group = SimpleNamespace(
+        id=PLAN_ID,
+        name="Jaworzyna gr. 1",
+        min_age=7,
+        max_age=14,
+        duration_minutes=60,
+        schema_items=[],
+    )
+    job = SimpleNamespace(id=JOB_ID, deadline_at=datetime(2026, 11, 8, tzinfo=UTC))
+
+    context = plan_generation_service._generation_context(job, group, parameters, [])
+
+    assert context.participant_count == 12
+    assert context.available_equipment_ids == tuple(
+        sorted(parameters.available_equipment_ids)
+    )
+    assert context.preferred_training_type_id == parameters.training_type_id
+    assert context.training_group_id == PLAN_ID
+    assert context.training_group_name == "Jaworzyna gr. 1"
+    assert (context.group_min_age, context.group_max_age) == (7, 14)
+    assert context.group_duration_minutes == 60
+
+
 def test_runner_marks_a_persisted_plan_as_succeeded() -> None:
     """Runner owns persistence and success status, not the generation strategy."""
 

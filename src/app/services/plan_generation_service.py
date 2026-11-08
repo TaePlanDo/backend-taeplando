@@ -143,7 +143,7 @@ async def _generate_plan(
     candidates = await plan_generation_candidates_service.prepare_candidates(
         session, job.trainer_id, group, parameters
     )
-    context = _generation_context(job, group, candidates)
+    context = _generation_context(job, group, parameters, candidates)
     population = await asyncio.to_thread(build_initial_population, context)
     generated = await asyncio.to_thread(strategy.generate, context, population)
     return await _persist_plan(session, job, validated_input, parameters, generated)
@@ -152,10 +152,18 @@ async def _generate_plan(
 def _generation_context(
     job: PlanGenerationJob,
     group: TrainingGroup,
+    parameters: PlanGenerationParameters,
     candidates: list[plan_generation_candidates_service.PlanExerciseCandidate],
 ) -> GenerationContext:
     """Adapt database-backed preparation into the strategy's immutable contract."""
     return GenerationContext(
+        participant_count=parameters.participant_count,
+        available_equipment_ids=tuple(sorted(parameters.available_equipment_ids)),
+        preferred_training_type_id=parameters.training_type_id,
+        training_group_id=group.id,
+        training_group_name=group.name,
+        group_min_age=group.min_age,
+        group_max_age=group.max_age,
         group_duration_minutes=group.duration_minutes,
         deadline_at=job.deadline_at,
         schema=tuple(
