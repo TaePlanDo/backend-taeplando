@@ -1,5 +1,8 @@
 """Prepare eligible exercises for the future plan-generation algorithm."""
 
+from collections import defaultdict
+from collections.abc import Sequence
+from types import MappingProxyType
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,7 +12,12 @@ from app.models.enums import EquipmentRequirementMode
 from app.models.exercises import TrainerExercise
 from app.models.training import TrainingGroup
 from app.schemas.plan_generation import PlanGenerationParameters
-from app.services.plan_generation_domain import PlanExerciseCandidate
+from app.services.plan_generation_domain import (
+    CandidatePool,
+    GenerationSchemaItem,
+    PlanExerciseCandidate,
+)
+from app.services.plan_generation_errors import NoCandidateForSchemaPositionError
 
 
 async def prepare_candidates(
@@ -37,6 +45,33 @@ async def prepare_candidates(
         if candidate is not None:
             candidates.append(candidate)
     return candidates
+
+
+def build_candidate_pool(
+    schema: Sequence[GenerationSchemaItem],
+    candidates: Sequence[PlanExerciseCandidate],
+) -> CandidatePool:
+    """Index structurally valid candidates once for all generation phases."""
+    candidates_by_position: dict[int, list[PlanExerciseCandidate]] = defaultdict(list)
+    for candidate in candidates:
+        if candidate.default_duration_minutes < 1:
+            continue
+        for schema_position in candidate.schema_positions:
+            candidates_by_position[schema_position].append(candidate)
+
+    for schema_item in schema:
+        if not candidates_by_position[schema_item.position]:
+            raise NoCandidateForSchemaPositionError(schema_item.position)
+    return CandidatePool(
+        by_schema_position=MappingProxyType(
+            {
+                schema_item.position: tuple(
+                    candidates_by_position[schema_item.position]
+                )
+                for schema_item in schema
+            }
+        )
+    )
 
 
 def _candidate_for_source(

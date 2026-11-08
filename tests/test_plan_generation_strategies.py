@@ -6,6 +6,7 @@ from uuid import UUID
 import pytest
 
 from app.models.enums import EquipmentRequirementMode
+from app.services import plan_generation_candidates_service
 from app.services.plan_generation_domain import (
     GenerationContext,
     GenerationSchemaItem,
@@ -42,6 +43,15 @@ def _candidate(identifier: str, positions: tuple[int, ...]) -> PlanExerciseCandi
 def test_random_strategy_selects_one_eligible_candidate_per_schema_position() -> None:
     """The temporary strategy has a stable random-looking result for one job seed."""
 
+    schema = (
+        GenerationSchemaItem(position=1, segment_id=1, percentage=20),
+        GenerationSchemaItem(position=2, segment_id=2, percentage=60),
+        GenerationSchemaItem(position=3, segment_id=3, percentage=20),
+    )
+    candidates = (
+        _candidate("0ac590e1-2a46-4cb7-8944-803e364cc46b", (1, 2)),
+        _candidate("1ac590e1-2a46-4cb7-8944-803e364cc46b", (2, 3)),
+    )
     context = GenerationContext(
         participant_count=12,
         available_equipment_ids=(),
@@ -52,14 +62,9 @@ def test_random_strategy_selects_one_eligible_candidate_per_schema_position() ->
         group_max_age=14,
         group_duration_minutes=60,
         deadline_at=datetime(2026, 11, 6, 12, 0, tzinfo=UTC),
-        schema=(
-            GenerationSchemaItem(position=1, segment_id=1, percentage=20),
-            GenerationSchemaItem(position=2, segment_id=2, percentage=60),
-            GenerationSchemaItem(position=3, segment_id=3, percentage=20),
-        ),
-        candidates=(
-            _candidate("0ac590e1-2a46-4cb7-8944-803e364cc46b", (1, 2)),
-            _candidate("1ac590e1-2a46-4cb7-8944-803e364cc46b", (2, 3)),
+        schema=schema,
+        candidate_pool=plan_generation_candidates_service.build_candidate_pool(
+            schema, candidates
         ),
         random_seed=123,
     )
@@ -76,26 +81,13 @@ def test_random_strategy_selects_one_eligible_candidate_per_schema_position() ->
     )
 
 
-def test_random_strategy_rejects_a_schema_position_without_candidates() -> None:
-    """The runner can turn an incomplete plan into a typed failed job state."""
+def test_candidate_pool_rejects_a_schema_position_without_candidates() -> None:
+    """The runner can turn an incomplete pool into a typed failed job state."""
 
-    context = GenerationContext(
-        participant_count=12,
-        available_equipment_ids=(),
-        preferred_training_type_id=None,
-        training_group_id=UUID("4ac590e1-2a46-4cb7-8944-803e364cc46b"),
-        training_group_name="Grupa",
-        group_min_age=7,
-        group_max_age=14,
-        group_duration_minutes=60,
-        deadline_at=datetime(2026, 11, 6, 12, 0, tzinfo=UTC),
-        schema=(
-            GenerationSchemaItem(position=1, segment_id=1, percentage=50),
-            GenerationSchemaItem(position=2, segment_id=2, percentage=50),
-        ),
-        candidates=(_candidate("2ac590e1-2a46-4cb7-8944-803e364cc46b", (1,)),),
-        random_seed=1,
+    schema = (
+        GenerationSchemaItem(position=1, segment_id=1, percentage=50),
+        GenerationSchemaItem(position=2, segment_id=2, percentage=50),
     )
-
+    candidates = (_candidate("2ac590e1-2a46-4cb7-8944-803e364cc46b", (1,)),)
     with pytest.raises(NoCandidateForSchemaPositionError, match="2"):
-        build_initial_population(context)
+        plan_generation_candidates_service.build_candidate_pool(schema, candidates)

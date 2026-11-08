@@ -6,6 +6,7 @@ from uuid import UUID
 import pytest
 
 from app.models.enums import EquipmentRequirementMode
+from app.services import plan_generation_candidates_service
 from app.services.plan_generation_domain import (
     GenerationContext,
     GenerationSchemaItem,
@@ -44,6 +45,10 @@ def _candidate(
 
 
 def _context(*candidates: PlanExerciseCandidate) -> GenerationContext:
+    schema = (
+        GenerationSchemaItem(position=1, segment_id=1, percentage=50),
+        GenerationSchemaItem(position=2, segment_id=2, percentage=50),
+    )
     return GenerationContext(
         participant_count=12,
         available_equipment_ids=(),
@@ -54,11 +59,10 @@ def _context(*candidates: PlanExerciseCandidate) -> GenerationContext:
         group_max_age=14,
         group_duration_minutes=60,
         deadline_at=datetime(2026, 11, 7, 12, 0, tzinfo=UTC),
-        schema=(
-            GenerationSchemaItem(position=1, segment_id=1, percentage=50),
-            GenerationSchemaItem(position=2, segment_id=2, percentage=50),
+        schema=schema,
+        candidate_pool=plan_generation_candidates_service.build_candidate_pool(
+            schema, candidates
         ),
-        candidates=candidates,
         random_seed=123,
     )
 
@@ -67,8 +71,14 @@ def test_population_contains_complete_plans_and_duration_genes() -> None:
     """Each individual has one valid selection per schema position."""
     first = _candidate("0ac590e1-2a46-4cb7-8944-803e364cc46b", (1,), duration=8)
     second = _candidate("1ac590e1-2a46-4cb7-8944-803e364cc46b", (2,), duration=12)
+    context = _context(first, second)
 
-    population = build_initial_population(_context(first, second), population_size=3)
+    assert context.candidate_pool.by_schema_position == {
+        1: (first,),
+        2: (second,),
+    }
+
+    population = build_initial_population(context, population_size=3)
 
     assert len(population.individuals) == 3
     for individual in population.individuals:

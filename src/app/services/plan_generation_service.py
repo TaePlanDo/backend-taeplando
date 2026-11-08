@@ -157,6 +157,14 @@ def _generation_context(
     candidates: list[PlanExerciseCandidate],
 ) -> GenerationContext:
     """Adapt database-backed preparation into the strategy's immutable contract."""
+    schema = tuple(
+        GenerationSchemaItem(
+            position=item.position,
+            segment_id=item.segment_id,
+            percentage=float(item.percentage),
+        )
+        for item in sorted(group.schema_items, key=lambda item: item.position)
+    )
     return GenerationContext(
         participant_count=parameters.participant_count,
         available_equipment_ids=tuple(sorted(parameters.available_equipment_ids)),
@@ -167,15 +175,10 @@ def _generation_context(
         group_max_age=group.max_age,
         group_duration_minutes=group.duration_minutes,
         deadline_at=job.deadline_at,
-        schema=tuple(
-            GenerationSchemaItem(
-                position=item.position,
-                segment_id=item.segment_id,
-                percentage=float(item.percentage),
-            )
-            for item in sorted(group.schema_items, key=lambda item: item.position)
+        schema=schema,
+        candidate_pool=plan_generation_candidates_service.build_candidate_pool(
+            schema, candidates
         ),
-        candidates=tuple(candidates),
         random_seed=job.id.int,
     )
 

@@ -1,5 +1,6 @@
 """Database-free contracts shared by candidate preparation and generation."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
@@ -41,6 +42,13 @@ class GenerationSchemaItem:
 
 
 @dataclass(frozen=True)
+class CandidatePool:
+    """Eligible candidates indexed by the schema positions they can fill."""
+
+    by_schema_position: Mapping[int, tuple[PlanExerciseCandidate, ...]]
+
+
+@dataclass(frozen=True)
 class GenerationContext:
     """Immutable input shared by initial-population and generation algorithms."""
 
@@ -54,7 +62,7 @@ class GenerationContext:
     group_duration_minutes: int
     deadline_at: datetime
     schema: tuple[GenerationSchemaItem, ...]
-    candidates: tuple[PlanExerciseCandidate, ...]
+    candidate_pool: CandidatePool
     random_seed: int
 
 
