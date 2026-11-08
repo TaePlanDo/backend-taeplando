@@ -488,7 +488,6 @@ def test_update_exercise_uses_the_authenticated_trainer(
                 "min_participants": 3,
                 "max_participants": 18,
                 **_configuration_payload(),
-                **private_planning_attributes(),
             },
         )
 
@@ -508,7 +507,6 @@ def test_update_exercise_uses_the_authenticated_trainer(
         equipment_ids=[EQUIPMENT_ID],
         training_type_ids=[TRAINING_TYPE_ID],
         segment_ids=[SEGMENT_ID],
-        **private_planning_attributes(),
     )
 
 

@@ -109,12 +109,7 @@ async def update_exercise(
     trainer_exercise.min_participants = payload.min_participants
     trainer_exercise.max_participants = payload.max_participants
     trainer_exercise.duration_minutes = payload.duration_minutes
-    trainer_exercise.equipment_requirement_mode = payload.equipment_requirement_mode
-    trainer_exercise.physical_difficulty = payload.physical_difficulty
-    trainer_exercise.technical_difficulty = payload.technical_difficulty
-    trainer_exercise.upper_body_load = payload.upper_body_load
-    trainer_exercise.lower_body_load = payload.lower_body_load
-    trainer_exercise.core_load = payload.core_load
+    _apply_provided_planning_attributes(trainer_exercise, payload)
     _replace_configuration(trainer_exercise, configuration)
     await session.commit()
     return _to_response_from_models(exercise, trainer_exercise, configuration)
@@ -230,6 +225,31 @@ def _replace_configuration(
     trainer_exercise.equipment = configuration.equipment
     trainer_exercise.training_types = configuration.training_types
     trainer_exercise.segments = configuration.segments
+
+
+def _apply_provided_planning_attributes(
+    trainer_exercise: TrainerExercise, payload: ExerciseUpdate
+) -> None:
+    """Update planning metadata only when the client supplied it."""
+    provided_fields = payload.model_fields_set
+    if "equipment_requirement_mode" in provided_fields:
+        assert payload.equipment_requirement_mode is not None
+        trainer_exercise.equipment_requirement_mode = payload.equipment_requirement_mode
+    if "physical_difficulty" in provided_fields:
+        assert payload.physical_difficulty is not None
+        trainer_exercise.physical_difficulty = payload.physical_difficulty
+    if "technical_difficulty" in provided_fields:
+        assert payload.technical_difficulty is not None
+        trainer_exercise.technical_difficulty = payload.technical_difficulty
+    if "upper_body_load" in provided_fields:
+        assert payload.upper_body_load is not None
+        trainer_exercise.upper_body_load = payload.upper_body_load
+    if "lower_body_load" in provided_fields:
+        assert payload.lower_body_load is not None
+        trainer_exercise.lower_body_load = payload.lower_body_load
+    if "core_load" in provided_fields:
+        assert payload.core_load is not None
+        trainer_exercise.core_load = payload.core_load
 
 
 def _catalog_references(

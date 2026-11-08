@@ -59,7 +59,27 @@ class ExercisePlanningAttributes(BaseModel):
     core_load: int = Field(ge=1, le=5)
 
 
-class ExerciseUpdate(ExerciseConfigurationWrite, ExercisePlanningAttributes):
+class ExercisePlanningAttributesUpdate(BaseModel):
+    """Optional planning metadata accepted from clients predating SCRUM-260."""
+
+    equipment_requirement_mode: EquipmentRequirementMode | None = None
+    physical_difficulty: int | None = Field(default=None, ge=1, le=5)
+    technical_difficulty: int | None = Field(default=None, ge=1, le=5)
+    upper_body_load: int | None = Field(default=None, ge=1, le=5)
+    lower_body_load: int | None = Field(default=None, ge=1, le=5)
+    core_load: int | None = Field(default=None, ge=1, le=5)
+
+    @model_validator(mode="after")
+    def reject_explicit_nulls(self) -> "ExercisePlanningAttributesUpdate":
+        """Distinguish an omitted legacy field from an invalid null value."""
+        if any(
+            getattr(self, field_name) is None for field_name in self.model_fields_set
+        ):
+            raise ValueError("planning attributes cannot be null")
+        return self
+
+
+class ExerciseUpdate(ExerciseConfigurationWrite, ExercisePlanningAttributesUpdate):
     """Editable fields of one trainer-owned exercise."""
 
     name: Name

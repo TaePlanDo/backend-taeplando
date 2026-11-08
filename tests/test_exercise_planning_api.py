@@ -2,9 +2,12 @@
 
 from uuid import UUID
 
+import pytest
+from pydantic import ValidationError
+
 from app.db import exercises as exercises_db
 from app.models.enums import EquipmentRequirementMode
-from app.schemas.exercises import ExerciseWrite
+from app.schemas.exercises import ExerciseUpdate, ExerciseWrite
 from constants import TRAINER_ID
 from exercise_planning_fixtures import private_planning_attributes
 
@@ -53,3 +56,34 @@ def test_exercise_write_defaults_planning_attributes() -> None:
         payload.lower_body_load,
         payload.core_load,
     ) == (3, 3, 3, 3, 3)
+
+
+def test_exercise_update_accepts_legacy_payload_without_planning_attributes() -> None:
+    """Keep existing clients working while they do not yet send new fields."""
+    payload = {
+        "name": "Ap chagi",
+        "description": "Kopnięcie frontalne.",
+        "duration_minutes": 10,
+        "min_age": 7,
+        "max_age": 14,
+        "min_participants": 2,
+        "max_participants": 20,
+        "equipment_ids": [],
+        "training_type_ids": [UUID("2894e3b8-d31a-42a3-89df-fbff1dfb1fb2")],
+        "segment_ids": [3],
+    }
+
+    legacy_update = ExerciseUpdate(**payload)
+
+    assert legacy_update.model_fields_set.isdisjoint(
+        {
+            "equipment_requirement_mode",
+            "physical_difficulty",
+            "technical_difficulty",
+            "upper_body_load",
+            "lower_body_load",
+            "core_load",
+        }
+    )
+    with pytest.raises(ValidationError, match="planning attributes cannot be null"):
+        ExerciseUpdate(**payload, physical_difficulty=None)
