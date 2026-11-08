@@ -29,3 +29,12 @@ class NoDurationForSchemaPositionError(PlanGenerationError):
         super().__init__(
             f"Schema position {schema_position} has no whole minute to allocate"
         )
+
+
+class InvalidSchemaPercentageTotalError(PlanGenerationError):
+    """Raised when persisted schema percentages cannot define a whole plan."""
+
+    error_code = "INVALID_SCHEMA_PERCENTAGES"
+
+    def __init__(self) -> None:
+        super().__init__("Schema percentages must sum to 100")

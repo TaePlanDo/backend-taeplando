@@ -13,6 +13,7 @@ from app.services.plan_generation_domain import (
     PlanExerciseCandidate,
 )
 from app.services.plan_generation_errors import (
+    InvalidSchemaPercentageTotalError,
     NoDurationForSchemaPositionError,
 )
 from app.services.plan_generation_population_service import (
@@ -104,6 +105,17 @@ def test_allocate_segment_durations_preserves_the_whole_plan_duration() -> None:
     )
 
     assert allocate_segment_durations(7, schema) == {1: 2, 2: 2, 3: 3}
+
+
+def test_allocate_segment_durations_rejects_a_corrupt_percentage_total() -> None:
+    """The allocator cannot silently create a plan shorter or longer than its group."""
+    schema = (
+        GenerationSchemaItem(position=1, segment_id=1, percentage=Decimal("60")),
+        GenerationSchemaItem(position=2, segment_id=2, percentage=Decimal("30")),
+    )
+
+    with pytest.raises(InvalidSchemaPercentageTotalError, match="sum to 100"):
+        allocate_segment_durations(60, schema)
 
 
 def test_population_is_deterministic_for_one_segment_context() -> None:

@@ -14,7 +14,10 @@ from app.services.plan_generation_domain import (
     PlanExerciseSelection,
     PlanIndividual,
 )
-from app.services.plan_generation_errors import NoDurationForSchemaPositionError
+from app.services.plan_generation_errors import (
+    InvalidSchemaPercentageTotalError,
+    NoDurationForSchemaPositionError,
+)
 
 INITIAL_POPULATION_SIZE = 20
 
@@ -135,6 +138,8 @@ def allocate_segment_durations(
     schema: tuple[GenerationSchemaItem, ...],
 ) -> dict[int, int]:
     """Split one plan duration by schema percentages without losing minutes."""
+    if sum((item.percentage for item in schema), Decimal("0")) != Decimal("100"):
+        raise InvalidSchemaPercentageTotalError()
     exact_durations = {
         item.position: (
             Decimal(group_duration_minutes) * item.percentage / Decimal("100")
