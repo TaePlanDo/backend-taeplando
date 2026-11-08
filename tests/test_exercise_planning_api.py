@@ -63,6 +63,7 @@ def test_exercise_update_accepts_legacy_payload_without_planning_attributes() ->
     payload = {
         "name": "Ap chagi",
         "description": "Kopnięcie frontalne.",
+        "image_url": None,
         "duration_minutes": 10,
         "min_age": 7,
         "max_age": 14,

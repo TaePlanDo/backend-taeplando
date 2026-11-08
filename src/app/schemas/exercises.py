@@ -73,7 +73,9 @@ class ExercisePlanningAttributesUpdate(BaseModel):
     def reject_explicit_nulls(self) -> "ExercisePlanningAttributesUpdate":
         """Distinguish an omitted legacy field from an invalid null value."""
         if any(
-            getattr(self, field_name) is None for field_name in self.model_fields_set
+            getattr(self, field_name) is None
+            for field_name in ExercisePlanningAttributesUpdate.model_fields
+            if field_name in self.model_fields_set
         ):
             raise ValueError("planning attributes cannot be null")
         return self

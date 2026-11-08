@@ -17,6 +17,7 @@ from app.schemas.exercise_list_filters import (
 from app.schemas.exercises import (
     CatalogReference,
     ExerciseConfigurationWrite,
+    ExercisePlanningAttributesUpdate,
     ExerciseResponse,
     ExerciseUpdate,
     ExerciseWrite,
@@ -231,25 +232,9 @@ def _apply_provided_planning_attributes(
     trainer_exercise: TrainerExercise, payload: ExerciseUpdate
 ) -> None:
     """Update planning metadata only when the client supplied it."""
-    provided_fields = payload.model_fields_set
-    if "equipment_requirement_mode" in provided_fields:
-        assert payload.equipment_requirement_mode is not None
-        trainer_exercise.equipment_requirement_mode = payload.equipment_requirement_mode
-    if "physical_difficulty" in provided_fields:
-        assert payload.physical_difficulty is not None
-        trainer_exercise.physical_difficulty = payload.physical_difficulty
-    if "technical_difficulty" in provided_fields:
-        assert payload.technical_difficulty is not None
-        trainer_exercise.technical_difficulty = payload.technical_difficulty
-    if "upper_body_load" in provided_fields:
-        assert payload.upper_body_load is not None
-        trainer_exercise.upper_body_load = payload.upper_body_load
-    if "lower_body_load" in provided_fields:
-        assert payload.lower_body_load is not None
-        trainer_exercise.lower_body_load = payload.lower_body_load
-    if "core_load" in provided_fields:
-        assert payload.core_load is not None
-        trainer_exercise.core_load = payload.core_load
+    for name in ExercisePlanningAttributesUpdate.model_fields:
+        if name in payload.model_fields_set:
+            setattr(trainer_exercise, name, getattr(payload, name))
 
 
 def _catalog_references(
