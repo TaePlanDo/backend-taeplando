@@ -313,6 +313,30 @@ def test_list_exercises_rejects_inverted_planning_attribute_range(
     assert response.status_code == 422
 
 
+@pytest.mark.parametrize(
+    ("parameter", "value"),
+    (
+        ("min_physical_difficulty", 0),
+        ("max_physical_difficulty", 6),
+        ("min_technical_difficulty", 0),
+        ("max_technical_difficulty", 6),
+        ("min_upper_body_load", 0),
+        ("max_upper_body_load", 6),
+        ("min_lower_body_load", 0),
+        ("max_lower_body_load", 6),
+        ("min_core_load", 0),
+        ("max_core_load", 6),
+    ),
+)
+def test_list_exercises_rejects_out_of_range_planning_attribute_values(
+    client, authenticated_trainer, parameter: str, value: int
+) -> None:
+    """Every planning-range boundary accepts exactly the persisted 1–5 domain."""
+    response = client.get(f"/exercises?{parameter}={value}")
+
+    assert response.status_code == 422
+
+
 def test_list_exercises_rejects_invalid_equipment_csv(
     client, authenticated_trainer
 ) -> None:
@@ -811,8 +835,10 @@ def test_list_available_to_trainer_applies_scalar_and_catalog_filters() -> None:
         "lower_body_load",
         "core_load",
     ):
-        assert f"trainer_exercises.{attribute}" in statement
-        assert f"exercise_versions.{attribute}" in statement
+        assert f"trainer_exercises.{attribute} >=" in statement
+        assert f"trainer_exercises.{attribute} <=" in statement
+        assert f"exercise_versions.{attribute} >=" in statement
+        assert f"exercise_versions.{attribute} <=" in statement
 
 
 def test_list_available_to_trainer_empty_first_page_skips_recount() -> None:
