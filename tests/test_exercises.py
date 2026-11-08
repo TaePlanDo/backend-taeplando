@@ -172,7 +172,7 @@ def _global_listed_exercise() -> ListedExercise:
         min_participants=3,
         max_participants=24,
         duration_minutes=15,
-        status=TrainerExerciseStatus.ACTIVE,
+        status=TrainerExerciseStatus.SUSPENDED,
         version_id=GLOBAL_VERSION_ID,
     )
 
@@ -600,7 +600,7 @@ def test_list_exercises_maps_a_database_page() -> None:
                 min_participants=3,
                 max_participants=24,
                 duration_minutes=15,
-                status=TrainerExerciseStatus.ACTIVE,
+                status=TrainerExerciseStatus.SUSPENDED,
                 equipment=_private_response().equipment,
                 training_types=_private_response().training_types,
                 segments=_private_response().segments,
@@ -720,6 +720,8 @@ def test_list_available_to_trainer_applies_scalar_and_catalog_filters() -> None:
     assert "exercise_version_training_types" in statement
     assert "trainer_exercise_segments" in statement
     assert "exercise_version_segments" in statement
+    assert "left outer join trainer_exercises" in statement
+    assert "coalesce(trainer_exercises.status" in statement
 
 
 def test_list_available_to_trainer_empty_first_page_skips_recount() -> None:
