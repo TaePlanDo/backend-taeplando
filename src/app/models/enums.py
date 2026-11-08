@@ -28,8 +28,8 @@ class TrainerExerciseStatus(StrEnum):
     """Local availability of an exercise for a trainer."""
 
     ACTIVE = "ACTIVE"
+    SUSPENDED = "SUSPENDED"
     INACTIVE = "INACTIVE"
-    HIDDEN = "HIDDEN"
 
 
 class EquipmentRequirementMode(StrEnum):

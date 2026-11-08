@@ -167,7 +167,9 @@ async def list_available_to_trainer(
             Exercise.scope == ExerciseScope.PRIVATE,
             Exercise.owner_user_id == trainer_id,
             TrainerExercise.trainer_id == trainer_id,
-            TrainerExercise.status == TrainerExerciseStatus.ACTIVE,
+            TrainerExercise.status.in_(
+                (TrainerExerciseStatus.ACTIVE, TrainerExerciseStatus.SUSPENDED)
+            ),
             *_filters_for_branch(_PRIVATE_BRANCH, filters),
         )
     )
@@ -184,9 +186,12 @@ async def list_available_to_trainer(
             ExerciseVersion.min_participants,
             ExerciseVersion.max_participants,
             ExerciseVersion.duration_minutes,
-            literal(
-                TrainerExerciseStatus.ACTIVE,
-                type_=TrainerExercise.__table__.c.status.type,
+            func.coalesce(
+                TrainerExercise.status,
+                literal(
+                    TrainerExerciseStatus.ACTIVE,
+                    type_=TrainerExercise.__table__.c.status.type,
+                ),
             ).label("status"),
             ExerciseVersion.equipment_requirement_mode,
             ExerciseVersion.physical_difficulty,
@@ -198,6 +203,11 @@ async def list_available_to_trainer(
         )
         .join(
             ExerciseVersion, ExerciseVersion.id == Exercise.latest_approved_version_id
+        )
+        .outerjoin(
+            TrainerExercise,
+            (TrainerExercise.exercise_id == Exercise.id)
+            & (TrainerExercise.trainer_id == trainer_id),
         )
         .where(
             Exercise.scope == ExerciseScope.GLOBAL,
@@ -486,3 +496,15 @@ async def get_private_for_trainer(
         .options(*_configuration_loader_options(TrainerExercise))
     )
     return result.tuples().one_or_none()
+
+
+async def get_configuration_for_trainer(
+    session: AsyncSession, trainer_id: UUID, exercise_id: UUID
+) -> TrainerExercise | None:
+    """Find the trainer-local configuration for one exercise."""
+    return await session.scalar(
+        select(TrainerExercise).where(
+            TrainerExercise.trainer_id == trainer_id,
+            TrainerExercise.exercise_id == exercise_id,
+        )
+    )

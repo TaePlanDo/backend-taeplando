@@ -99,3 +99,35 @@ async def delete_exercise(
     except exercise_service.ExerciseNotFoundError as exc:
         raise _not_found() from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put("/{exercise_id}/exclusion", status_code=status.HTTP_204_NO_CONTENT)
+async def exclude_exercise(
+    exercise_id: UUID,
+    current_trainer: CurrentTrainer,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    """Temporarily exclude one visible exercise for the current trainer."""
+    try:
+        await exercise_service.exclude_exercise(
+            session, current_trainer.id, exercise_id
+        )
+    except exercise_service.ExerciseNotFoundError as exc:
+        raise _not_found() from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.delete("/{exercise_id}/exclusion", status_code=status.HTTP_204_NO_CONTENT)
+async def reactivate_exercise(
+    exercise_id: UUID,
+    current_trainer: CurrentTrainer,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    """Restore one trainer-specific exercise exclusion."""
+    try:
+        await exercise_service.reactivate_exercise(
+            session, current_trainer.id, exercise_id
+        )
+    except exercise_service.ExerciseNotFoundError as exc:
+        raise _not_found() from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

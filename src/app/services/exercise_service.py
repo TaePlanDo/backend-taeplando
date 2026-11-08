@@ -33,6 +33,11 @@ class InvalidExerciseConfigurationError(Exception):
     """Raised when a selected catalog value is unavailable to the trainer."""
 
 
+_TEMPORARY_AVAILABILITY_STATUSES = frozenset(
+    (TrainerExerciseStatus.ACTIVE, TrainerExerciseStatus.SUSPENDED)
+)
+
+
 async def list_exercises(
     session: AsyncSession,
     trainer_id: UUID,
@@ -124,6 +129,49 @@ async def delete_exercise(
         session, trainer_id, exercise_id
     )
     trainer_exercise.status = TrainerExerciseStatus.INACTIVE
+    await session.commit()
+
+
+async def exclude_exercise(
+    session: AsyncSession, trainer_id: UUID, exercise_id: UUID
+) -> None:
+    """Suspend a catalog exercise only for this trainer."""
+    await _set_temporary_availability_status(
+        session,
+        trainer_id,
+        exercise_id,
+        TrainerExerciseStatus.SUSPENDED,
+    )
+
+
+async def reactivate_exercise(
+    session: AsyncSession, trainer_id: UUID, exercise_id: UUID
+) -> None:
+    """Restore a suspended catalog exercise for this trainer."""
+    await _set_temporary_availability_status(
+        session,
+        trainer_id,
+        exercise_id,
+        TrainerExerciseStatus.ACTIVE,
+    )
+
+
+async def _set_temporary_availability_status(
+    session: AsyncSession,
+    trainer_id: UUID,
+    exercise_id: UUID,
+    status: TrainerExerciseStatus,
+) -> None:
+    """Change a reversible trainer-local availability status."""
+    trainer_exercise = await exercises_db.get_configuration_for_trainer(
+        session, trainer_id, exercise_id
+    )
+    if (
+        trainer_exercise is None
+        or trainer_exercise.status not in _TEMPORARY_AVAILABILITY_STATUSES
+    ):
+        raise ExerciseNotFoundError
+    trainer_exercise.status = status
     await session.commit()
 
 
