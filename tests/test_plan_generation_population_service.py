@@ -14,7 +14,10 @@ from app.services.plan_generation_domain import (
     GenerationSchemaItem,
     PlanExerciseCandidate,
 )
-from app.services.plan_generation_errors import NoCandidateForSchemaPositionError
+from app.services.plan_generation_errors import (
+    NoCandidateForSchemaPositionError,
+    NoDurationForSchemaPositionError,
+)
 from app.services.plan_generation_population_service import build_initial_population
 
 
@@ -95,9 +98,13 @@ def test_population_contains_complete_plans_and_duration_genes() -> None:
         assert [
             selection.allocated_duration_minutes for selection in individual.selections
         ] == [30, 30]
-        assert sum(
-            selection.allocated_duration_minutes for selection in individual.selections
-        ) == context.group_duration_minutes
+        assert (
+            sum(
+                selection.allocated_duration_minutes
+                for selection in individual.selections
+            )
+            == context.group_duration_minutes
+        )
 
 
 def test_population_greedily_fills_a_schema_position() -> None:
@@ -148,6 +155,20 @@ def test_population_allocates_rounding_minutes_to_schema_positions() -> None:
         )
         for position in (1, 2, 3)
     ] == [2, 2, 3]
+
+
+def test_population_rejects_a_schema_position_without_a_whole_minute() -> None:
+    """Every schema position must receive at least one whole minute."""
+    candidates = (
+        _candidate("bac590e1-2a46-4cb7-8944-803e364cc46b", (1,)),
+        _candidate("cac590e1-2a46-4cb7-8944-803e364cc46b", (2,)),
+    )
+
+    with pytest.raises(NoDurationForSchemaPositionError, match="2"):
+        build_initial_population(
+            replace(_context(*candidates), group_duration_minutes=1),
+            population_size=1,
+        )
 
 
 def test_population_is_deterministic_for_a_generation_job_seed() -> None:
