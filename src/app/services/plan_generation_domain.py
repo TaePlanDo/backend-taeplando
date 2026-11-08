@@ -70,7 +70,7 @@ class PlanExerciseSelection:
 
 @dataclass(frozen=True)
 class PlanIndividual:
-    """One complete candidate plan in the genetic population."""
+    """One candidate set of selected exercise genes."""
 
     selections: tuple[PlanExerciseSelection, ...]
 

@@ -8,6 +8,8 @@ from types import SimpleNamespace
 from unittest.mock import ANY, AsyncMock, patch
 from uuid import UUID
 
+import pytest
+
 from app.models.enums import EquipmentRequirementMode
 from app.schemas.plan_generation import PlanGenerationParameters
 from app.services import plan_generation_service
@@ -62,12 +64,11 @@ def test_generation_contexts_isolate_each_segment_and_keep_fitness_inputs() -> N
     )
     job = SimpleNamespace(id=JOB_ID, deadline_at=datetime(2026, 11, 8, tzinfo=UTC))
 
-    candidates_by_position = {
-        1: (SimpleNamespace(id="segment-one"),),
-        2: (SimpleNamespace(id="segment-two"),),
-    }
+    first_only = SimpleNamespace(default_duration_minutes=10, segment_ids=(1,))
+    shared = SimpleNamespace(default_duration_minutes=10, segment_ids=(1, 2))
+    second_only = SimpleNamespace(default_duration_minutes=10, segment_ids=(2,))
     contexts = plan_generation_service._generation_contexts(
-        job, group, parameters, candidates_by_position
+        job, group, parameters, (first_only, shared, second_only)
     )
 
     assert [context.segment.position for context in contexts] == [1, 2]
@@ -82,9 +83,41 @@ def test_generation_contexts_isolate_each_segment_and_keep_fitness_inputs() -> N
     assert (first.group_min_age, first.group_max_age) == (7, 14)
     assert first.group_duration_minutes == 60
     assert (first.segment_duration_minutes, second.segment_duration_minutes) == (45, 15)
-    assert first.candidates == candidates_by_position[1]
-    assert second.candidates == candidates_by_position[2]
+    assert first.candidates == (first_only, shared)
+    assert second.candidates == (shared, second_only)
     assert first.random_seed != second.random_seed
+
+
+def test_generation_contexts_reject_a_segment_without_candidates() -> None:
+    """Every independently generated segment must have a non-empty candidate pool."""
+    parameters = PlanGenerationParameters(
+        training_group_id=PLAN_ID,
+        participant_count=12,
+        available_equipment_ids=[],
+    )
+    group = SimpleNamespace(
+        id=PLAN_ID,
+        name="Jaworzyna gr. 1",
+        min_age=7,
+        max_age=14,
+        duration_minutes=60,
+        schema_items=[
+            SimpleNamespace(position=1, segment_id=1, percentage=Decimal("50")),
+            SimpleNamespace(position=2, segment_id=2, percentage=Decimal("50")),
+        ],
+    )
+    job = SimpleNamespace(id=JOB_ID, deadline_at=datetime(2026, 11, 8, tzinfo=UTC))
+
+    with pytest.raises(NoCandidateForSchemaPositionError, match="2"):
+        plan_generation_service._generation_contexts(
+            job,
+            group,
+            parameters,
+            (
+                SimpleNamespace(default_duration_minutes=10, segment_ids=(1,)),
+                SimpleNamespace(default_duration_minutes=0, segment_ids=(2,)),
+            ),
+        )
 
 
 def test_persisted_selection_uses_its_allocated_duration() -> None:
@@ -172,7 +205,11 @@ def test_generate_plan_runs_one_strategy_call_per_schema_segment() -> None:
         ),
         patch(
             "app.services.plan_generation_service.plan_generation_candidates_service.prepare_candidates",
-            new=AsyncMock(return_value={1: (), 2: ()}),
+            new=AsyncMock(
+                return_value=(
+                    SimpleNamespace(default_duration_minutes=10, segment_ids=(1, 2)),
+                )
+            ),
         ),
         patch(
             "app.services.plan_generation_service._generate_segment",

@@ -167,10 +167,7 @@ def test_prepare_candidates_applies_equipment_and_segment_rules() -> None:
         lower_body_load=3,
         core_load=3,
     )
-    assert candidates == {
-        1: (all_candidate,),
-        2: (all_candidate, any_candidate),
-    }
+    assert candidates == (all_candidate, any_candidate)
     list_candidate_sources.assert_awaited_once_with(
         session,
         TRAINER_ID,
@@ -204,19 +201,17 @@ def test_prepare_candidates_keeps_every_training_type_for_fitness() -> None:
         training_type_ids=[],
         segment_ids=[1],
     )
-    group = _group()
-    group.schema_items = [SimpleNamespace(position=1, segment_id=1)]
     with patch(
         "app.services.plan_generation_candidates_service.exercises_db.list_candidate_sources",
         new=AsyncMock(return_value=[matching_type, another_type, untyped]),
     ):
         candidates = asyncio.run(
             plan_generation_candidates_service.prepare_candidates(
-                AsyncMock(), TRAINER_ID, group, _parameters()
+                AsyncMock(), TRAINER_ID, _group(), _parameters()
             )
         )
 
-    assert [item.trainer_exercise_id for item in candidates[1]] == [
+    assert [item.trainer_exercise_id for item in candidates] == [
         matching_type.id,
         another_type.id,
         untyped.id,

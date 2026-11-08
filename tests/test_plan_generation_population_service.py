@@ -13,7 +13,6 @@ from app.services.plan_generation_domain import (
     PlanExerciseCandidate,
 )
 from app.services.plan_generation_errors import (
-    NoCandidateForSchemaPositionError,
     NoDurationForSchemaPositionError,
 )
 from app.services.plan_generation_population_service import (
@@ -127,11 +126,3 @@ def test_population_rejects_a_segment_without_a_whole_minute() -> None:
 
     with pytest.raises(NoDurationForSchemaPositionError, match="2"):
         allocate_segment_durations(1, schema)
-
-
-def test_population_rejects_non_positive_duration_candidates() -> None:
-    """A malformed candidate cannot enter a segment's first generation."""
-    invalid = _candidate("4ac590e1-2a46-4cb7-8944-803e364cc46b", duration=0)
-
-    with pytest.raises(NoCandidateForSchemaPositionError, match="1"):
-        build_initial_population(_context(invalid))

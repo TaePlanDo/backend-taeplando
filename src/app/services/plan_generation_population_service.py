@@ -14,10 +14,7 @@ from app.services.plan_generation_domain import (
     PlanExerciseSelection,
     PlanIndividual,
 )
-from app.services.plan_generation_errors import (
-    NoCandidateForSchemaPositionError,
-    NoDurationForSchemaPositionError,
-)
+from app.services.plan_generation_errors import NoDurationForSchemaPositionError
 
 INITIAL_POPULATION_SIZE = 20
 
@@ -30,20 +27,13 @@ def build_initial_population(
     """Create deterministic, structurally valid plans from eligible candidates."""
     if population_size < 1:
         raise ValueError("Population size must be positive")
-    candidates = tuple(
-        candidate
-        for candidate in context.candidates
-        if candidate.default_duration_minutes > 0
-    )
-    if not candidates:
-        raise NoCandidateForSchemaPositionError(context.segment.position)
-
     random = Random(context.random_seed)
     if context.segment_duration_minutes < 1:
         raise NoDurationForSchemaPositionError(context.segment.position)
     return InitialPopulation(
         individuals=tuple(
-            _individual(context, candidates, random) for _ in range(population_size)
+            _individual(context, context.candidates, random)
+            for _ in range(population_size)
         )
     )
 

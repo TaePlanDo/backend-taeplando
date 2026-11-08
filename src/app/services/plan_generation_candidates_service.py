@@ -1,8 +1,5 @@
 """Prepare eligible exercises for the future plan-generation algorithm."""
 
-from collections import defaultdict
-from collections.abc import Mapping, Sequence
-from types import MappingProxyType
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,13 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import exercises as exercises_db
 from app.models.enums import EquipmentRequirementMode
 from app.models.exercises import TrainerExercise
-from app.models.training import TrainingGroup, TrainingGroupSchemaItem
+from app.models.training import TrainingGroup
 from app.schemas.plan_generation import PlanGenerationParameters
-from app.services.plan_generation_domain import (
-    GenerationSchemaItem,
-    PlanExerciseCandidate,
-)
-from app.services.plan_generation_errors import NoCandidateForSchemaPositionError
+from app.services.plan_generation_domain import PlanExerciseCandidate
 
 
 async def prepare_candidates(
@@ -24,8 +17,8 @@ async def prepare_candidates(
     trainer_id: UUID,
     group: TrainingGroup,
     parameters: PlanGenerationParameters,
-) -> Mapping[int, tuple[PlanExerciseCandidate, ...]]:
-    """Build one hard-filtered candidate pool for every group-schema segment."""
+) -> tuple[PlanExerciseCandidate, ...]:
+    """Build candidates compatible with the request and at least one group segment."""
     sources = await exercises_db.list_candidate_sources(
         session,
         trainer_id,
@@ -34,46 +27,28 @@ async def prepare_candidates(
         participant_count=parameters.participant_count,
     )
     available_equipment_ids = set(parameters.available_equipment_ids)
+    group_segment_ids = {item.segment_id for item in group.schema_items}
     candidates: list[PlanExerciseCandidate] = []
     for source in sources:
-        candidate = _candidate_for_source(source, available_equipment_ids)
+        candidate = _candidate_for_source(
+            source, available_equipment_ids, group_segment_ids
+        )
         if candidate is not None:
             candidates.append(candidate)
-    return build_candidates_by_position(group.schema_items, candidates)
-
-
-def build_candidates_by_position(
-    schema: Sequence[GenerationSchemaItem | TrainingGroupSchemaItem],
-    candidates: Sequence[PlanExerciseCandidate],
-) -> Mapping[int, tuple[PlanExerciseCandidate, ...]]:
-    """Index structurally valid candidates once for all generation phases."""
-    candidates_by_position: dict[int, list[PlanExerciseCandidate]] = defaultdict(list)
-    for candidate in candidates:
-        if candidate.default_duration_minutes < 1:
-            continue
-        for schema_item in schema:
-            if schema_item.segment_id in candidate.segment_ids:
-                candidates_by_position[schema_item.position].append(candidate)
-
-    for schema_item in schema:
-        if not candidates_by_position[schema_item.position]:
-            raise NoCandidateForSchemaPositionError(schema_item.position)
-    return MappingProxyType(
-        {
-            schema_item.position: tuple(candidates_by_position[schema_item.position])
-            for schema_item in schema
-        }
-    )
+    return tuple(candidates)
 
 
 def _candidate_for_source(
     source: TrainerExercise,
     available_equipment_ids: set[UUID],
+    group_segment_ids: set[int],
 ) -> PlanExerciseCandidate | None:
     """Return one source only when its catalog requirements fit this request."""
     if not _has_required_equipment(source, available_equipment_ids):
         return None
     source_segment_ids = {segment.id for segment in source.segments}
+    if not source_segment_ids & group_segment_ids:
+        return None
     return PlanExerciseCandidate(
         trainer_exercise_id=source.id,
         exercise_id=source.exercise_id,

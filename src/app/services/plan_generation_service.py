@@ -1,7 +1,7 @@
 """Queue, execute, persist, and report asynchronous training-plan generation."""
 
 import asyncio
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -31,7 +31,10 @@ from app.services.plan_generation_domain import (
     PlanExerciseSelection,
     PlanIndividual,
 )
-from app.services.plan_generation_errors import PlanGenerationError
+from app.services.plan_generation_errors import (
+    NoCandidateForSchemaPositionError,
+    PlanGenerationError,
+)
 from app.services.plan_generation_population_service import (
     allocate_segment_durations,
     build_initial_population,
@@ -144,12 +147,10 @@ async def _generate_plan(
         ) from exc
     group = validated_input.group
 
-    candidates_by_position = (
-        await plan_generation_candidates_service.prepare_candidates(
-            session, job.trainer_id, group, parameters
-        )
+    candidates = await plan_generation_candidates_service.prepare_candidates(
+        session, job.trainer_id, group, parameters
     )
-    contexts = _generation_contexts(job, group, parameters, candidates_by_position)
+    contexts = _generation_contexts(job, group, parameters, candidates)
     generated = _merge_segment_individuals(
         await asyncio.gather(
             *(_generate_segment(strategy, context) for context in contexts)
@@ -170,7 +171,7 @@ def _generation_contexts(
     job: PlanGenerationJob,
     group: TrainingGroup,
     parameters: PlanGenerationParameters,
-    candidates_by_position: Mapping[int, tuple[PlanExerciseCandidate, ...]],
+    candidates: Sequence[PlanExerciseCandidate],
 ) -> tuple[GenerationContext, ...]:
     """Adapt every schema segment into an isolated immutable algorithm contract."""
     schema = tuple(
@@ -183,22 +184,49 @@ def _generation_contexts(
     )
     segment_durations = allocate_segment_durations(group.duration_minutes, schema)
     return tuple(
-        GenerationContext(
-            participant_count=parameters.participant_count,
-            available_equipment_ids=tuple(sorted(parameters.available_equipment_ids)),
-            preferred_training_type_id=parameters.training_type_id,
-            training_group_id=group.id,
-            training_group_name=group.name,
-            group_min_age=group.min_age,
-            group_max_age=group.max_age,
-            group_duration_minutes=group.duration_minutes,
-            deadline_at=job.deadline_at,
-            segment=schema_item,
-            segment_duration_minutes=segment_durations[schema_item.position],
-            candidates=candidates_by_position[schema_item.position],
-            random_seed=job.id.int ^ schema_item.position,
+        _segment_context(
+            job,
+            group,
+            parameters,
+            schema_item,
+            segment_durations[schema_item.position],
+            candidates,
         )
         for schema_item in schema
+    )
+
+
+def _segment_context(
+    job: PlanGenerationJob,
+    group: TrainingGroup,
+    parameters: PlanGenerationParameters,
+    segment: GenerationSchemaItem,
+    segment_duration_minutes: int,
+    candidates: Sequence[PlanExerciseCandidate],
+) -> GenerationContext:
+    """Build one segment's context and enforce its hard candidate constraint."""
+    segment_candidates = tuple(
+        candidate
+        for candidate in candidates
+        if candidate.default_duration_minutes > 0
+        and segment.segment_id in candidate.segment_ids
+    )
+    if not segment_candidates:
+        raise NoCandidateForSchemaPositionError(segment.position)
+    return GenerationContext(
+        participant_count=parameters.participant_count,
+        available_equipment_ids=tuple(sorted(parameters.available_equipment_ids)),
+        preferred_training_type_id=parameters.training_type_id,
+        training_group_id=group.id,
+        training_group_name=group.name,
+        group_min_age=group.min_age,
+        group_max_age=group.max_age,
+        group_duration_minutes=group.duration_minutes,
+        deadline_at=job.deadline_at,
+        segment=segment,
+        segment_duration_minutes=segment_duration_minutes,
+        candidates=segment_candidates,
+        random_seed=job.id.int ^ segment.position,
     )
 
 
