@@ -1,6 +1,8 @@
 """Coverage for creation of the genetic algorithm's first generation."""
 
+from dataclasses import replace
 from datetime import UTC, datetime
+from decimal import Decimal
 from uuid import UUID
 
 import pytest
@@ -68,7 +70,7 @@ def _context(*candidates: PlanExerciseCandidate) -> GenerationContext:
 
 
 def test_population_contains_complete_plans_and_duration_genes() -> None:
-    """Each individual has one valid selection per schema position."""
+    """Each individual fills every schema position and the whole plan duration."""
     first = _candidate("0ac590e1-2a46-4cb7-8944-803e364cc46b", (1,), duration=8)
     second = _candidate("1ac590e1-2a46-4cb7-8944-803e364cc46b", (2,), duration=12)
     context = _context(first, second)
@@ -92,7 +94,60 @@ def test_population_contains_complete_plans_and_duration_genes() -> None:
         ]
         assert [
             selection.allocated_duration_minutes for selection in individual.selections
-        ] == [8, 12]
+        ] == [30, 30]
+        assert sum(
+            selection.allocated_duration_minutes for selection in individual.selections
+        ) == context.group_duration_minutes
+
+
+def test_population_greedily_fills_a_schema_position() -> None:
+    """Longer fitting candidates are selected before a duration gene is extended."""
+    first = _candidate("5ac590e1-2a46-4cb7-8944-803e364cc46b", (1,), duration=8)
+    second = _candidate("6ac590e1-2a46-4cb7-8944-803e364cc46b", (1,), duration=10)
+    third = _candidate("7ac590e1-2a46-4cb7-8944-803e364cc46b", (2,), duration=30)
+
+    individual = build_initial_population(
+        _context(first, second, third), population_size=1
+    ).individuals[0]
+
+    assert [
+        selection.allocated_duration_minutes
+        for selection in individual.selections
+        if selection.schema_position == 1
+    ] == [10, 20]
+
+
+def test_population_allocates_rounding_minutes_to_schema_positions() -> None:
+    """Schema percentages preserve duration after whole-minute rounding."""
+    candidates = (
+        _candidate("8ac590e1-2a46-4cb7-8944-803e364cc46b", (1,)),
+        _candidate("9ac590e1-2a46-4cb7-8944-803e364cc46b", (2,)),
+        _candidate("aac590e1-2a46-4cb7-8944-803e364cc46b", (3,)),
+    )
+    schema = (
+        GenerationSchemaItem(position=1, segment_id=1, percentage=Decimal("33.33")),
+        GenerationSchemaItem(position=2, segment_id=2, percentage=Decimal("33.33")),
+        GenerationSchemaItem(position=3, segment_id=3, percentage=Decimal("33.34")),
+    )
+    context = replace(
+        _context(*candidates),
+        group_duration_minutes=7,
+        schema=schema,
+        candidate_pool=plan_generation_candidates_service.build_candidate_pool(
+            schema, candidates
+        ),
+    )
+
+    individual = build_initial_population(context, population_size=1).individuals[0]
+
+    assert [
+        sum(
+            selection.allocated_duration_minutes
+            for selection in individual.selections
+            if selection.schema_position == position
+        )
+        for position in (1, 2, 3)
+    ] == [2, 2, 3]
 
 
 def test_population_is_deterministic_for_a_generation_job_seed() -> None:

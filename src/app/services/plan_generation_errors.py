@@ -17,3 +17,15 @@ class NoCandidateForSchemaPositionError(PlanGenerationError):
     def __init__(self, schema_position: int) -> None:
         self.schema_position = schema_position
         super().__init__(f"No exercise can fill schema position {schema_position}")
+
+
+class NoDurationForSchemaPositionError(PlanGenerationError):
+    """Raised when a schema position has no whole minute to allocate."""
+
+    error_code = "INVALID_SCHEMA_DURATION"
+
+    def __init__(self, schema_position: int) -> None:
+        self.schema_position = schema_position
+        super().__init__(
+            f"Schema position {schema_position} has no whole minute to allocate"
+        )

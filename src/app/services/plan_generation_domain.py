@@ -3,6 +3,7 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 from uuid import UUID
 
 from app.models.enums import EquipmentRequirementMode
@@ -38,7 +39,7 @@ class GenerationSchemaItem:
 
     position: int
     segment_id: int
-    percentage: float
+    percentage: Decimal
 
 
 @dataclass(frozen=True)

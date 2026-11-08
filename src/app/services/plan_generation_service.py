@@ -161,7 +161,7 @@ def _generation_context(
         GenerationSchemaItem(
             position=item.position,
             segment_id=item.segment_id,
-            percentage=float(item.percentage),
+            percentage=item.percentage,
         )
         for item in sorted(group.schema_items, key=lambda item: item.position)
     )

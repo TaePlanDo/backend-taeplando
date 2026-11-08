@@ -40,7 +40,7 @@ def _candidate(identifier: str, positions: tuple[int, ...]) -> PlanExerciseCandi
     )
 
 
-def test_random_strategy_selects_one_eligible_candidate_per_schema_position() -> None:
+def test_random_strategy_selects_a_duration_complete_plan() -> None:
     """The temporary strategy has a stable random-looking result for one job seed."""
 
     schema = (
@@ -74,7 +74,8 @@ def test_random_strategy_selects_one_eligible_candidate_per_schema_position() ->
     generated = strategy.generate(context, population)
 
     assert generated == strategy.generate(context, population)
-    assert [item.schema_position for item in generated.selections] == [1, 2, 3]
+    assert {item.schema_position for item in generated.selections} == {1, 2, 3}
+    assert sum(item.allocated_duration_minutes for item in generated.selections) == 60
     assert all(
         item.schema_position in item.candidate.schema_positions
         for item in generated.selections
