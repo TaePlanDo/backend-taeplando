@@ -1,7 +1,7 @@
 """Queue, execute, persist, and report asynchronous training-plan generation."""
 
 import asyncio
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -89,7 +89,7 @@ async def run(job_id: UUID) -> None:
             )
             async with asyncio.timeout(timeout_seconds):
                 plan = await _generate_plan(
-                    session, job, strategy=RandomPlanGenerationStrategy()
+                    session, job, strategy_factory=RandomPlanGenerationStrategy
                 )
                 if not await jobs_db.mark_succeeded(session, job.id, plan.id):
                     await jobs_db.mark_timed_out(session, job.id)
@@ -126,7 +126,7 @@ async def _generate_plan(
     session: AsyncSession,
     job: PlanGenerationJob,
     *,
-    strategy: PlanGenerationStrategy,
+    strategy_factory: Callable[[], PlanGenerationStrategy],
 ) -> TrainingPlan:
     """Build and persist a plan while keeping the strategy free of I/O."""
     parameters = PlanGenerationParameters(
@@ -153,18 +153,25 @@ async def _generate_plan(
     contexts = _generation_contexts(job, group, parameters, candidates)
     generated = _merge_segment_individuals(
         await asyncio.gather(
-            *(_generate_segment(strategy, context) for context in contexts)
+            *(_generate_segment(strategy_factory, context) for context in contexts)
         )
     )
     return await _persist_plan(session, job, validated_input, parameters, generated)
 
 
 async def _generate_segment(
-    strategy: PlanGenerationStrategy, context: GenerationContext
+    strategy_factory: Callable[[], PlanGenerationStrategy], context: GenerationContext
 ) -> PlanIndividual:
-    """Build and generate one segment independently of every other segment."""
-    population = await asyncio.to_thread(build_initial_population, context)
-    return await asyncio.to_thread(strategy.generate, context, population)
+    """Build and generate one segment in its own worker-thread invocation."""
+    return await asyncio.to_thread(_generate_segment_sync, strategy_factory, context)
+
+
+def _generate_segment_sync(
+    strategy_factory: Callable[[], PlanGenerationStrategy], context: GenerationContext
+) -> PlanIndividual:
+    """Keep a strategy instance and its initial population local to one segment."""
+    population = build_initial_population(context)
+    return strategy_factory().generate(context, population)
 
 
 def _generation_contexts(

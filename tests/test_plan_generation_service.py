@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import ANY, AsyncMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 from uuid import UUID
 
 import pytest
@@ -221,7 +221,9 @@ def test_generate_plan_runs_one_strategy_call_per_schema_segment() -> None:
         ) as persist_plan,
     ):
         result = asyncio.run(
-            plan_generation_service._generate_plan(session, job, strategy=object())
+            plan_generation_service._generate_plan(
+                session, job, strategy_factory=lambda: object()
+            )
         )
 
     assert result is persisted_plan
@@ -232,6 +234,29 @@ def test_generate_plan_runs_one_strategy_call_per_schema_segment() -> None:
         2,
     ]
     persist_plan.assert_awaited_once()
+
+
+def test_generate_segment_creates_an_independent_strategy_instance() -> None:
+    """Segment execution does not share mutable algorithm state with another run."""
+    context = MagicMock()
+    population = MagicMock()
+    generated = PlanIndividual(selections=())
+    strategy = MagicMock()
+    strategy.generate.return_value = generated
+    strategy_factory = MagicMock(return_value=strategy)
+
+    with patch(
+        "app.services.plan_generation_service.build_initial_population",
+        return_value=population,
+    ) as build_population:
+        result = asyncio.run(
+            plan_generation_service._generate_segment(strategy_factory, context)
+        )
+
+    assert result is generated
+    build_population.assert_called_once_with(context)
+    strategy_factory.assert_called_once_with()
+    strategy.generate.assert_called_once_with(context, population)
 
 
 def test_merge_segment_individuals_restores_schema_order() -> None:
@@ -298,7 +323,7 @@ def test_runner_marks_a_persisted_plan_as_succeeded() -> None:
     ):
         asyncio.run(plan_generation_service.run(JOB_ID))
 
-    generate_plan.assert_awaited_once_with(session, job, strategy=ANY)
+    generate_plan.assert_awaited_once_with(session, job, strategy_factory=ANY)
     mark_succeeded.assert_awaited_once_with(session, JOB_ID, PLAN_ID)
 
 

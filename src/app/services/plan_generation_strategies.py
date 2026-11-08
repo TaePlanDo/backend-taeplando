@@ -12,7 +12,7 @@ from app.services.plan_generation_errors import PlanGenerationError
 
 
 class PlanGenerationStrategy(Protocol):
-    """Stateless segment strategy safe to invoke concurrently without I/O."""
+    """Algorithm that generates one segment without I/O."""
 
     def generate(
         self, context: GenerationContext, population: InitialPopulation
