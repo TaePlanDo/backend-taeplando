@@ -65,7 +65,7 @@ def _context(*candidates: PlanExerciseCandidate) -> GenerationContext:
         group_duration_minutes=60,
         deadline_at=datetime(2026, 11, 7, 12, 0, tzinfo=UTC),
         schema=schema,
-        candidate_pool=plan_generation_candidates_service.build_candidate_pool(
+        candidates_by_position=plan_generation_candidates_service.build_candidates_by_position(
             schema, candidates
         ),
         random_seed=123,
@@ -78,7 +78,7 @@ def test_population_contains_complete_plans_and_duration_genes() -> None:
     second = _candidate("1ac590e1-2a46-4cb7-8944-803e364cc46b", (2,), duration=12)
     context = _context(first, second)
 
-    assert context.candidate_pool.by_schema_position == {
+    assert context.candidates_by_position == {
         1: (first,),
         2: (second,),
     }
@@ -140,7 +140,7 @@ def test_population_allocates_rounding_minutes_to_schema_positions() -> None:
         _context(*candidates),
         group_duration_minutes=7,
         schema=schema,
-        candidate_pool=plan_generation_candidates_service.build_candidate_pool(
+        candidates_by_position=plan_generation_candidates_service.build_candidates_by_position(
             schema, candidates
         ),
     )

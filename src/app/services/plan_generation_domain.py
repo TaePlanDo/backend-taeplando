@@ -43,13 +43,6 @@ class GenerationSchemaItem:
 
 
 @dataclass(frozen=True)
-class CandidatePool:
-    """Eligible candidates indexed by the schema positions they can fill."""
-
-    by_schema_position: Mapping[int, tuple[PlanExerciseCandidate, ...]]
-
-
-@dataclass(frozen=True)
 class GenerationContext:
     """Immutable input shared by initial-population and generation algorithms."""
 
@@ -63,7 +56,7 @@ class GenerationContext:
     group_duration_minutes: int
     deadline_at: datetime
     schema: tuple[GenerationSchemaItem, ...]
-    candidate_pool: CandidatePool
+    candidates_by_position: Mapping[int, tuple[PlanExerciseCandidate, ...]]
     random_seed: int
 
 

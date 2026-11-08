@@ -50,9 +50,7 @@ def _individual(
             for selection in _selections_for_position(
                 schema_position=schema_item.position,
                 target_duration=durations_by_position[schema_item.position],
-                candidates=context.candidate_pool.by_schema_position[
-                    schema_item.position
-                ],
+                candidates=context.candidates_by_position[schema_item.position],
                 random=random,
             )
         )

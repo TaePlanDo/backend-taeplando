@@ -1,7 +1,7 @@
 """Prepare eligible exercises for the future plan-generation algorithm."""
 
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from types import MappingProxyType
 from uuid import UUID
 
@@ -13,7 +13,6 @@ from app.models.exercises import TrainerExercise
 from app.models.training import TrainingGroup
 from app.schemas.plan_generation import PlanGenerationParameters
 from app.services.plan_generation_domain import (
-    CandidatePool,
     GenerationSchemaItem,
     PlanExerciseCandidate,
 )
@@ -47,10 +46,10 @@ async def prepare_candidates(
     return candidates
 
 
-def build_candidate_pool(
+def build_candidates_by_position(
     schema: Sequence[GenerationSchemaItem],
     candidates: Sequence[PlanExerciseCandidate],
-) -> CandidatePool:
+) -> Mapping[int, tuple[PlanExerciseCandidate, ...]]:
     """Index structurally valid candidates once for all generation phases."""
     candidates_by_position: dict[int, list[PlanExerciseCandidate]] = defaultdict(list)
     for candidate in candidates:
@@ -62,15 +61,11 @@ def build_candidate_pool(
     for schema_item in schema:
         if not candidates_by_position[schema_item.position]:
             raise NoCandidateForSchemaPositionError(schema_item.position)
-    return CandidatePool(
-        by_schema_position=MappingProxyType(
-            {
-                schema_item.position: tuple(
-                    candidates_by_position[schema_item.position]
-                )
-                for schema_item in schema
-            }
-        )
+    return MappingProxyType(
+        {
+            schema_item.position: tuple(candidates_by_position[schema_item.position])
+            for schema_item in schema
+        }
     )
 
 

@@ -176,7 +176,7 @@ def _generation_context(
         group_duration_minutes=group.duration_minutes,
         deadline_at=job.deadline_at,
         schema=schema,
-        candidate_pool=plan_generation_candidates_service.build_candidate_pool(
+        candidates_by_position=plan_generation_candidates_service.build_candidates_by_position(
             schema, candidates
         ),
         random_seed=job.id.int,

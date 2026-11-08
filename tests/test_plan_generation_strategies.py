@@ -63,7 +63,7 @@ def test_random_strategy_selects_a_duration_complete_plan() -> None:
         group_duration_minutes=60,
         deadline_at=datetime(2026, 11, 6, 12, 0, tzinfo=UTC),
         schema=schema,
-        candidate_pool=plan_generation_candidates_service.build_candidate_pool(
+        candidates_by_position=plan_generation_candidates_service.build_candidates_by_position(
             schema, candidates
         ),
         random_seed=123,
@@ -82,7 +82,7 @@ def test_random_strategy_selects_a_duration_complete_plan() -> None:
     )
 
 
-def test_candidate_pool_rejects_a_schema_position_without_candidates() -> None:
+def test_candidates_by_position_rejects_a_schema_position_without_candidates() -> None:
     """The runner can turn an incomplete pool into a typed failed job state."""
 
     schema = (
@@ -91,4 +91,6 @@ def test_candidate_pool_rejects_a_schema_position_without_candidates() -> None:
     )
     candidates = (_candidate("2ac590e1-2a46-4cb7-8944-803e364cc46b", (1,)),)
     with pytest.raises(NoCandidateForSchemaPositionError, match="2"):
-        plan_generation_candidates_service.build_candidate_pool(schema, candidates)
+        plan_generation_candidates_service.build_candidates_by_position(
+            schema, candidates
+        )
