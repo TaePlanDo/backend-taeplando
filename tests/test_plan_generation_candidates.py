@@ -11,6 +11,7 @@ from app.db import exercises as exercises_db
 from app.models.enums import EquipmentRequirementMode
 from app.schemas.plan_generation import PlanGenerationParameters
 from app.services import plan_generation_candidates_service
+from app.services.plan_generation_domain import PlanExerciseCandidate
 from constants import TRAINER_ID
 
 GROUP_ID = UUID("0ac590e1-2a46-4cb7-8944-803e364cc46b")
@@ -76,7 +77,7 @@ def _source(
     )
 
 
-def test_prepare_candidates_applies_equipment_type_and_segment_rules() -> None:
+def test_prepare_candidates_applies_equipment_and_segment_rules() -> None:
     """Keep only active-source candidates usable by this exact request."""
 
     all_requirement = _source(
@@ -103,13 +104,6 @@ def test_prepare_candidates_applies_equipment_type_and_segment_rules() -> None:
         training_type_ids=[TRAINING_TYPE_ID],
         segment_ids=[1],
     )
-    wrong_type = _source(
-        UUID("9ac590e1-2a46-4cb7-8944-803e364cc46b"),
-        equipment_ids=[],
-        equipment_mode=EquipmentRequirementMode.ALL,
-        training_type_ids=[OTHER_TRAINING_TYPE_ID],
-        segment_ids=[1],
-    )
     unmatched_segment = _source(
         UUID("aac590e1-2a46-4cb7-8944-803e364cc46b"),
         equipment_ids=[],
@@ -125,7 +119,6 @@ def test_prepare_candidates_applies_equipment_type_and_segment_rules() -> None:
                 all_requirement,
                 any_requirement,
                 missing_required_equipment,
-                wrong_type,
                 unmatched_segment,
             ]
         ),
@@ -136,48 +129,45 @@ def test_prepare_candidates_applies_equipment_type_and_segment_rules() -> None:
             )
         )
 
-    assert candidates == [
-        plan_generation_candidates_service.PlanExerciseCandidate(
-            trainer_exercise_id=all_requirement.id,
-            exercise_id=EXERCISE_ID,
-            exercise_version_id=EXERCISE_VERSION_ID,
-            min_age=7,
-            max_age=14,
-            min_participants=1,
-            max_participants=20,
-            duration_minutes=15,
-            equipment_requirement_mode=EquipmentRequirementMode.ALL,
-            equipment_ids=(EQUIPMENT_ID,),
-            training_type_ids=(TRAINING_TYPE_ID,),
-            segment_ids=(1, 2),
-            physical_difficulty=3,
-            technical_difficulty=3,
-            upper_body_load=3,
-            lower_body_load=3,
-            core_load=3,
-            schema_positions=(1, 2),
-        ),
-        plan_generation_candidates_service.PlanExerciseCandidate(
-            trainer_exercise_id=any_requirement.id,
-            exercise_id=any_requirement.id,
-            exercise_version_id=None,
-            min_age=7,
-            max_age=14,
-            min_participants=1,
-            max_participants=20,
-            duration_minutes=10,
-            equipment_requirement_mode=EquipmentRequirementMode.ANY,
-            equipment_ids=(EQUIPMENT_ID, OTHER_EQUIPMENT_ID),
-            training_type_ids=(TRAINING_TYPE_ID,),
-            segment_ids=(2,),
-            physical_difficulty=3,
-            technical_difficulty=3,
-            upper_body_load=3,
-            lower_body_load=3,
-            core_load=3,
-            schema_positions=(2,),
-        ),
-    ]
+    all_candidate = PlanExerciseCandidate(
+        trainer_exercise_id=all_requirement.id,
+        exercise_id=EXERCISE_ID,
+        exercise_version_id=EXERCISE_VERSION_ID,
+        min_age=7,
+        max_age=14,
+        min_participants=1,
+        max_participants=20,
+        default_duration_minutes=15,
+        equipment_requirement_mode=EquipmentRequirementMode.ALL,
+        equipment_ids=(EQUIPMENT_ID,),
+        training_type_ids=(TRAINING_TYPE_ID,),
+        segment_ids=(1, 2),
+        physical_difficulty=3,
+        technical_difficulty=3,
+        upper_body_load=3,
+        lower_body_load=3,
+        core_load=3,
+    )
+    any_candidate = PlanExerciseCandidate(
+        trainer_exercise_id=any_requirement.id,
+        exercise_id=any_requirement.id,
+        exercise_version_id=None,
+        min_age=7,
+        max_age=14,
+        min_participants=1,
+        max_participants=20,
+        default_duration_minutes=10,
+        equipment_requirement_mode=EquipmentRequirementMode.ANY,
+        equipment_ids=(EQUIPMENT_ID, OTHER_EQUIPMENT_ID),
+        training_type_ids=(TRAINING_TYPE_ID,),
+        segment_ids=(2,),
+        physical_difficulty=3,
+        technical_difficulty=3,
+        upper_body_load=3,
+        lower_body_load=3,
+        core_load=3,
+    )
+    assert candidates == (all_candidate, any_candidate)
     list_candidate_sources.assert_awaited_once_with(
         session,
         TRAINER_ID,
@@ -187,34 +177,25 @@ def test_prepare_candidates_applies_equipment_type_and_segment_rules() -> None:
     )
 
 
-def test_prepare_candidates_skips_type_filter_for_automatic_selection() -> None:
-    """An omitted training type leaves all configured types eligible."""
+def test_prepare_candidates_keeps_every_training_type_for_fitness() -> None:
+    """A requested type is a fitness preference, never an eligibility filter."""
 
-    source = _source(
+    matching_type = _source(
         UUID("bac590e1-2a46-4cb7-8944-803e364cc46b"),
+        equipment_ids=[],
+        equipment_mode=EquipmentRequirementMode.ALL,
+        training_type_ids=[TRAINING_TYPE_ID],
+        segment_ids=[1],
+    )
+    another_type = _source(
+        UUID("cac590e1-2a46-4cb7-8944-803e364cc46b"),
         equipment_ids=[],
         equipment_mode=EquipmentRequirementMode.ALL,
         training_type_ids=[OTHER_TRAINING_TYPE_ID],
         segment_ids=[1],
     )
-    with patch(
-        "app.services.plan_generation_candidates_service.exercises_db.list_candidate_sources",
-        new=AsyncMock(return_value=[source]),
-    ):
-        candidates = asyncio.run(
-            plan_generation_candidates_service.prepare_candidates(
-                AsyncMock(), TRAINER_ID, _group(), _parameters(training_type_id=None)
-            )
-        )
-
-    assert [item.trainer_exercise_id for item in candidates] == [source.id]
-
-
-def test_prepare_candidates_treats_an_untyped_exercise_as_universal() -> None:
-    """An exercise without types remains eligible for a selected training type."""
-
-    source = _source(
-        UUID("cac590e1-2a46-4cb7-8944-803e364cc46b"),
+    untyped = _source(
+        UUID("dac590e1-2a46-4cb7-8944-803e364cc46b"),
         equipment_ids=[],
         equipment_mode=EquipmentRequirementMode.ALL,
         training_type_ids=[],
@@ -222,7 +203,7 @@ def test_prepare_candidates_treats_an_untyped_exercise_as_universal() -> None:
     )
     with patch(
         "app.services.plan_generation_candidates_service.exercises_db.list_candidate_sources",
-        new=AsyncMock(return_value=[source]),
+        new=AsyncMock(return_value=[matching_type, another_type, untyped]),
     ):
         candidates = asyncio.run(
             plan_generation_candidates_service.prepare_candidates(
@@ -230,7 +211,11 @@ def test_prepare_candidates_treats_an_untyped_exercise_as_universal() -> None:
             )
         )
 
-    assert [item.trainer_exercise_id for item in candidates] == [source.id]
+    assert [item.trainer_exercise_id for item in candidates] == [
+        matching_type.id,
+        another_type.id,
+        untyped.id,
+    ]
 
 
 def test_list_candidate_sources_accepts_exercises_with_an_age_range_overlap() -> None:

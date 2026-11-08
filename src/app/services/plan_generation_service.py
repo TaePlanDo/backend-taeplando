@@ -1,7 +1,7 @@
 """Queue, execute, persist, and report asynchronous training-plan generation."""
 
 import asyncio
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -24,12 +24,22 @@ from app.services import (
     plan_generation_candidates_service,
     plan_generation_parameters_service,
 )
-from app.services.plan_generation_strategies import (
-    GeneratedPlan,
-    GeneratedPlanExercise,
+from app.services.plan_generation_domain import (
     GenerationContext,
     GenerationSchemaItem,
+    PlanExerciseCandidate,
+    PlanExerciseSelection,
+    PlanIndividual,
+)
+from app.services.plan_generation_errors import (
+    NoCandidateForSchemaPositionError,
     PlanGenerationError,
+)
+from app.services.plan_generation_population_service import (
+    allocate_segment_durations,
+    build_initial_population,
+)
+from app.services.plan_generation_strategies import (
     PlanGenerationStrategy,
     RandomPlanGenerationStrategy,
 )
@@ -79,7 +89,7 @@ async def run(job_id: UUID) -> None:
             )
             async with asyncio.timeout(timeout_seconds):
                 plan = await _generate_plan(
-                    session, job, strategy=RandomPlanGenerationStrategy()
+                    session, job, strategy_factory=RandomPlanGenerationStrategy
                 )
                 if not await jobs_db.mark_succeeded(session, job.id, plan.id):
                     await jobs_db.mark_timed_out(session, job.id)
@@ -116,7 +126,7 @@ async def _generate_plan(
     session: AsyncSession,
     job: PlanGenerationJob,
     *,
-    strategy: PlanGenerationStrategy,
+    strategy_factory: Callable[[], PlanGenerationStrategy],
 ) -> TrainingPlan:
     """Build and persist a plan while keeping the strategy free of I/O."""
     parameters = PlanGenerationParameters(
@@ -140,30 +150,104 @@ async def _generate_plan(
     candidates = await plan_generation_candidates_service.prepare_candidates(
         session, job.trainer_id, group, parameters
     )
-    context = _generation_context(job, group, candidates)
-    generated = await asyncio.to_thread(strategy.generate, context)
+    contexts = _generation_contexts(job, group, parameters, candidates)
+    generated = _merge_segment_individuals(
+        await asyncio.gather(
+            *(_generate_segment(strategy_factory, context) for context in contexts)
+        )
+    )
     return await _persist_plan(session, job, validated_input, parameters, generated)
 
 
-def _generation_context(
+async def _generate_segment(
+    strategy_factory: Callable[[], PlanGenerationStrategy], context: GenerationContext
+) -> PlanIndividual:
+    """Build and generate one segment in its own worker-thread invocation."""
+    return await asyncio.to_thread(_generate_segment_sync, strategy_factory, context)
+
+
+def _generate_segment_sync(
+    strategy_factory: Callable[[], PlanGenerationStrategy], context: GenerationContext
+) -> PlanIndividual:
+    """Keep a strategy instance and its initial population local to one segment."""
+    population = build_initial_population(context)
+    return strategy_factory().generate(context, population)
+
+
+def _generation_contexts(
     job: PlanGenerationJob,
     group: TrainingGroup,
-    candidates: list[plan_generation_candidates_service.PlanExerciseCandidate],
+    parameters: PlanGenerationParameters,
+    candidates: Sequence[PlanExerciseCandidate],
+) -> tuple[GenerationContext, ...]:
+    """Adapt every schema segment into an isolated immutable algorithm contract."""
+    schema = tuple(
+        GenerationSchemaItem(
+            position=item.position,
+            segment_id=item.segment_id,
+            percentage=item.percentage,
+        )
+        for item in sorted(group.schema_items, key=lambda item: item.position)
+    )
+    segment_durations = allocate_segment_durations(group.duration_minutes, schema)
+    return tuple(
+        _segment_context(
+            job,
+            group,
+            parameters,
+            schema_item,
+            segment_durations[schema_item.position],
+            candidates,
+        )
+        for schema_item in schema
+    )
+
+
+def _segment_context(
+    job: PlanGenerationJob,
+    group: TrainingGroup,
+    parameters: PlanGenerationParameters,
+    segment: GenerationSchemaItem,
+    segment_duration_minutes: int,
+    candidates: Sequence[PlanExerciseCandidate],
 ) -> GenerationContext:
-    """Adapt database-backed preparation into the strategy's immutable contract."""
+    """Build one segment's context and enforce its hard candidate constraint."""
+    segment_candidates = tuple(
+        candidate
+        for candidate in candidates
+        if candidate.default_duration_minutes > 0
+        and segment.segment_id in candidate.segment_ids
+    )
+    if not segment_candidates:
+        raise NoCandidateForSchemaPositionError(segment.position)
     return GenerationContext(
+        participant_count=parameters.participant_count,
+        available_equipment_ids=tuple(sorted(parameters.available_equipment_ids)),
+        preferred_training_type_id=parameters.training_type_id,
+        training_group_id=group.id,
+        training_group_name=group.name,
+        group_min_age=group.min_age,
+        group_max_age=group.max_age,
         group_duration_minutes=group.duration_minutes,
         deadline_at=job.deadline_at,
-        schema=tuple(
-            GenerationSchemaItem(
-                position=item.position,
-                segment_id=item.segment_id,
-                percentage=float(item.percentage),
+        segment=segment,
+        segment_duration_minutes=segment_duration_minutes,
+        candidates=segment_candidates,
+        random_seed=job.id.int ^ segment.position,
+    )
+
+
+def _merge_segment_individuals(
+    segments: Sequence[PlanIndividual],
+) -> PlanIndividual:
+    """Restore one plan from independently generated segment selections."""
+    return PlanIndividual(
+        selections=tuple(
+            sorted(
+                (selection for segment in segments for selection in segment.selections),
+                key=lambda selection: selection.schema_position,
             )
-            for item in sorted(group.schema_items, key=lambda item: item.position)
-        ),
-        candidates=tuple(candidates),
-        random_seed=job.id.int,
+        )
     )
 
 
@@ -172,17 +256,17 @@ async def _persist_plan(
     job: PlanGenerationJob,
     validated_input: plan_generation_parameters_service.ValidatedPlanGenerationInput,
     parameters: PlanGenerationParameters,
-    generated: GeneratedPlan,
+    generated: PlanIndividual,
 ) -> TrainingPlan:
     """Write immutable plan snapshots from the strategy's selected candidates."""
     group = validated_input.group
     selected_sources = await exercises_db.list_sources_for_generated_plan(
         session,
         job.trainer_id,
-        {item.candidate.trainer_exercise_id for item in generated.exercises},
+        {item.candidate.trainer_exercise_id for item in generated.selections},
     )
     if len(selected_sources) != len(
-        {item.candidate.trainer_exercise_id for item in generated.exercises}
+        {item.candidate.trainer_exercise_id for item in generated.selections}
     ):
         raise PlanGenerationError("A selected exercise is no longer available")
 
@@ -204,7 +288,7 @@ async def _persist_plan(
             position, item, selected_sources[item.candidate.trainer_exercise_id]
         )
         for position, item in enumerate(
-            sorted(generated.exercises, key=lambda item: item.schema_position),
+            sorted(generated.selections, key=lambda item: item.schema_position),
             start=1,
         )
     ]
@@ -215,7 +299,7 @@ async def _persist_plan(
 
 def _plan_exercise(
     position: int,
-    selected: GeneratedPlanExercise,
+    selected: PlanExerciseSelection,
     source: TrainerExercise,
 ) -> TrainingPlanExercise:
     """Create one immutable exercise occurrence from a selected configuration."""
@@ -233,7 +317,7 @@ def _plan_exercise(
         max_age_snapshot=source.max_age,
         min_participants_snapshot=source.min_participants,
         max_participants_snapshot=source.max_participants,
-        duration_minutes_snapshot=source.duration_minutes,
+        duration_minutes_snapshot=selected.allocated_duration_minutes,
         physical_difficulty_snapshot=source.physical_difficulty,
         technical_difficulty_snapshot=source.technical_difficulty,
         upper_body_load_snapshot=source.upper_body_load,
