@@ -1,6 +1,7 @@
 """Coverage for asynchronous training-plan generation endpoints."""
 
 import asyncio
+from types import SimpleNamespace
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 from uuid import UUID
 
@@ -215,6 +216,35 @@ def test_validate_parameters_allows_an_empty_equipment_list_and_auto_type() -> N
 
     list_visible_by_ids.assert_awaited_once()
     assert list_visible_by_ids.await_args.kwargs["ids"] == []
+
+
+def test_validate_parameters_rejects_a_group_without_a_schema() -> None:
+    """Generating an empty plan is never a valid fallback for an unfinished group."""
+    session = AsyncMock()
+    parameters = PlanGenerationParameters(
+        training_group_id=GROUP_ID,
+        participant_count=12,
+        available_equipment_ids=[],
+        training_type_id=None,
+    )
+    with (
+        patch(
+            "app.services.plan_generation_parameters_service.training_groups_db.get_with_schema_for_trainer",
+            new=AsyncMock(return_value=SimpleNamespace(schema_items=[])),
+        ),
+        patch(
+            "app.services.plan_generation_parameters_service.catalogs_db.list_visible_by_ids",
+            new=AsyncMock(),
+        ) as list_visible_by_ids,
+        pytest.raises(InvalidPlanGenerationParametersError, match="has no schema"),
+    ):
+        asyncio.run(
+            plan_generation_parameters_service.validate_parameters(
+                session, TRAINER_ID, parameters
+            )
+        )
+
+    list_visible_by_ids.assert_not_awaited()
 
 
 def test_validate_parameters_accepts_visible_non_empty_selections() -> None:

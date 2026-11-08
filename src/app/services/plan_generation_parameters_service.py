@@ -41,6 +41,8 @@ async def validate_parameters(
     )
     if group is None:
         raise InvalidPlanGenerationParametersError("Unknown training_group_id")
+    if not group.schema_items:
+        raise InvalidPlanGenerationParametersError("Training group has no schema")
 
     equipment = await catalogs_db.list_visible_by_ids(
         session,
