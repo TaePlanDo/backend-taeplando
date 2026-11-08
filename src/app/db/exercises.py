@@ -88,6 +88,11 @@ class _BranchColumns(NamedTuple):
     max_age: SQLColumnExpression[int]
     min_participants: SQLColumnExpression[int]
     max_participants: SQLColumnExpression[int]
+    physical_difficulty: SQLColumnExpression[int]
+    technical_difficulty: SQLColumnExpression[int]
+    upper_body_load: SQLColumnExpression[int]
+    lower_body_load: SQLColumnExpression[int]
+    core_load: SQLColumnExpression[int]
     owner_id: SQLColumnExpression[UUID]
     equipment_owner_fk: SQLColumnExpression[UUID]
     equipment_value: SQLColumnExpression[UUID]
@@ -103,6 +108,11 @@ _PRIVATE_BRANCH = _BranchColumns(
     max_age=TrainerExercise.max_age,
     min_participants=TrainerExercise.min_participants,
     max_participants=TrainerExercise.max_participants,
+    physical_difficulty=TrainerExercise.physical_difficulty,
+    technical_difficulty=TrainerExercise.technical_difficulty,
+    upper_body_load=TrainerExercise.upper_body_load,
+    lower_body_load=TrainerExercise.lower_body_load,
+    core_load=TrainerExercise.core_load,
     owner_id=TrainerExercise.id,
     equipment_owner_fk=trainer_exercise_equipment.c.trainer_exercise_id,
     equipment_value=trainer_exercise_equipment.c.equipment_id,
@@ -118,6 +128,11 @@ _GLOBAL_BRANCH = _BranchColumns(
     max_age=ExerciseVersion.max_age,
     min_participants=ExerciseVersion.min_participants,
     max_participants=ExerciseVersion.max_participants,
+    physical_difficulty=ExerciseVersion.physical_difficulty,
+    technical_difficulty=ExerciseVersion.technical_difficulty,
+    upper_body_load=ExerciseVersion.upper_body_load,
+    lower_body_load=ExerciseVersion.lower_body_load,
+    core_load=ExerciseVersion.core_load,
     owner_id=ExerciseVersion.id,
     equipment_owner_fk=exercise_version_equipment.c.exercise_version_id,
     equipment_value=exercise_version_equipment.c.equipment_id,
@@ -294,14 +309,49 @@ def _filters_for_branch(
     predicates: list[ColumnElement[bool]] = []
     if filters.name is not None:
         predicates.append(ilike_contains(columns.name, filters.name))
-    if filters.min_age is not None:
-        predicates.append(columns.max_age >= filters.min_age)
-    if filters.max_age is not None:
-        predicates.append(columns.min_age <= filters.max_age)
-    if filters.min_participants is not None:
-        predicates.append(columns.max_participants >= filters.min_participants)
-    if filters.max_participants is not None:
-        predicates.append(columns.min_participants <= filters.max_participants)
+    for minimum, maximum, lower_column, upper_column in (
+        (filters.min_age, filters.max_age, columns.min_age, columns.max_age),
+        (
+            filters.min_participants,
+            filters.max_participants,
+            columns.min_participants,
+            columns.max_participants,
+        ),
+        (
+            filters.min_physical_difficulty,
+            filters.max_physical_difficulty,
+            columns.physical_difficulty,
+            columns.physical_difficulty,
+        ),
+        (
+            filters.min_technical_difficulty,
+            filters.max_technical_difficulty,
+            columns.technical_difficulty,
+            columns.technical_difficulty,
+        ),
+        (
+            filters.min_upper_body_load,
+            filters.max_upper_body_load,
+            columns.upper_body_load,
+            columns.upper_body_load,
+        ),
+        (
+            filters.min_lower_body_load,
+            filters.max_lower_body_load,
+            columns.lower_body_load,
+            columns.lower_body_load,
+        ),
+        (
+            filters.min_core_load,
+            filters.max_core_load,
+            columns.core_load,
+            columns.core_load,
+        ),
+    ):
+        if minimum is not None:
+            predicates.append(upper_column >= minimum)
+        if maximum is not None:
+            predicates.append(lower_column <= maximum)
 
     for ids, owner_fk, value_column in (
         (filters.equipment_ids, columns.equipment_owner_fk, columns.equipment_value),

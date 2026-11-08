@@ -2,6 +2,8 @@ import asyncio
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 from uuid import UUID
 
+import pytest
+
 from app.db import exercises as exercises_db
 from app.db.exercises import ExerciseConfiguration, ExercisePage, ListedExercise
 from app.models.catalogs import Equipment, TrainingSegment, TrainingType
@@ -235,6 +237,11 @@ def test_list_exercises_forwards_combined_filters(
             f"?name=chagi"
             f"&min_age=7&max_age=14"
             f"&min_participants=2&max_participants=20"
+            f"&min_physical_difficulty=2&max_physical_difficulty=4"
+            f"&min_technical_difficulty=1&max_technical_difficulty=3"
+            f"&min_upper_body_load=2&max_upper_body_load=5"
+            f"&min_lower_body_load=1&max_lower_body_load=4"
+            f"&min_core_load=3&max_core_load=5"
             f"&equipment_ids={EQUIPMENT_ID}"
             f"&training_type_ids={TRAINING_TYPE_ID}"
             f"&segment_ids={SEGMENT_ID},1"
@@ -250,6 +257,16 @@ def test_list_exercises_forwards_combined_filters(
             max_age=14,
             min_participants=2,
             max_participants=20,
+            min_physical_difficulty=2,
+            max_physical_difficulty=4,
+            min_technical_difficulty=1,
+            max_technical_difficulty=3,
+            min_upper_body_load=2,
+            max_upper_body_load=5,
+            min_lower_body_load=1,
+            max_lower_body_load=4,
+            min_core_load=3,
+            max_core_load=5,
             equipment_ids=[EQUIPMENT_ID],
             training_type_ids=[TRAINING_TYPE_ID],
             segment_ids=[SEGMENT_ID, 1],
@@ -273,6 +290,49 @@ def test_list_exercises_rejects_inverted_participants_range(
 ) -> None:
     """Reject impossible inclusive participant-filter ranges."""
     response = client.get("/exercises?min_participants=10&max_participants=2")
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize(
+    "attribute",
+    (
+        "physical_difficulty",
+        "technical_difficulty",
+        "upper_body_load",
+        "lower_body_load",
+        "core_load",
+    ),
+)
+def test_list_exercises_rejects_inverted_planning_attribute_range(
+    client, authenticated_trainer, attribute: str
+) -> None:
+    """Reject impossible inclusive ranges for every planning attribute."""
+    response = client.get(f"/exercises?min_{attribute}=5&max_{attribute}=4")
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("parameter", "value"),
+    (
+        ("min_physical_difficulty", 0),
+        ("max_physical_difficulty", 6),
+        ("min_technical_difficulty", 0),
+        ("max_technical_difficulty", 6),
+        ("min_upper_body_load", 0),
+        ("max_upper_body_load", 6),
+        ("min_lower_body_load", 0),
+        ("max_lower_body_load", 6),
+        ("min_core_load", 0),
+        ("max_core_load", 6),
+    ),
+)
+def test_list_exercises_rejects_out_of_range_planning_attribute_values(
+    client, authenticated_trainer, parameter: str, value: int
+) -> None:
+    """Every planning-range boundary accepts exactly the persisted 1–5 domain."""
+    response = client.get(f"/exercises?{parameter}={value}")
 
     assert response.status_code == 422
 
@@ -738,6 +798,16 @@ def test_list_available_to_trainer_applies_scalar_and_catalog_filters() -> None:
                 max_age=14,
                 min_participants=2,
                 max_participants=20,
+                min_physical_difficulty=2,
+                max_physical_difficulty=4,
+                min_technical_difficulty=1,
+                max_technical_difficulty=3,
+                min_upper_body_load=2,
+                max_upper_body_load=5,
+                min_lower_body_load=1,
+                max_lower_body_load=4,
+                min_core_load=3,
+                max_core_load=5,
                 equipment_ids=[EQUIPMENT_ID],
                 training_type_ids=[TRAINING_TYPE_ID],
                 segment_ids=[SEGMENT_ID],
@@ -758,6 +828,17 @@ def test_list_available_to_trainer_applies_scalar_and_catalog_filters() -> None:
     assert "exercise_version_segments" in statement
     assert "left outer join trainer_exercises" in statement
     assert "coalesce(trainer_exercises.status" in statement
+    for attribute in (
+        "physical_difficulty",
+        "technical_difficulty",
+        "upper_body_load",
+        "lower_body_load",
+        "core_load",
+    ):
+        assert f"trainer_exercises.{attribute} >=" in statement
+        assert f"trainer_exercises.{attribute} <=" in statement
+        assert f"exercise_versions.{attribute} >=" in statement
+        assert f"exercise_versions.{attribute} <=" in statement
 
 
 def test_list_available_to_trainer_empty_first_page_skips_recount() -> None:
