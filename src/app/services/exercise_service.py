@@ -17,6 +17,7 @@ from app.schemas.exercise_list_filters import (
 from app.schemas.exercises import (
     CatalogReference,
     ExerciseConfigurationWrite,
+    ExercisePlanningAttributesUpdate,
     ExerciseResponse,
     ExerciseUpdate,
     ExerciseWrite,
@@ -82,6 +83,12 @@ async def create_exercise(
         min_participants=payload.min_participants,
         max_participants=payload.max_participants,
         duration_minutes=payload.duration_minutes,
+        equipment_requirement_mode=payload.equipment_requirement_mode,
+        physical_difficulty=payload.physical_difficulty,
+        technical_difficulty=payload.technical_difficulty,
+        upper_body_load=payload.upper_body_load,
+        lower_body_load=payload.lower_body_load,
+        core_load=payload.core_load,
     )
     _replace_configuration(trainer_exercise, configuration)
     session.add_all((exercise, trainer_exercise))
@@ -108,6 +115,7 @@ async def update_exercise(
     trainer_exercise.min_participants = payload.min_participants
     trainer_exercise.max_participants = payload.max_participants
     trainer_exercise.duration_minutes = payload.duration_minutes
+    _apply_provided_planning_attributes(trainer_exercise, payload)
     _replace_configuration(trainer_exercise, configuration)
     await session.commit()
     return _to_response_from_models(exercise, trainer_exercise, configuration)
@@ -185,6 +193,12 @@ def _to_response(
         max_participants=exercise.max_participants,
         duration_minutes=exercise.duration_minutes,
         status=exercise.status,
+        equipment_requirement_mode=exercise.equipment_requirement_mode,
+        physical_difficulty=exercise.physical_difficulty,
+        technical_difficulty=exercise.technical_difficulty,
+        upper_body_load=exercise.upper_body_load,
+        lower_body_load=exercise.lower_body_load,
+        core_load=exercise.core_load,
         equipment=_catalog_references(configuration.equipment),
         training_types=_catalog_references(configuration.training_types),
         segments=_segment_response(configuration),
@@ -222,6 +236,12 @@ def _to_response_from_models(
         max_participants=trainer_exercise.max_participants,
         duration_minutes=trainer_exercise.duration_minutes,
         status=trainer_exercise.status,
+        equipment_requirement_mode=trainer_exercise.equipment_requirement_mode,
+        physical_difficulty=trainer_exercise.physical_difficulty,
+        technical_difficulty=trainer_exercise.technical_difficulty,
+        upper_body_load=trainer_exercise.upper_body_load,
+        lower_body_load=trainer_exercise.lower_body_load,
+        core_load=trainer_exercise.core_load,
         equipment=_catalog_references(configuration.equipment),
         training_types=_catalog_references(configuration.training_types),
         segments=_segment_response(configuration),
@@ -254,6 +274,15 @@ def _replace_configuration(
     trainer_exercise.equipment = configuration.equipment
     trainer_exercise.training_types = configuration.training_types
     trainer_exercise.segments = configuration.segments
+
+
+def _apply_provided_planning_attributes(
+    trainer_exercise: TrainerExercise, payload: ExerciseUpdate
+) -> None:
+    """Update planning metadata only when the client supplied it."""
+    for name in ExercisePlanningAttributesUpdate.model_fields:
+        if name in payload.model_fields_set:
+            setattr(trainer_exercise, name, getattr(payload, name))
 
 
 def _catalog_references(

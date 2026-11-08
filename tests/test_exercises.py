@@ -7,6 +7,7 @@ from app.db.exercises import ExerciseConfiguration, ExercisePage, ListedExercise
 from app.models.catalogs import Equipment, TrainingSegment, TrainingType
 from app.models.enums import (
     CatalogVisibility,
+    EquipmentRequirementMode,
     ExerciseScope,
     TrainerExerciseStatus,
 )
@@ -25,6 +26,10 @@ from app.schemas.exercises import (
 )
 from app.services import exercise_service
 from constants import TRAINER_ID
+from exercise_planning_fixtures import (
+    global_planning_attributes,
+    private_planning_attributes,
+)
 
 CATALOG_OWNER_ID = UUID("3cae14d4-cf8b-4f55-a34d-b169404d2f49")
 PRIVATE_EXERCISE_ID = UUID("0ac590e1-2a46-4cb7-8944-803e364cc46b")
@@ -60,6 +65,7 @@ def _private_configuration() -> TrainerExercise:
         min_participants=2,
         max_participants=20,
         duration_minutes=10,
+        **private_planning_attributes(),
     )
 
 
@@ -73,7 +79,10 @@ def _configuration_payload() -> dict[str, list[str] | list[int]]:
 
 
 def _exercise_payload(
-    *, include_ranges: bool = True, **overrides: object
+    *,
+    include_ranges: bool = True,
+    include_planning_attributes: bool = True,
+    **overrides: object,
 ) -> dict[str, object]:
     """Build a valid exercise request body with focused per-test overrides."""
     payload: dict[str, object] = {
@@ -89,6 +98,8 @@ def _exercise_payload(
             min_participants=2,
             max_participants=20,
         )
+    if include_planning_attributes:
+        payload.update(private_planning_attributes())
     payload.update(overrides)
     return payload
 
@@ -131,6 +142,7 @@ def _private_response() -> ExerciseResponse:
         max_participants=20,
         duration_minutes=10,
         status=TrainerExerciseStatus.ACTIVE,
+        **private_planning_attributes(),
         equipment=[CatalogReference(id=EQUIPMENT_ID, name="Tarcza")],
         training_types=[CatalogReference(id=TRAINING_TYPE_ID, name="Techniczny")],
         segments=[
@@ -154,6 +166,7 @@ def _private_listed_exercise() -> ListedExercise:
         max_participants=20,
         duration_minutes=10,
         status=TrainerExerciseStatus.ACTIVE,
+        **private_planning_attributes(),
         version_id=None,
     )
 
@@ -173,6 +186,7 @@ def _global_listed_exercise() -> ListedExercise:
         max_participants=24,
         duration_minutes=15,
         status=TrainerExerciseStatus.SUSPENDED,
+        **global_planning_attributes(),
         version_id=GLOBAL_VERSION_ID,
     )
 
@@ -321,7 +335,9 @@ def test_create_exercise_uses_default_trainer_configuration(
     ) as create_exercise:
         response = client.post(
             "/exercises",
-            json=_exercise_payload(include_ranges=False),
+            json=_exercise_payload(
+                include_ranges=False, include_planning_attributes=False
+            ),
         )
 
     assert response.status_code == 201
@@ -376,6 +392,20 @@ def test_create_exercise_rejects_invalid_payload(client, authenticated_trainer) 
                 description="Opis", min_participants=20, max_participants=2
             ),
         )
+        invalid_physical_difficulty = client.post(
+            "/exercises",
+            json=_exercise_payload(description="Opis", physical_difficulty=0),
+        )
+        invalid_core_load = client.post(
+            "/exercises",
+            json=_exercise_payload(description="Opis", core_load=6),
+        )
+        invalid_equipment_requirement_mode = client.post(
+            "/exercises",
+            json=_exercise_payload(
+                description="Opis", equipment_requirement_mode="OPTIONAL"
+            ),
+        )
         extra_field = client.post(
             "/exercises",
             json=_exercise_payload(description="Opis", owner_user_id=str(TRAINER_ID)),
@@ -387,6 +417,9 @@ def test_create_exercise_rejects_invalid_payload(client, authenticated_trainer) 
     assert invalid_image_url.status_code == 422
     assert invalid_age_range.status_code == 422
     assert invalid_participant_range.status_code == 422
+    assert invalid_physical_difficulty.status_code == 422
+    assert invalid_core_load.status_code == 422
+    assert invalid_equipment_requirement_mode.status_code == 422
     assert extra_field.status_code == 422
     create_exercise.assert_not_awaited()
 
@@ -496,6 +529,7 @@ def test_update_exercise_rejects_non_editable_fields(
                 "max_participants": 20,
                 "owner_user_id": str(TRAINER_ID),
                 **_configuration_payload(),
+                **private_planning_attributes(),
             },
         )
 
@@ -522,6 +556,7 @@ def test_update_exercise_hides_foreign_or_missing_exercises(
                 "min_participants": 2,
                 "max_participants": 20,
                 **_configuration_payload(),
+                **private_planning_attributes(),
             },
         )
 
@@ -601,6 +636,7 @@ def test_list_exercises_maps_a_database_page() -> None:
                 max_participants=24,
                 duration_minutes=15,
                 status=TrainerExerciseStatus.SUSPENDED,
+                **global_planning_attributes(),
                 equipment=_private_response().equipment,
                 training_types=_private_response().training_types,
                 segments=_private_response().segments,
@@ -771,6 +807,7 @@ def test_create_exercise_builds_an_active_private_exercise() -> None:
         min_participants=2,
         max_participants=20,
         duration_minutes=10,
+        **private_planning_attributes(),
     )
 
     assert exercise.owner_user_id == TRAINER_ID
@@ -812,7 +849,7 @@ def test_create_exercise_commits_both_new_rows() -> None:
         patch(
             "app.db.exercises.create_for_trainer",
             return_value=(exercise, trainer_exercise),
-        ),
+        ) as create_for_trainer,
         patch(
             "app.db.exercises.resolve_configuration",
             new=AsyncMock(return_value=_configuration()),
@@ -826,6 +863,16 @@ def test_create_exercise_commits_both_new_rows() -> None:
     assert [item.id for item in trainer_exercise.equipment] == [EQUIPMENT_ID]
     assert [item.id for item in trainer_exercise.training_types] == [TRAINING_TYPE_ID]
     assert [item.id for item in trainer_exercise.segments] == [SEGMENT_ID]
+    assert create_for_trainer.call_args.kwargs["equipment_requirement_mode"] == (
+        EquipmentRequirementMode.ALL
+    )
+    assert (
+        create_for_trainer.call_args.kwargs["physical_difficulty"],
+        create_for_trainer.call_args.kwargs["technical_difficulty"],
+        create_for_trainer.call_args.kwargs["upper_body_load"],
+        create_for_trainer.call_args.kwargs["lower_body_load"],
+        create_for_trainer.call_args.kwargs["core_load"],
+    ) == (3, 3, 3, 3, 3)
     session.add_all.assert_called_once_with((exercise, trainer_exercise))
     session.commit.assert_awaited_once()
 
@@ -848,6 +895,7 @@ def test_update_exercise_updates_all_its_editable_fields() -> None:
         equipment_ids=[EQUIPMENT_ID],
         training_type_ids=[TRAINING_TYPE_ID],
         segment_ids=[SEGMENT_ID],
+        **global_planning_attributes(),
     )
     with (
         patch(
@@ -875,6 +923,7 @@ def test_update_exercise_updates_all_its_editable_fields() -> None:
         max_age=15,
         min_participants=3,
         max_participants=18,
+        **global_planning_attributes(),
     )
     assert result == ExerciseResponse(**expected_data)
     assert exercise.image_url == "https://example.com/dollyo-chagi.png"
@@ -883,6 +932,14 @@ def test_update_exercise_updates_all_its_editable_fields() -> None:
         3,
         18,
     )
+    assert trainer_exercise.equipment_requirement_mode == EquipmentRequirementMode.ALL
+    assert (
+        trainer_exercise.physical_difficulty,
+        trainer_exercise.technical_difficulty,
+        trainer_exercise.upper_body_load,
+        trainer_exercise.lower_body_load,
+        trainer_exercise.core_load,
+    ) == (4, 2, 5, 2, 3)
     assert [item.id for item in trainer_exercise.equipment] == [EQUIPMENT_ID]
     assert [item.id for item in trainer_exercise.training_types] == [TRAINING_TYPE_ID]
     assert [item.id for item in trainer_exercise.segments] == [SEGMENT_ID]

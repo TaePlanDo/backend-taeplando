@@ -4,7 +4,11 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
-from app.models.enums import ExerciseScope, TrainerExerciseStatus
+from app.models.enums import (
+    EquipmentRequirementMode,
+    ExerciseScope,
+    TrainerExerciseStatus,
+)
 from app.schemas.common import Description, Name
 
 
@@ -44,7 +48,40 @@ class ExerciseConfigurationWrite(BaseModel):
         return self
 
 
-class ExerciseUpdate(ExerciseConfigurationWrite):
+class ExercisePlanningAttributes(BaseModel):
+    """Planning metadata shared by exercise writes and responses."""
+
+    equipment_requirement_mode: EquipmentRequirementMode
+    physical_difficulty: int = Field(ge=1, le=5)
+    technical_difficulty: int = Field(ge=1, le=5)
+    upper_body_load: int = Field(ge=1, le=5)
+    lower_body_load: int = Field(ge=1, le=5)
+    core_load: int = Field(ge=1, le=5)
+
+
+class ExercisePlanningAttributesUpdate(BaseModel):
+    """Optional planning metadata accepted from clients predating SCRUM-260."""
+
+    equipment_requirement_mode: EquipmentRequirementMode | None = None
+    physical_difficulty: int | None = Field(default=None, ge=1, le=5)
+    technical_difficulty: int | None = Field(default=None, ge=1, le=5)
+    upper_body_load: int | None = Field(default=None, ge=1, le=5)
+    lower_body_load: int | None = Field(default=None, ge=1, le=5)
+    core_load: int | None = Field(default=None, ge=1, le=5)
+
+    @model_validator(mode="after")
+    def reject_explicit_nulls(self) -> "ExercisePlanningAttributesUpdate":
+        """Distinguish an omitted legacy field from an invalid null value."""
+        if any(
+            getattr(self, field_name) is None
+            for field_name in ExercisePlanningAttributesUpdate.model_fields
+            if field_name in self.model_fields_set
+        ):
+            raise ValueError("planning attributes cannot be null")
+        return self
+
+
+class ExerciseUpdate(ExerciseConfigurationWrite, ExercisePlanningAttributesUpdate):
     """Editable fields of one trainer-owned exercise."""
 
     name: Name
@@ -75,9 +112,15 @@ class ExerciseWrite(ExerciseUpdate):
     max_age: int = Field(default=99, gt=0)
     min_participants: int = Field(default=1, gt=0)
     max_participants: int = Field(default=99, gt=0)
+    equipment_requirement_mode: EquipmentRequirementMode = EquipmentRequirementMode.ALL
+    physical_difficulty: int = Field(default=3, ge=1, le=5)
+    technical_difficulty: int = Field(default=3, ge=1, le=5)
+    upper_body_load: int = Field(default=3, ge=1, le=5)
+    lower_body_load: int = Field(default=3, ge=1, le=5)
+    core_load: int = Field(default=3, ge=1, le=5)
 
 
-class ExerciseResponse(BaseModel):
+class ExerciseResponse(ExercisePlanningAttributes):
     """One catalog or trainer-owned exercise available to the trainer."""
 
     id: UUID

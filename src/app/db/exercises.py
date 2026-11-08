@@ -28,7 +28,12 @@ from app.models.associations import (
     trainer_exercise_training_types,
 )
 from app.models.catalogs import Equipment, TrainingSegment, TrainingType
-from app.models.enums import ExerciseScope, ExerciseVersionStatus, TrainerExerciseStatus
+from app.models.enums import (
+    EquipmentRequirementMode,
+    ExerciseScope,
+    ExerciseVersionStatus,
+    TrainerExerciseStatus,
+)
 from app.models.exercises import Exercise, ExerciseVersion, TrainerExercise
 from app.schemas.exercise_list_filters import (
     EMPTY_EXERCISE_LIST_FILTERS,
@@ -51,6 +56,12 @@ class ListedExercise(NamedTuple):
     max_participants: int
     duration_minutes: int
     status: TrainerExerciseStatus
+    equipment_requirement_mode: EquipmentRequirementMode
+    physical_difficulty: int
+    technical_difficulty: int
+    upper_body_load: int
+    lower_body_load: int
+    core_load: int
     version_id: UUID | None
 
 
@@ -140,6 +151,12 @@ async def list_available_to_trainer(
             TrainerExercise.max_participants,
             TrainerExercise.duration_minutes,
             TrainerExercise.status,
+            TrainerExercise.equipment_requirement_mode,
+            TrainerExercise.physical_difficulty,
+            TrainerExercise.technical_difficulty,
+            TrainerExercise.upper_body_load,
+            TrainerExercise.lower_body_load,
+            TrainerExercise.core_load,
             literal(
                 None,
                 type_=Exercise.__table__.c.latest_approved_version_id.type,
@@ -176,6 +193,12 @@ async def list_available_to_trainer(
                     type_=TrainerExercise.__table__.c.status.type,
                 ),
             ).label("status"),
+            ExerciseVersion.equipment_requirement_mode,
+            ExerciseVersion.physical_difficulty,
+            ExerciseVersion.technical_difficulty,
+            ExerciseVersion.upper_body_load,
+            ExerciseVersion.lower_body_load,
+            ExerciseVersion.core_load,
             Exercise.latest_approved_version_id.label("version_id"),
         )
         .join(
@@ -423,6 +446,12 @@ def create_for_trainer(
     min_participants: int,
     max_participants: int,
     duration_minutes: int,
+    equipment_requirement_mode: EquipmentRequirementMode,
+    physical_difficulty: int,
+    technical_difficulty: int,
+    upper_body_load: int,
+    lower_body_load: int,
+    core_load: int,
 ) -> tuple[Exercise, TrainerExercise]:
     """Build a private exercise and its active trainer configuration."""
     exercise = Exercise(
@@ -441,6 +470,12 @@ def create_for_trainer(
         min_participants=min_participants,
         max_participants=max_participants,
         duration_minutes=duration_minutes,
+        equipment_requirement_mode=equipment_requirement_mode,
+        physical_difficulty=physical_difficulty,
+        technical_difficulty=technical_difficulty,
+        upper_body_load=upper_body_load,
+        lower_body_load=lower_body_load,
+        core_load=core_load,
     )
     return exercise, trainer_exercise
 
