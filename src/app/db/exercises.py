@@ -558,3 +558,45 @@ async def get_configuration_for_trainer(
             TrainerExercise.exercise_id == exercise_id,
         )
     )
+
+
+async def create_configuration_for_global_exercise(
+    session: AsyncSession, trainer_id: UUID, exercise_id: UUID
+) -> TrainerExercise | None:
+    """Copy the current approved global version into one trainer configuration."""
+    source_version = await session.scalar(
+        select(ExerciseVersion)
+        .join(Exercise, Exercise.id == ExerciseVersion.exercise_id)
+        .where(
+            Exercise.id == exercise_id,
+            Exercise.scope == ExerciseScope.GLOBAL,
+            Exercise.latest_approved_version_id == ExerciseVersion.id,
+            ExerciseVersion.status == ExerciseVersionStatus.APPROVED,
+        )
+        .options(*_configuration_loader_options(ExerciseVersion))
+    )
+    if source_version is None:
+        return None
+
+    trainer_exercise = TrainerExercise(
+        trainer_id=trainer_id,
+        exercise_id=source_version.exercise_id,
+        source_version_id=source_version.id,
+        status=TrainerExerciseStatus.ACTIVE,
+        min_age=source_version.min_age,
+        max_age=source_version.max_age,
+        min_participants=source_version.min_participants,
+        max_participants=source_version.max_participants,
+        duration_minutes=source_version.duration_minutes,
+        equipment_requirement_mode=source_version.equipment_requirement_mode,
+        physical_difficulty=source_version.physical_difficulty,
+        technical_difficulty=source_version.technical_difficulty,
+        upper_body_load=source_version.upper_body_load,
+        lower_body_load=source_version.lower_body_load,
+        core_load=source_version.core_load,
+    )
+    trainer_exercise.equipment = list(source_version.equipment)
+    trainer_exercise.training_types = list(source_version.training_types)
+    trainer_exercise.segments = list(source_version.segments)
+    session.add(trainer_exercise)
+    return trainer_exercise

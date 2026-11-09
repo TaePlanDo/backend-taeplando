@@ -166,6 +166,10 @@ async def _set_temporary_availability_status(
     trainer_exercise = await exercises_db.get_configuration_for_trainer(
         session, trainer_id, exercise_id
     )
+    if trainer_exercise is None and status == TrainerExerciseStatus.SUSPENDED:
+        trainer_exercise = await exercises_db.create_configuration_for_global_exercise(
+            session, trainer_id, exercise_id
+        )
     if (
         trainer_exercise is None
         or trainer_exercise.status not in _TEMPORARY_AVAILABILITY_STATUSES
