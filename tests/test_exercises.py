@@ -242,6 +242,7 @@ def test_list_exercises_forwards_combined_filters(
             f"&min_upper_body_load=2&max_upper_body_load=5"
             f"&min_lower_body_load=1&max_lower_body_load=4"
             f"&min_core_load=3&max_core_load=5"
+            f"&status=SUSPENDED"
             f"&equipment_ids={EQUIPMENT_ID}"
             f"&training_type_ids={TRAINING_TYPE_ID}"
             f"&segment_ids={SEGMENT_ID},1"
@@ -267,6 +268,7 @@ def test_list_exercises_forwards_combined_filters(
             max_lower_body_load=4,
             min_core_load=3,
             max_core_load=5,
+            status=TrainerExerciseStatus.SUSPENDED,
             equipment_ids=[EQUIPMENT_ID],
             training_type_ids=[TRAINING_TYPE_ID],
             segment_ids=[SEGMENT_ID, 1],
@@ -808,6 +810,7 @@ def test_list_available_to_trainer_applies_scalar_and_catalog_filters() -> None:
                 max_lower_body_load=4,
                 min_core_load=3,
                 max_core_load=5,
+                status=TrainerExerciseStatus.SUSPENDED,
                 equipment_ids=[EQUIPMENT_ID],
                 training_type_ids=[TRAINING_TYPE_ID],
                 segment_ids=[SEGMENT_ID],
@@ -828,6 +831,7 @@ def test_list_available_to_trainer_applies_scalar_and_catalog_filters() -> None:
     assert "exercise_version_segments" in statement
     assert "left outer join trainer_exercises" in statement
     assert "coalesce(trainer_exercises.status" in statement
+    assert "trainer_exercises.status =" in statement
     for attribute in (
         "physical_difficulty",
         "technical_difficulty",

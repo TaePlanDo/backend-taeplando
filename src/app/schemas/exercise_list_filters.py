@@ -3,6 +3,8 @@
 from typing import NamedTuple
 from uuid import UUID
 
+from app.models.enums import TrainerExerciseStatus
+
 
 class ExerciseListFilters(NamedTuple):
     """Normalized filters applied to a trainer's exercise list."""
@@ -22,6 +24,7 @@ class ExerciseListFilters(NamedTuple):
     max_lower_body_load: int | None = None
     min_core_load: int | None = None
     max_core_load: int | None = None
+    status: TrainerExerciseStatus | None = None
     equipment_ids: list[UUID] | None = None
     training_type_ids: list[UUID] | None = None
     segment_ids: list[int] | None = None

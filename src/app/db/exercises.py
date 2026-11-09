@@ -93,6 +93,7 @@ class _BranchColumns(NamedTuple):
     upper_body_load: SQLColumnExpression[int]
     lower_body_load: SQLColumnExpression[int]
     core_load: SQLColumnExpression[int]
+    status: SQLColumnExpression[TrainerExerciseStatus]
     owner_id: SQLColumnExpression[UUID]
     equipment_owner_fk: SQLColumnExpression[UUID]
     equipment_value: SQLColumnExpression[UUID]
@@ -113,6 +114,7 @@ _PRIVATE_BRANCH = _BranchColumns(
     upper_body_load=TrainerExercise.upper_body_load,
     lower_body_load=TrainerExercise.lower_body_load,
     core_load=TrainerExercise.core_load,
+    status=TrainerExercise.status,
     owner_id=TrainerExercise.id,
     equipment_owner_fk=trainer_exercise_equipment.c.trainer_exercise_id,
     equipment_value=trainer_exercise_equipment.c.equipment_id,
@@ -133,6 +135,13 @@ _GLOBAL_BRANCH = _BranchColumns(
     upper_body_load=ExerciseVersion.upper_body_load,
     lower_body_load=ExerciseVersion.lower_body_load,
     core_load=ExerciseVersion.core_load,
+    status=func.coalesce(
+        TrainerExercise.status,
+        literal(
+            TrainerExerciseStatus.ACTIVE,
+            type_=TrainerExercise.__table__.c.status.type,
+        ),
+    ),
     owner_id=ExerciseVersion.id,
     equipment_owner_fk=exercise_version_equipment.c.exercise_version_id,
     equipment_value=exercise_version_equipment.c.equipment_id,
@@ -165,7 +174,7 @@ async def list_available_to_trainer(
             TrainerExercise.min_participants,
             TrainerExercise.max_participants,
             TrainerExercise.duration_minutes,
-            TrainerExercise.status,
+            _PRIVATE_BRANCH.status,
             TrainerExercise.equipment_requirement_mode,
             TrainerExercise.physical_difficulty,
             TrainerExercise.technical_difficulty,
@@ -201,13 +210,7 @@ async def list_available_to_trainer(
             ExerciseVersion.min_participants,
             ExerciseVersion.max_participants,
             ExerciseVersion.duration_minutes,
-            func.coalesce(
-                TrainerExercise.status,
-                literal(
-                    TrainerExerciseStatus.ACTIVE,
-                    type_=TrainerExercise.__table__.c.status.type,
-                ),
-            ).label("status"),
+            _GLOBAL_BRANCH.status.label("status"),
             ExerciseVersion.equipment_requirement_mode,
             ExerciseVersion.physical_difficulty,
             ExerciseVersion.technical_difficulty,
@@ -309,6 +312,8 @@ def _filters_for_branch(
     predicates: list[ColumnElement[bool]] = []
     if filters.name is not None:
         predicates.append(ilike_contains(columns.name, filters.name))
+    if filters.status is not None:
+        predicates.append(columns.status == filters.status)
     for minimum, maximum, lower_column, upper_column in (
         (filters.min_age, filters.max_age, columns.min_age, columns.max_age),
         (
