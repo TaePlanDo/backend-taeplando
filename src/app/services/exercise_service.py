@@ -26,7 +26,7 @@ from app.schemas.exercises import (
 
 
 class ExerciseNotFoundError(Exception):
-    """Raised when a private exercise is absent or owned by another trainer."""
+    """Raised when an exercise is absent or inaccessible to the trainer."""
 
 
 class InvalidExerciseConfigurationError(Exception):

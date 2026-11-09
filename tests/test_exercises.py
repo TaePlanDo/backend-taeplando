@@ -296,6 +296,15 @@ def test_list_exercises_rejects_inverted_participants_range(
     assert response.status_code == 422
 
 
+def test_list_exercises_rejects_an_inactive_status_filter(
+    client, authenticated_trainer
+) -> None:
+    """The list exposes only temporarily available exercise statuses."""
+    response = client.get("/exercises?status=INACTIVE")
+
+    assert response.status_code == 422
+
+
 @pytest.mark.parametrize(
     "attribute",
     (
