@@ -1,7 +1,8 @@
 """Queue, execute, persist, and report asynchronous training-plan generation."""
 
 import asyncio
-from collections.abc import Callable, Sequence
+import logging
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -35,14 +36,14 @@ from app.services.plan_generation_errors import (
     NoCandidateForSchemaPositionError,
     PlanGenerationError,
 )
+from app.services.plan_generation_best import BestSoFar
+from app.services.plan_generation_evolution import evolve
 from app.services.plan_generation_population_service import (
     allocate_segment_durations,
     build_initial_population,
 )
-from app.services.plan_generation_strategies import (
-    PlanGenerationStrategy,
-    RandomPlanGenerationStrategy,
-)
+
+logger = logging.getLogger(__name__)
 
 
 async def enqueue(
@@ -78,40 +79,74 @@ async def get_status(
 
 async def run(job_id: UUID) -> None:
     """Run one queued job after its HTTP response has been sent."""
+    logger.info("job %s: starting", job_id)
     async with get_session_factory()() as session:
         job = await jobs_db.claim(session, job_id)
         if job is None:
+            logger.info(
+                "job %s: not claimed (missing, already running, or expired)", job_id
+            )
             return
 
+        timeout_seconds = max(
+            (job.deadline_at - datetime.now(UTC)).total_seconds(), 0
+        )
+        logger.info(
+            "job %s: claimed; timeout_seconds=%.2f deadline_at=%s",
+            job.id,
+            timeout_seconds,
+            job.deadline_at.isoformat(),
+        )
+
+        best = BestSoFar()
+        failure: tuple[str, str] | None = None
         try:
-            timeout_seconds = max(
-                (job.deadline_at - datetime.now(UTC)).total_seconds(), 0
-            )
             async with asyncio.timeout(timeout_seconds):
-                plan = await _generate_plan(
-                    session, job, strategy_factory=RandomPlanGenerationStrategy
+                plan = await _generate_plan(session, job, best=best)
+                if await jobs_db.mark_succeeded(session, job.id, plan.id):
+                    logger.info("job %s: succeeded plan_id=%s", job.id, plan.id)
+                    return
+                logger.info(
+                    "job %s: mark_succeeded lost the deadline race",
+                    job.id,
                 )
-                if not await jobs_db.mark_succeeded(session, job.id, plan.id):
-                    await jobs_db.mark_timed_out(session, job.id)
+                await session.rollback()
         except TimeoutError:
+            logger.info("job %s: hard timeout", job_id)
             await session.rollback()
-            await jobs_db.mark_timed_out(session, job_id)
         except PlanGenerationError as exc:
-            await session.rollback()
-            await _mark_failure(
-                session,
+            logger.info(
+                "job %s: generation error code=%s message=%s",
                 job_id,
-                code=exc.error_code,
-                message=str(exc),
+                exc.error_code,
+                exc,
             )
+            await session.rollback()
+            failure = (exc.error_code, str(exc))
         except Exception:
+            logger.exception("job %s: unexpected failure", job_id)
             await session.rollback()
-            await _mark_failure(
-                session,
-                job_id,
-                code=PlanGenerationError.error_code,
-                message="Plan generation failed",
-            )
+            failure = (PlanGenerationError.error_code, "Plan generation failed")
+
+        await _finish_with_salvage(session, job, best, failure=failure)
+
+
+async def _finish_with_salvage(
+    session: AsyncSession,
+    job: PlanGenerationJob,
+    best: BestSoFar,
+    *,
+    failure: tuple[str, str] | None,
+) -> None:
+    """Prefer BestSoFar salvage; otherwise time out or record the captured failure."""
+    if await _salvage_best_plan(session, job, best):
+        return
+    if failure is None:
+        await jobs_db.mark_timed_out(session, job.id)
+        logger.info("job %s: timed out (no salvageable plan)", job.id)
+        return
+    await _mark_failure(session, job.id, code=failure[0], message=failure[1])
+    logger.info("job %s: failed code=%s", job.id, failure[0])
 
 
 async def _mark_failure(
@@ -122,19 +157,56 @@ async def _mark_failure(
         await jobs_db.mark_timed_out(session, job_id)
 
 
-async def _generate_plan(
+async def _salvage_best_plan(
     session: AsyncSession,
     job: PlanGenerationJob,
-    *,
-    strategy_factory: Callable[[], PlanGenerationStrategy],
-) -> TrainingPlan:
-    """Build and persist a plan while keeping the strategy free of I/O."""
-    parameters = PlanGenerationParameters(
+    best: BestSoFar,
+) -> bool:
+    """Persist a structurally complete BestSoFar snapshot after a hard cut."""
+    snapshot = best.snapshot()
+    if snapshot is None:
+        logger.info("job %s: salvage skipped (BestSoFar incomplete)", job.id)
+        return False
+    logger.info(
+        "job %s: salvaging BestSoFar with %d selections",
+        job.id,
+        len(snapshot.selections),
+    )
+    try:
+        parameters, validated_input = await _validated_job_input(session, job)
+        plan = await _persist_plan(
+            session, job, validated_input, parameters, snapshot
+        )
+    except Exception:
+        logger.exception("job %s: salvage persist failed", job.id)
+        await session.rollback()
+        return False
+    succeeded = await jobs_db.mark_succeeded_after_timeout(session, job.id, plan.id)
+    if succeeded:
+        logger.info("job %s: succeeded via salvage plan_id=%s", job.id, plan.id)
+    else:
+        logger.info(
+            "job %s: salvage mark_succeeded_after_timeout lost the race", job.id
+        )
+    return succeeded
+
+
+def _parameters_from_job(job: PlanGenerationJob) -> PlanGenerationParameters:
+    return PlanGenerationParameters(
         training_group_id=job.training_group_id,
         participant_count=job.participant_count,
         available_equipment_ids=[UUID(item) for item in job.available_equipment_ids],
         training_type_id=job.training_type_id,
     )
+
+
+async def _validated_job_input(
+    session: AsyncSession, job: PlanGenerationJob
+) -> tuple[
+    PlanGenerationParameters,
+    plan_generation_parameters_service.ValidatedPlanGenerationInput,
+]:
+    parameters = _parameters_from_job(job)
     try:
         validated_input = await plan_generation_parameters_service.validate_parameters(
             session, job.trainer_id, parameters
@@ -145,33 +217,91 @@ async def _generate_plan(
         raise PlanGenerationError(
             "Generation parameters are no longer available"
         ) from exc
-    group = validated_input.group
+    return parameters, validated_input
 
+
+async def _generate_plan(
+    session: AsyncSession,
+    job: PlanGenerationJob,
+    *,
+    best: BestSoFar,
+) -> TrainingPlan:
+    """Build and persist a plan while keeping the strategy free of I/O."""
+    logger.info("job %s: validating parameters", job.id)
+    parameters, validated_input = await _validated_job_input(session, job)
+    group = validated_input.group
+    logger.info(
+        "job %s: parameters ok group=%s duration=%dmin schema_items=%d",
+        job.id,
+        group.name,
+        group.duration_minutes,
+        len(group.schema_items),
+    )
+
+    logger.info("job %s: preparing candidates", job.id)
     candidates = await plan_generation_candidates_service.prepare_candidates(
         session, job.trainer_id, group, parameters
     )
+    logger.info("job %s: prepared %d candidates", job.id, len(candidates))
     contexts = _generation_contexts(job, group, parameters, candidates)
+    best.set_required_positions(
+        tuple(context.segment.position for context in contexts)
+    )
+    logger.info(
+        "job %s: evolving %d segments in parallel positions=%s",
+        job.id,
+        len(contexts),
+        [context.segment.position for context in contexts],
+    )
     generated = _merge_segment_individuals(
         await asyncio.gather(
-            *(_generate_segment(strategy_factory, context) for context in contexts)
+            *(_generate_segment(best, context) for context in contexts)
         )
+    )
+    logger.info(
+        "job %s: merged plan with %d selections; persisting",
+        job.id,
+        len(generated.selections),
     )
     return await _persist_plan(session, job, validated_input, parameters, generated)
 
 
 async def _generate_segment(
-    strategy_factory: Callable[[], PlanGenerationStrategy], context: GenerationContext
+    best: BestSoFar, context: GenerationContext
 ) -> PlanIndividual:
     """Build and generate one segment in its own worker-thread invocation."""
-    return await asyncio.to_thread(_generate_segment_sync, strategy_factory, context)
+    return await asyncio.to_thread(_generate_segment_sync, best, context)
 
 
 def _generate_segment_sync(
-    strategy_factory: Callable[[], PlanGenerationStrategy], context: GenerationContext
+    best: BestSoFar, context: GenerationContext
 ) -> PlanIndividual:
-    """Keep a strategy instance and its initial population local to one segment."""
+    """Build one segment's population and evolve it; share only BestSoFar across threads."""
+    position = context.segment.position
+    logger.info(
+        "segment %s: start duration=%dmin candidates=%d seed=%s",
+        position,
+        context.segment_duration_minutes,
+        len(context.candidates),
+        context.random_seed,
+    )
     population = build_initial_population(context)
-    return strategy_factory().generate(context, population)
+    logger.info(
+        "segment %s: initial population size=%d",
+        position,
+        len(population.individuals),
+    )
+    generated = evolve(context, population, best=best)
+    total_minutes = sum(
+        selection.allocated_duration_minutes for selection in generated.selections
+    )
+    logger.info(
+        "segment %s: done selections=%d total_minutes=%d",
+        position,
+        len(generated.selections),
+        total_minutes,
+    )
+    return generated
 
 
 def _generation_contexts(

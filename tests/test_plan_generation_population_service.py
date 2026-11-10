@@ -63,7 +63,7 @@ def _context(*candidates: PlanExerciseCandidate) -> GenerationContext:
 
 
 def test_population_contains_only_one_segment_and_duration_genes() -> None:
-    """Each individual fills exactly the segment owned by its context."""
+    """Each individual uses default durations for the segment owned by its context."""
     candidate = _candidate("0ac590e1-2a46-4cb7-8944-803e364cc46b", duration=8)
 
     population = build_initial_population(_context(candidate), population_size=3)
@@ -76,11 +76,11 @@ def test_population_contains_only_one_segment_and_duration_genes() -> None:
         ]
         assert [
             selection.allocated_duration_minutes for selection in individual.selections
-        ] == [30]
+        ] == [8]
 
 
-def test_population_greedily_fills_its_segment() -> None:
-    """Longer fitting candidates are selected before a duration gene is extended."""
+def test_population_greedily_packs_default_durations_under_budget() -> None:
+    """Longer fitting defaults are selected first; leftover minutes are not filled."""
     first = _candidate("5ac590e1-2a46-4cb7-8944-803e364cc46b", duration=8)
     second = _candidate("6ac590e1-2a46-4cb7-8944-803e364cc46b", duration=10)
 
@@ -92,8 +92,11 @@ def test_population_greedily_fills_its_segment() -> None:
         selection.allocated_duration_minutes for selection in individual.selections
     ] == [
         10,
-        20,
+        8,
     ]
+    assert sum(
+        selection.allocated_duration_minutes for selection in individual.selections
+    ) == 18
 
 
 def test_allocate_segment_durations_preserves_the_whole_plan_duration() -> None:

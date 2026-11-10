@@ -35,8 +35,8 @@ def _candidate(identifier: str) -> PlanExerciseCandidate:
     )
 
 
-def test_random_strategy_selects_a_duration_complete_segment() -> None:
-    """The temporary strategy has a stable result for one job-segment seed."""
+def test_random_strategy_selects_a_stable_segment() -> None:
+    """The random strategy has a stable result for one job-segment seed."""
     context = GenerationContext(
         participant_count=12,
         available_equipment_ids=(),
@@ -62,5 +62,8 @@ def test_random_strategy_selects_a_duration_complete_segment() -> None:
 
     assert generated == strategy.generate(context, population)
     assert {item.schema_position for item in generated.selections} == {2}
-    assert sum(item.allocated_duration_minutes for item in generated.selections) == 36
+    assert all(
+        item.allocated_duration_minutes == item.candidate.default_duration_minutes
+        for item in generated.selections
+    )
     assert all(2 in item.candidate.segment_ids for item in generated.selections)

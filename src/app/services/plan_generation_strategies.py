@@ -21,12 +21,12 @@ class PlanGenerationStrategy(Protocol):
 
 
 class RandomPlanGenerationStrategy:
-    """Temporary deterministic pseudo-random selection used before the GA exists."""
+    """Deterministic pseudo-random selection kept for tests and comparisons."""
 
     def generate(
         self, context: GenerationContext, population: InitialPopulation
     ) -> PlanIndividual:
-        """Choose one prepared plan until the genetic strategy replaces this stub."""
+        """Choose one prepared plan from the initial population."""
         if not population.individuals:
             raise PlanGenerationError("Initial population is empty")
         random = Random(context.random_seed)

@@ -38,3 +38,12 @@ class InvalidSchemaPercentageTotalError(PlanGenerationError):
 
     def __init__(self) -> None:
         super().__init__("Schema percentages must sum to 100")
+
+
+class NoValidPlanError(PlanGenerationError):
+    """Raised when evolution finishes without a structurally valid individual."""
+
+    error_code = "NO_VALID_PLAN"
+
+    def __init__(self) -> None:
+        super().__init__("No valid training plan could be generated")

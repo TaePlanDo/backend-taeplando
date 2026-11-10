@@ -100,6 +100,34 @@ async def mark_succeeded(session: AsyncSession, job_id: UUID, plan_id: UUID) -> 
     return True
 
 
+async def mark_succeeded_after_timeout(
+    session: AsyncSession, job_id: UUID, plan_id: UUID
+) -> bool:
+    """Persist a salvaged best plan after the hard deadline has already passed."""
+    now = utc_now()
+    result = await session.execute(
+        update(PlanGenerationJob)
+        .where(
+            PlanGenerationJob.id == job_id,
+            PlanGenerationJob.status == PlanGenerationJobStatus.RUNNING,
+            PlanGenerationJob.deadline_at <= now,
+        )
+        .values(
+            status=PlanGenerationJobStatus.SUCCEEDED,
+            plan_id=plan_id,
+            finished_at=now,
+            error_code=None,
+            error_message=None,
+        )
+        .returning(PlanGenerationJob.id)
+    )
+    if result.scalar_one_or_none() is None:
+        await session.rollback()
+        return False
+    await session.commit()
+    return True
+
+
 async def mark_failed(
     session: AsyncSession,
     job_id: UUID,

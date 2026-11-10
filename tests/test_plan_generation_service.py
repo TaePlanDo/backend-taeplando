@@ -222,7 +222,7 @@ def test_generate_plan_runs_one_strategy_call_per_schema_segment() -> None:
     ):
         result = asyncio.run(
             plan_generation_service._generate_plan(
-                session, job, strategy_factory=lambda: object()
+                session, job, best=plan_generation_service.BestSoFar()
             )
         )
 
@@ -236,27 +236,34 @@ def test_generate_plan_runs_one_strategy_call_per_schema_segment() -> None:
     persist_plan.assert_awaited_once()
 
 
-def test_generate_segment_creates_an_independent_strategy_instance() -> None:
-    """Segment execution does not share mutable algorithm state with another run."""
+def test_generate_segment_builds_population_then_evolves() -> None:
+    """Segment execution keeps population construction local and evolves in-thread."""
     context = MagicMock()
+    context.segment.position = 1
+    context.segment_duration_minutes = 30
+    context.candidates = ()
+    context.random_seed = 7
     population = MagicMock()
     generated = PlanIndividual(selections=())
-    strategy = MagicMock()
-    strategy.generate.return_value = generated
-    strategy_factory = MagicMock(return_value=strategy)
+    best = plan_generation_service.BestSoFar()
 
-    with patch(
-        "app.services.plan_generation_service.build_initial_population",
-        return_value=population,
-    ) as build_population:
+    with (
+        patch(
+            "app.services.plan_generation_service.build_initial_population",
+            return_value=population,
+        ) as build_population,
+        patch(
+            "app.services.plan_generation_service.evolve",
+            return_value=generated,
+        ) as evolve,
+    ):
         result = asyncio.run(
-            plan_generation_service._generate_segment(strategy_factory, context)
+            plan_generation_service._generate_segment(best, context)
         )
 
     assert result is generated
     build_population.assert_called_once_with(context)
-    strategy_factory.assert_called_once_with()
-    strategy.generate.assert_called_once_with(context, population)
+    evolve.assert_called_once_with(context, population, best=best)
 
 
 def test_merge_segment_individuals_restores_schema_order() -> None:
@@ -323,12 +330,12 @@ def test_runner_marks_a_persisted_plan_as_succeeded() -> None:
     ):
         asyncio.run(plan_generation_service.run(JOB_ID))
 
-    generate_plan.assert_awaited_once_with(session, job, strategy_factory=ANY)
+    generate_plan.assert_awaited_once_with(session, job, best=ANY)
     mark_succeeded.assert_awaited_once_with(session, JOB_ID, PLAN_ID)
 
 
-def test_runner_marks_a_late_success_as_timed_out() -> None:
-    """A plan flushed after the deadline is rolled back and never becomes success."""
+def test_runner_marks_a_late_success_without_salvage_as_timed_out() -> None:
+    """Without a salvaged BestSoFar snapshot, a late success becomes timed out."""
 
     session = AsyncMock()
     with (
@@ -349,6 +356,10 @@ def test_runner_marks_a_late_success_as_timed_out() -> None:
             new=AsyncMock(return_value=False),
         ) as mark_succeeded,
         patch(
+            "app.services.plan_generation_service._salvage_best_plan",
+            new=AsyncMock(return_value=False),
+        ) as salvage,
+        patch(
             "app.services.plan_generation_service.jobs_db.mark_timed_out",
             new=AsyncMock(),
         ) as mark_timed_out,
@@ -356,6 +367,7 @@ def test_runner_marks_a_late_success_as_timed_out() -> None:
         asyncio.run(plan_generation_service.run(JOB_ID))
 
     mark_succeeded.assert_awaited_once_with(session, JOB_ID, PLAN_ID)
+    salvage.assert_awaited_once()
     mark_timed_out.assert_awaited_once_with(session, JOB_ID)
 
 
@@ -392,8 +404,8 @@ def test_runner_marks_missing_candidates_as_a_failed_job() -> None:
     )
 
 
-def test_runner_marks_a_timed_out_generation() -> None:
-    """A timeout never exposes a partially persisted plan as successful."""
+def test_runner_marks_a_timed_out_generation_without_salvage() -> None:
+    """A timeout without a valid BestSoFar snapshot stays timed out."""
 
     session = AsyncMock()
     with (
@@ -410,10 +422,47 @@ def test_runner_marks_a_timed_out_generation() -> None:
             new=AsyncMock(side_effect=TimeoutError),
         ),
         patch(
+            "app.services.plan_generation_service._salvage_best_plan",
+            new=AsyncMock(return_value=False),
+        ) as salvage,
+        patch(
             "app.services.plan_generation_service.jobs_db.mark_timed_out",
             new=AsyncMock(),
         ) as mark_timed_out,
     ):
         asyncio.run(plan_generation_service.run(JOB_ID))
 
+    salvage.assert_awaited_once()
     mark_timed_out.assert_awaited_once_with(session, JOB_ID)
+
+
+def test_runner_salvages_a_valid_best_after_timeout() -> None:
+    """A hard cut still succeeds when BestSoFar holds a complete valid plan."""
+
+    session = AsyncMock()
+    with (
+        patch(
+            "app.services.plan_generation_service.get_session_factory",
+            return_value=_factory(session),
+        ),
+        patch(
+            "app.services.plan_generation_service.jobs_db.claim",
+            new=AsyncMock(return_value=_job()),
+        ),
+        patch(
+            "app.services.plan_generation_service._generate_plan",
+            new=AsyncMock(side_effect=TimeoutError),
+        ),
+        patch(
+            "app.services.plan_generation_service._salvage_best_plan",
+            new=AsyncMock(return_value=True),
+        ) as salvage,
+        patch(
+            "app.services.plan_generation_service.jobs_db.mark_timed_out",
+            new=AsyncMock(),
+        ) as mark_timed_out,
+    ):
+        asyncio.run(plan_generation_service.run(JOB_ID))
+
+    salvage.assert_awaited_once()
+    mark_timed_out.assert_not_awaited()
