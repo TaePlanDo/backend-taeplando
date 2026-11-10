@@ -42,9 +42,12 @@ if not hasattr(creator, "PlanGeneIndividual"):
     )
 
 
-def temporary_fitness(individual: Any) -> tuple[float,]:
+def temporary_fitness(
+    individual: Any, *, context: GenerationContext
+) -> tuple[float,]:
     """Placeholder score until SCRUM-237 supplies the real fitness function."""
-    # TODO(SCRUM-237): replace this function (include duration grading)
+    # TODO(SCRUM-237): replace this function; use context for duration/prefs grading
+    _ = context
     seed = int(getattr(individual, "context_seed", 0)) ^ _hash_genes(individual)
     return (Random(seed).uniform(0, 100),)
 
@@ -187,7 +190,7 @@ def _evaluate(individual: Any, *, context: GenerationContext) -> tuple[float,]:
     """Single validity gate: invalid chromosomes get a sentinel score."""
     if not is_structurally_valid(context, from_deap(individual)):
         return (INVALID_FITNESS,)
-    return temporary_fitness(individual)
+    return temporary_fitness(individual, context=context)
 
 
 def _assign_fitness(individuals: list[Any], toolbox: base.Toolbox) -> int:

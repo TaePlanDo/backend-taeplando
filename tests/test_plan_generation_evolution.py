@@ -75,6 +75,7 @@ def _context(
 
 def test_temporary_fitness_is_deterministic_for_the_same_individual() -> None:
     candidate = _candidate("0ac590e1-2a46-4cb7-8944-803e364cc46b")
+    context = _context(candidate, seed=99)
     individual = to_deap(
         PlanIndividual(
             selections=(
@@ -88,8 +89,10 @@ def test_temporary_fitness_is_deterministic_for_the_same_individual() -> None:
         context_seed=99,
     )
 
-    assert temporary_fitness(individual) == temporary_fitness(individual)
-    assert 0 <= temporary_fitness(individual)[0] <= 100
+    assert temporary_fitness(individual, context=context) == temporary_fitness(
+        individual, context=context
+    )
+    assert 0 <= temporary_fitness(individual, context=context)[0] <= 100
 
 
 def test_evolution_is_deterministic_for_one_seed() -> None:
