@@ -64,8 +64,7 @@ def _context(
         group_min_age=7,
         group_max_age=14,
         group_duration_minutes=60,
-        deadline_at=deadline
-        or (datetime.now(UTC) + timedelta(seconds=30)),
+        deadline_at=deadline or (datetime.now(UTC) + timedelta(seconds=30)),
         segment=GenerationSchemaItem(position=1, segment_id=1, percentage=50),
         segment_duration_minutes=30,
         candidates=candidates,
@@ -140,9 +139,7 @@ def test_crossover_preserves_gene_durations() -> None:
 def test_mutation_can_change_allocated_duration() -> None:
     candidate = _candidate("0ac590e1-2a46-4cb7-8944-803e364cc46b", duration=10)
     individual = to_deap(
-        PlanIndividual(
-            selections=(PlanExerciseSelection(1, candidate, 10),)
-        ),
+        PlanIndividual(selections=(PlanExerciseSelection(1, candidate, 10),)),
         1,
     )
 
@@ -184,9 +181,7 @@ def test_best_so_far_requires_every_segment() -> None:
     best.set_required_positions((1, 2))
     best.publish(
         1,
-        PlanIndividual(
-            selections=(PlanExerciseSelection(1, candidate, 10),)
-        ),
+        PlanIndividual(selections=(PlanExerciseSelection(1, candidate, 10),)),
     )
 
     assert best.snapshot() is None
@@ -201,8 +196,6 @@ def test_evolve_rejects_an_empty_population() -> None:
 
 def test_from_deap_round_trips_domain_individual() -> None:
     candidate = _candidate("0ac590e1-2a46-4cb7-8944-803e364cc46b")
-    original = PlanIndividual(
-        selections=(PlanExerciseSelection(1, candidate, 10),)
-    )
+    original = PlanIndividual(selections=(PlanExerciseSelection(1, candidate, 10),))
 
     assert from_deap(to_deap(original, 5)) == original

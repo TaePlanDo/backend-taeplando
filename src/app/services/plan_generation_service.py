@@ -88,9 +88,7 @@ async def run(job_id: UUID) -> None:
             )
             return
 
-        timeout_seconds = max(
-            (job.deadline_at - datetime.now(UTC)).total_seconds(), 0
-        )
+        timeout_seconds = max((job.deadline_at - datetime.now(UTC)).total_seconds(), 0)
         logger.info(
             "job %s: claimed; timeout_seconds=%.2f deadline_at=%s",
             job.id,
@@ -174,9 +172,7 @@ async def _salvage_best_plan(
     )
     try:
         parameters, validated_input = await _validated_job_input(session, job)
-        plan = await _persist_plan(
-            session, job, validated_input, parameters, snapshot
-        )
+        plan = await _persist_plan(session, job, validated_input, parameters, snapshot)
     except Exception:
         logger.exception("job %s: salvage persist failed", job.id)
         await session.rollback()
@@ -244,9 +240,7 @@ async def _generate_plan(
     )
     logger.info("job %s: prepared %d candidates", job.id, len(candidates))
     contexts = _generation_contexts(job, group, parameters, candidates)
-    best.set_required_positions(
-        tuple(context.segment.position for context in contexts)
-    )
+    best.set_required_positions(tuple(context.segment.position for context in contexts))
     logger.info(
         "job %s: evolving %d segments in parallel positions=%s",
         job.id,

@@ -42,9 +42,7 @@ if not hasattr(creator, "PlanGeneIndividual"):
     )
 
 
-def temporary_fitness(
-    individual: Any, *, context: GenerationContext
-) -> tuple[float,]:
+def temporary_fitness(individual: Any, *, context: GenerationContext) -> tuple[float,]:
     """Placeholder score until SCRUM-237 supplies the real fitness function."""
     # TODO(SCRUM-237): replace this function; use context for duration/prefs grading
     _ = context
@@ -58,9 +56,7 @@ def is_structurally_valid(
     """Hard GA-side checks; exact segment duration is a soft fitness concern."""
     if not individual.selections:
         return False
-    candidate_ids = {
-        candidate.trainer_exercise_id for candidate in context.candidates
-    }
+    candidate_ids = {candidate.trainer_exercise_id for candidate in context.candidates}
     for selection in individual.selections:
         if selection.schema_position != context.segment.position:
             return False
@@ -91,7 +87,8 @@ def evolve(
     rng = Random(context.random_seed)
     toolbox = _toolbox(context, rng)
     deap_population = [
-        to_deap(individual, context.random_seed) for individual in population.individuals
+        to_deap(individual, context.random_seed)
+        for individual in population.individuals
     ]
     hall_of_fame = tools.HallOfFame(1)
     stats = tools.Statistics(lambda individual: individual.fitness.values[0])

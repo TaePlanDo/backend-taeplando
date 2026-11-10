@@ -257,9 +257,7 @@ def test_generate_segment_builds_population_then_evolves() -> None:
             return_value=generated,
         ) as evolve,
     ):
-        result = asyncio.run(
-            plan_generation_service._generate_segment(best, context)
-        )
+        result = asyncio.run(plan_generation_service._generate_segment(best, context))
 
     assert result is generated
     build_population.assert_called_once_with(context)

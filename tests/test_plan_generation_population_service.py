@@ -94,9 +94,10 @@ def test_population_greedily_packs_default_durations_under_budget() -> None:
         10,
         8,
     ]
-    assert sum(
-        selection.allocated_duration_minutes for selection in individual.selections
-    ) == 18
+    assert (
+        sum(selection.allocated_duration_minutes for selection in individual.selections)
+        == 18
+    )
 
 
 def test_allocate_segment_durations_preserves_the_whole_plan_duration() -> None:
