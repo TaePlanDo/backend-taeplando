@@ -5,6 +5,7 @@ from __future__ import annotations
 from decimal import Decimal
 from random import Random
 
+from app.services.plan_generation_constants import INITIAL_POPULATION_SIZE
 from app.services.plan_generation_domain import (
     GenerationContext,
     GenerationSchemaItem,
@@ -13,7 +14,6 @@ from app.services.plan_generation_domain import (
     PlanExerciseSelection,
     PlanIndividual,
 )
-from app.services.plan_generation_constants import INITIAL_POPULATION_SIZE
 from app.services.plan_generation_errors import (
     InvalidSchemaPercentageTotalError,
     NoDurationForSchemaPositionError,

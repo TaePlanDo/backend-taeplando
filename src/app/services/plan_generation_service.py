@@ -25,6 +25,7 @@ from app.services import (
     plan_generation_candidates_service,
     plan_generation_parameters_service,
 )
+from app.services.plan_generation_best import BestSoFar
 from app.services.plan_generation_domain import (
     GenerationContext,
     GenerationSchemaItem,
@@ -36,7 +37,6 @@ from app.services.plan_generation_errors import (
     NoCandidateForSchemaPositionError,
     PlanGenerationError,
 )
-from app.services.plan_generation_best import BestSoFar
 from app.services.plan_generation_evolution import evolve
 from app.services.plan_generation_population_service import (
     allocate_segment_durations,
@@ -270,7 +270,10 @@ async def _generate_segment(
 def _generate_segment_sync(
     best: BestSoFar, context: GenerationContext
 ) -> PlanIndividual:
-    """Build one segment's population and evolve it; share only BestSoFar across threads."""
+    """Build one segment's population and evolve it.
+
+    Share only BestSoFar across threads.
+    """
     position = context.segment.position
     logger.info(
         "segment %s: start duration=%dmin candidates=%d seed=%s",

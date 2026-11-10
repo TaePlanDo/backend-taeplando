@@ -6,6 +6,7 @@ from uuid import UUID
 import pytest
 
 from app.models.enums import EquipmentRequirementMode
+from app.services.plan_generation_best import BestSoFar
 from app.services.plan_generation_domain import (
     GenerationContext,
     GenerationSchemaItem,
@@ -14,16 +15,15 @@ from app.services.plan_generation_domain import (
     PlanExerciseSelection,
     PlanIndividual,
 )
-from app.services.plan_generation_best import BestSoFar
 from app.services.plan_generation_errors import NoValidPlanError
 from app.services.plan_generation_evolution import (
+    _crossover,
+    _mutate,
     evolve,
     from_deap,
     is_structurally_valid,
     temporary_fitness,
     to_deap,
-    _crossover,
-    _mutate,
 )
 from app.services.plan_generation_population_service import build_initial_population
 
