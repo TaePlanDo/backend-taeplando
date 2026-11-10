@@ -8,8 +8,7 @@ from app.services.plan_generation_domain import (
     PlanExerciseSelection,
     PlanIndividual,
 )
-
-WINDOW_TIME_SIZE = 5
+from app.services.plan_generation_fitness_constants import WINDOW_TIME_SIZE
 
 
 def gaussian(deviation: float, sigma: float) -> float:

@@ -9,6 +9,22 @@ from app.services.plan_generation_domain import (
     PlanExerciseSelection,
     PlanIndividual,
 )
+from app.services.plan_generation_fitness_constants import (
+    AGE_COVERAGE_WEIGHT,
+    BODY_BALANCE_WEIGHT,
+    BODY_LOAD_DEMANDS,
+    BODY_LOAD_SIGMA,
+    DIFFICULTY_SIGMA,
+    DURATION_OVER_SIGMA_RATIO,
+    DURATION_UNDER_SIGMA_RATIO,
+    DURATION_WEIGHT,
+    EQUIPMENT_USAGE_WEIGHT,
+    PHYSICAL_DIFFICULTY_DEMAND,
+    PHYSICAL_DIFFICULTY_WEIGHT,
+    TECHNICAL_DIFFICULTY_DEMAND,
+    TECHNICAL_DIFFICULTY_WEIGHT,
+    TRAINING_TYPE_WEIGHT,
+)
 from app.services.plan_generation_fitness_math import (
     gaussian,
     time_weighted_means,
@@ -18,40 +34,18 @@ from app.services.plan_generation_fitness_math import (
 
 FitnessCriterion = Callable[[GenerationContext, PlanIndividual], float]
 
-# All static values are defined here
-# Only window size is defined in math module
-
-# Weights for each fitness criterion
-DURATION_WEIGHT = 3.0
-PHYSICAL_DIFFICULTY_WEIGHT = 2.0
-TECHNICAL_DIFFICULTY_WEIGHT = 1.5
-BODY_BALANCE_WEIGHT = 2.0
-AGE_COVERAGE_WEIGHT = 1.5
-TRAINING_TYPE_WEIGHT = 1.0
-EQUIPMENT_USAGE_WEIGHT = 0.5
-
-# Standard deviations for each fitness criterion
-DURATION_SIGMA_RATIO = 0.1
-DIFFICULTY_SIGMA = 1.0
-BODY_LOAD_SIGMA = 1.0
-
-# Demands for each fitness criterion
-PHYSICAL_DIFFICULTY_DEMAND = 2.5
-TECHNICAL_DIFFICULTY_DEMAND = 2.5
-BODY_UPPER_DEMAND = 2.5
-BODY_LOWER_DEMAND = 2.5
-BODY_CORE_DEMAND = 2.5
-BODY_LOAD_DEMANDS = (BODY_UPPER_DEMAND, BODY_LOWER_DEMAND, BODY_CORE_DEMAND)
-
 
 def evaluate_duration_time(
     context: GenerationContext, individual: PlanIndividual
 ) -> float:
-    """Penalize the segment's total time deviation with a Gaussian curve."""
-    target = context.segment_duration_minutes
-    total = sum(item.allocated_duration_minutes for item in individual.selections)
-    relative_deviation = (total - target) / target
-    return gaussian(relative_deviation, DURATION_SIGMA_RATIO)
+    """Penalize overtime more harshly than undertime."""
+    relative_deviation = _relative_duration_deviation(context, individual)
+    sigma = (
+        DURATION_OVER_SIGMA_RATIO
+        if relative_deviation > 0
+        else DURATION_UNDER_SIGMA_RATIO
+    )
+    return gaussian(relative_deviation, sigma)
 
 
 def evaluate_training_type(
@@ -159,6 +153,14 @@ def evaluate(context: GenerationContext, individual: PlanIndividual) -> float:
         for criterion, weight in FITNESS_CRITERIA
     )
     return weighted_scores / total_weight
+
+
+def _relative_duration_deviation(
+    context: GenerationContext, individual: PlanIndividual
+) -> float:
+    target = context.segment_duration_minutes
+    total = sum(item.allocated_duration_minutes for item in individual.selections)
+    return (total - target) / target
 
 
 def _evaluate_windowed_difficulty(

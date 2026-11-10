@@ -15,11 +15,6 @@ from app.services.plan_generation_domain import (
     PlanIndividual,
 )
 from app.services.plan_generation_fitness import (
-    BODY_LOAD_SIGMA,
-    BODY_UPPER_DEMAND,
-    DIFFICULTY_SIGMA,
-    DURATION_SIGMA_RATIO,
-    PHYSICAL_DIFFICULTY_DEMAND,
     evaluate,
     evaluate_age_coverage,
     evaluate_body_balance,
@@ -28,6 +23,14 @@ from app.services.plan_generation_fitness import (
     evaluate_physical_difficulty,
     evaluate_technical_difficulty,
     evaluate_training_type,
+)
+from app.services.plan_generation_fitness_constants import (
+    BODY_LOAD_SIGMA,
+    BODY_UPPER_DEMAND,
+    DIFFICULTY_SIGMA,
+    DURATION_OVER_SIGMA_RATIO,
+    DURATION_UNDER_SIGMA_RATIO,
+    PHYSICAL_DIFFICULTY_DEMAND,
 )
 from app.services.plan_generation_fitness_math import (
     WINDOW_TIME_SIZE,
@@ -137,10 +140,8 @@ def _age(overlap: int, exercise: int, group: int = GROUP_YEARS) -> float:
     return (overlap / group) * (overlap / exercise)
 
 
-def _duration_at(total_minutes: int) -> float:
-    return gaussian(
-        (total_minutes - SEGMENT_MINUTES) / SEGMENT_MINUTES, DURATION_SIGMA_RATIO
-    )
+def _duration_at(total_minutes: int, sigma: float) -> float:
+    return gaussian((total_minutes - SEGMENT_MINUTES) / SEGMENT_MINUTES, sigma)
 
 
 @pytest.mark.parametrize(
@@ -174,17 +175,23 @@ def test_training_type_is_neutral_without_preference() -> None:
 @pytest.mark.parametrize(
     ("durations", "expected"),
     [
-        ((10, 10, 10), _duration_at(30)),
-        ((33,), _duration_at(33)),
-        ((27,), _duration_at(27)),
-        ((20, 16), _duration_at(36)),
+        ((10, 10, 10), _duration_at(30, DURATION_UNDER_SIGMA_RATIO)),
+        ((33,), _duration_at(33, DURATION_OVER_SIGMA_RATIO)),
+        ((27,), _duration_at(27, DURATION_UNDER_SIGMA_RATIO)),
+        ((20, 16), _duration_at(36, DURATION_OVER_SIGMA_RATIO)),
     ],
 )
-def test_duration_time_penalizes_deviation_from_segment_time(
+def test_duration_time_penalizes_overtime_more_than_undertime(
     durations: tuple[int, ...], expected: float
 ) -> None:
     individual = _individual(*((_candidate(), duration) for duration in durations))
     assert evaluate_duration_time(_context(None), individual) == pytest.approx(expected)
+
+
+def test_duration_time_prefers_short_plans_over_long_ones() -> None:
+    short = evaluate_duration_time(_context(None), _individual((_candidate(), 27)))
+    long = evaluate_duration_time(_context(None), _individual((_candidate(), 33)))
+    assert short > long
 
 
 @pytest.mark.parametrize(
