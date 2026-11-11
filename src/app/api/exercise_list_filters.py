@@ -7,7 +7,7 @@ from fastapi import Query
 
 from app.api.query_lists import parse_csv
 from app.api.range_filters import reject_inverted_range
-from app.schemas.exercise_list_filters import ExerciseListFilters
+from app.schemas.exercise_list_filters import ExerciseListFilters, ExerciseListStatus
 
 
 def get_exercise_list_filters(
@@ -26,6 +26,7 @@ def get_exercise_list_filters(
     max_lower_body_load: Annotated[int | None, Query(ge=1, le=5)] = None,
     min_core_load: Annotated[int | None, Query(ge=1, le=5)] = None,
     max_core_load: Annotated[int | None, Query(ge=1, le=5)] = None,
+    status: Annotated[ExerciseListStatus | None, Query()] = None,
     equipment_ids: Annotated[str | None, Query()] = None,
     training_type_ids: Annotated[str | None, Query()] = None,
     segment_ids: Annotated[str | None, Query()] = None,
@@ -58,6 +59,7 @@ def get_exercise_list_filters(
         max_lower_body_load=max_lower_body_load,
         min_core_load=min_core_load,
         max_core_load=max_core_load,
+        status=status,
         equipment_ids=parse_csv(
             equipment_ids,
             field_name="equipment_ids",
