@@ -223,13 +223,16 @@ def test_generate_plan_runs_one_strategy_call_per_schema_segment() -> None:
     ):
         result = asyncio.run(
             plan_generation_service._generate_plan(
-                session, job, best=plan_generation_service.BestSoFar()
+                session,
+                job,
+                best=plan_generation_service.BestSoFar(),
+                strategy_factory=lambda _best: object(),
             )
         )
 
     assert result is persisted_plan
     assert [
-        call.args[1].segment.position for call in generate_segment.await_args_list
+        call.args[2].segment.position for call in generate_segment.await_args_list
     ] == [
         1,
         2,
@@ -237,8 +240,8 @@ def test_generate_plan_runs_one_strategy_call_per_schema_segment() -> None:
     persist_plan.assert_awaited_once()
 
 
-def test_generate_segment_builds_population_then_evolves() -> None:
-    """Segment execution keeps population construction local and evolves in-thread."""
+def test_generate_segment_creates_an_independent_strategy_instance() -> None:
+    """Segment execution does not share mutable algorithm state with another run."""
     context = MagicMock()
     context.segment.position = 1
     context.segment_duration_minutes = 30
@@ -247,22 +250,22 @@ def test_generate_segment_builds_population_then_evolves() -> None:
     population = MagicMock()
     generated = PlanIndividual(selections=())
     best = plan_generation_service.BestSoFar()
+    strategy = MagicMock()
+    strategy.generate.return_value = generated
+    strategy_factory = MagicMock(return_value=strategy)
 
-    with (
-        patch(
-            "app.services.plan_generation_service.build_initial_population",
-            return_value=population,
-        ) as build_population,
-        patch(
-            "app.services.plan_generation_service.evolve",
-            return_value=generated,
-        ) as evolve,
-    ):
-        result = asyncio.run(plan_generation_service._generate_segment(best, context))
+    with patch(
+        "app.services.plan_generation_service.build_initial_population",
+        return_value=population,
+    ) as build_population:
+        result = asyncio.run(
+            plan_generation_service._generate_segment(strategy_factory, best, context)
+        )
 
     assert result is generated
     build_population.assert_called_once_with(context)
-    evolve.assert_called_once_with(context, population, best=best)
+    strategy_factory.assert_called_once_with(best)
+    strategy.generate.assert_called_once_with(context, population)
 
 
 def test_merge_segment_individuals_restores_schema_order() -> None:
@@ -330,7 +333,12 @@ def test_runner_marks_a_persisted_plan_as_succeeded() -> None:
     ):
         asyncio.run(plan_generation_service.run(JOB_ID))
 
-    generate_plan.assert_awaited_once_with(session, job, best=ANY)
+    generate_plan.assert_awaited_once_with(
+        session,
+        job,
+        best=ANY,
+        strategy_factory=plan_generation_service.GeneticPlanGenerationStrategy,
+    )
     mark_succeeded.assert_awaited_once_with(session, JOB_ID, PLAN_ID)
 
 

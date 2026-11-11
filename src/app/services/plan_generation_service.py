@@ -38,10 +38,13 @@ from app.services.plan_generation_errors import (
     NoCandidateForSchemaPositionError,
     PlanGenerationError,
 )
-from app.services.plan_generation_evolution import evolve
 from app.services.plan_generation_population_service import (
     allocate_segment_durations,
     build_initial_population,
+)
+from app.services.plan_generation_strategies import (
+    GeneticPlanGenerationStrategy,
+    PlanGenerationStrategyFactory,
 )
 
 logger = logging.getLogger(__name__)
@@ -102,7 +105,12 @@ async def run(job_id: UUID) -> None:
         started_at = time.perf_counter()
         try:
             async with asyncio.timeout(timeout_seconds):
-                plan = await _generate_plan(session, job, best=best)
+                plan = await _generate_plan(
+                    session,
+                    job,
+                    best=best,
+                    strategy_factory=GeneticPlanGenerationStrategy,
+                )
                 if await jobs_db.mark_succeeded(session, job.id, plan.id):
                     logger.info("job %s: succeeded plan_id=%s", job.id, plan.id)
                     return
@@ -229,6 +237,7 @@ async def _generate_plan(
     job: PlanGenerationJob,
     *,
     best: BestSoFar,
+    strategy_factory: PlanGenerationStrategyFactory,
 ) -> TrainingPlan:
     """Build and persist a plan while keeping the strategy free of I/O."""
     logger.info("job %s: validating parameters", job.id)
@@ -257,7 +266,10 @@ async def _generate_plan(
     )
     generated = _merge_segment_individuals(
         await asyncio.gather(
-            *(_generate_segment(best, context) for context in contexts)
+            *(
+                _generate_segment(strategy_factory, best, context)
+                for context in contexts
+            )
         )
     )
     logger.info(
@@ -269,19 +281,22 @@ async def _generate_plan(
 
 
 async def _generate_segment(
-    best: BestSoFar, context: GenerationContext
+    strategy_factory: PlanGenerationStrategyFactory,
+    best: BestSoFar,
+    context: GenerationContext,
 ) -> PlanIndividual:
     """Build and generate one segment in its own worker-thread invocation."""
-    return await asyncio.to_thread(_generate_segment_sync, best, context)
+    return await asyncio.to_thread(
+        _generate_segment_sync, strategy_factory, best, context
+    )
 
 
 def _generate_segment_sync(
-    best: BestSoFar, context: GenerationContext
+    strategy_factory: PlanGenerationStrategyFactory,
+    best: BestSoFar,
+    context: GenerationContext,
 ) -> PlanIndividual:
-    """Build one segment's population and evolve it.
-
-    Share only BestSoFar across threads.
-    """
+    """Keep a strategy instance and its initial population local to one segment."""
     position = context.segment.position
     logger.info(
         "segment %s: start duration=%dmin candidates=%d seed=%s",
@@ -296,7 +311,7 @@ def _generate_segment_sync(
         position,
         len(population.individuals),
     )
-    generated = evolve(context, population, best=best)
+    generated = strategy_factory(best).generate(context, population)
     total_minutes = sum(
         selection.allocated_duration_minutes for selection in generated.selections
     )
