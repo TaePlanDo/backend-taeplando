@@ -140,6 +140,7 @@ def test_persisted_selection_uses_its_allocated_duration() -> None:
         upper_body_load=3,
         lower_body_load=3,
         core_load=3,
+        recent_usage_distance=4,
     )
     selection = PlanExerciseSelection(
         schema_position=1,
@@ -284,6 +285,7 @@ def test_merge_segment_individuals_restores_schema_order() -> None:
         upper_body_load=3,
         lower_body_load=3,
         core_load=3,
+        recent_usage_distance=4,
     )
 
     def selection(position: int) -> PlanExerciseSelection:

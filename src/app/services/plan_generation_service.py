@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import time
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from uuid import UUID
@@ -98,6 +99,7 @@ async def run(job_id: UUID) -> None:
 
         best = BestSoFar()
         failure: tuple[str, str] | None = None
+        started_at = time.perf_counter()
         try:
             async with asyncio.timeout(timeout_seconds):
                 plan = await _generate_plan(session, job, best=best)
@@ -125,6 +127,12 @@ async def run(job_id: UUID) -> None:
             logger.exception("job %s: unexpected failure", job_id)
             await session.rollback()
             failure = (PlanGenerationError.error_code, "Plan generation failed")
+        finally:
+            logger.info(
+                "job %s: total_duration_seconds=%.3f",
+                job.id,
+                time.perf_counter() - started_at,
+            )
 
         await _finish_with_salvage(session, job, best, failure=failure)
 

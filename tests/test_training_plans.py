@@ -466,6 +466,39 @@ def test_delete_plan_service_raises_for_missing_plan() -> None:
     session.commit.assert_not_called()
 
 
+def test_list_recent_group_exercise_ids_returns_newest_first_tuples() -> None:
+    """Plan ids then projected exercise ids, grouped newest-first."""
+    newer_plan_id = PLAN_ID
+    older_plan_id = OLDER_PLAN_ID
+    session = AsyncMock()
+    session.scalars = AsyncMock(return_value=[newer_plan_id, older_plan_id])
+    rows = MagicMock()
+    rows.all.return_value = [
+        (newer_plan_id, TRAINER_EXERCISE_ID),
+        (older_plan_id, EXERCISE_ID),
+        (older_plan_id, EQUIPMENT_ID),
+    ]
+    session.execute = AsyncMock(return_value=rows)
+
+    plans = asyncio.run(
+        training_plans_db.list_recent_group_exercise_ids(
+            session, TRAINER_ID, GROUP_ID, limit=3
+        )
+    )
+
+    assert plans == [
+        (TRAINER_EXERCISE_ID,),
+        (EXERCISE_ID, EQUIPMENT_ID),
+    ]
+    plan_ids_sql = str(session.scalars.await_args.args[0]).lower()
+    assert "training_group_id" in plan_ids_sql
+    assert "order by training_plans.generated_at desc" in plan_ids_sql
+    assert "limit" in plan_ids_sql
+    exercises_sql = str(session.execute.await_args.args[0]).lower()
+    assert "trainer_exercise_id" in exercises_sql
+    assert "training_plan_id" in exercises_sql
+
+
 def test_list_for_trainer_returns_page_and_total_in_one_query() -> None:
     """A single statement returns both the page and the windowed total."""
     session = AsyncMock()

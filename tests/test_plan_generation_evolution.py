@@ -18,11 +18,11 @@ from app.services.plan_generation_domain import (
 from app.services.plan_generation_errors import NoValidPlanError
 from app.services.plan_generation_evolution import (
     _crossover,
+    _evaluate,
     _mutate,
     evolve,
     from_deap,
     is_structurally_valid,
-    temporary_fitness,
     to_deap,
 )
 from app.services.plan_generation_population_service import build_initial_population
@@ -47,6 +47,7 @@ def _candidate(identifier: str, *, duration: int = 10) -> PlanExerciseCandidate:
         upper_body_load=3,
         lower_body_load=3,
         core_load=3,
+        recent_usage_distance=4,
     )
 
 
@@ -72,26 +73,26 @@ def _context(
     )
 
 
-def test_temporary_fitness_is_deterministic_for_the_same_individual() -> None:
+def test_evaluate_uses_plan_fitness_and_prefers_on_budget_duration() -> None:
     candidate = _candidate("0ac590e1-2a46-4cb7-8944-803e364cc46b")
-    context = _context(candidate, seed=99)
-    individual = to_deap(
-        PlanIndividual(
-            selections=(
-                PlanExerciseSelection(
-                    schema_position=1,
-                    candidate=candidate,
-                    allocated_duration_minutes=10,
-                ),
-            )
-        ),
-        context_seed=99,
+    context = _context(candidate)
+    on_budget = to_deap(
+        PlanIndividual(selections=(PlanExerciseSelection(1, candidate, 30),)),
+        context_seed=1,
+    )
+    short = to_deap(
+        PlanIndividual(selections=(PlanExerciseSelection(1, candidate, 10),)),
+        context_seed=1,
     )
 
-    assert temporary_fitness(individual, context=context) == temporary_fitness(
-        individual, context=context
+    on_budget_score = _evaluate(on_budget, context=context)[0]
+    short_score = _evaluate(short, context=context)[0]
+
+    assert 0.0 <= on_budget_score <= 1.0
+    assert on_budget_score > short_score
+    assert _evaluate(on_budget, context=context) == _evaluate(
+        on_budget, context=context
     )
-    assert 0 <= temporary_fitness(individual, context=context)[0] <= 100
 
 
 def test_evolution_is_deterministic_for_one_seed() -> None:
@@ -107,7 +108,75 @@ def test_evolution_is_deterministic_for_one_seed() -> None:
     )
 
 
-def test_crossover_preserves_gene_durations() -> None:
+def test_crossover_keeps_prefix_and_unused_donor_suffix() -> None:
+    first_candidate = _candidate("0ac590e1-2a46-4cb7-8944-803e364cc46b", duration=8)
+    second_candidate = _candidate("1ac590e1-2a46-4cb7-8944-803e364cc46b", duration=12)
+    third_candidate = _candidate("2ac590e1-2a46-4cb7-8944-803e364cc46b", duration=10)
+    fourth_candidate = _candidate("3ac590e1-2a46-4cb7-8944-803e364cc46b", duration=14)
+    parent_a = to_deap(
+        PlanIndividual(
+            selections=(
+                PlanExerciseSelection(1, first_candidate, 8),
+                PlanExerciseSelection(1, second_candidate, 12),
+            )
+        ),
+        1,
+    )
+    parent_b = to_deap(
+        PlanIndividual(
+            selections=(
+                PlanExerciseSelection(1, third_candidate, 10),
+                PlanExerciseSelection(1, fourth_candidate, 14),
+            )
+        ),
+        1,
+    )
+    from random import Random
+
+    _crossover(parent_a, parent_b, random=Random(0))
+
+    # point=1: prefix + unused donor suffix only (no donor-prefix backfill).
+    assert [gene.allocated_duration_minutes for gene in parent_a] == [8, 14]
+    assert [gene.allocated_duration_minutes for gene in parent_b] == [10, 12]
+    assert _unique_exercise_ids(parent_a)
+    assert _unique_exercise_ids(parent_b)
+
+
+def test_crossover_does_not_pull_from_donor_prefix() -> None:
+    kept = _candidate("0ac590e1-2a46-4cb7-8944-803e364cc46b", duration=8)
+    filler = _candidate("1ac590e1-2a46-4cb7-8944-803e364cc46b", duration=12)
+    extra = _candidate("2ac590e1-2a46-4cb7-8944-803e364cc46b", duration=10)
+    parent_a = to_deap(
+        PlanIndividual(
+            selections=(
+                PlanExerciseSelection(1, kept, 8),
+                PlanExerciseSelection(1, extra, 10),
+            )
+        ),
+        1,
+    )
+    parent_b = to_deap(
+        PlanIndividual(
+            selections=(
+                PlanExerciseSelection(1, filler, 12),
+                PlanExerciseSelection(1, kept, 8),
+            )
+        ),
+        1,
+    )
+    from random import Random
+
+    _crossover(parent_a, parent_b, random=Random(0))
+
+    # point=1: A keeps [kept]; B suffix is kept (duplicate) → no suffix add.
+    assert [gene.candidate.trainer_exercise_id for gene in parent_a] == [
+        kept.trainer_exercise_id,
+    ]
+    assert _unique_exercise_ids(parent_a)
+    assert _unique_exercise_ids(parent_b)
+
+
+def test_crossover_skips_donor_genes_already_in_prefix() -> None:
     first_candidate = _candidate("0ac590e1-2a46-4cb7-8944-803e364cc46b", duration=8)
     second_candidate = _candidate("1ac590e1-2a46-4cb7-8944-803e364cc46b", duration=12)
     parent_a = to_deap(
@@ -132,8 +201,104 @@ def test_crossover_preserves_gene_durations() -> None:
 
     _crossover(parent_a, parent_b, random=Random(0))
 
-    assert all(gene.allocated_duration_minutes in {8, 12} for gene in parent_a)
-    assert all(gene.allocated_duration_minutes in {8, 12} for gene in parent_b)
+    # point=1: each suffix is a duplicate of the other parent's prefix → prefix only.
+    assert [gene.candidate.trainer_exercise_id for gene in parent_a] == [
+        first_candidate.trainer_exercise_id,
+    ]
+    assert [gene.candidate.trainer_exercise_id for gene in parent_b] == [
+        second_candidate.trainer_exercise_id,
+    ]
+    assert _unique_exercise_ids(parent_a)
+    assert _unique_exercise_ids(parent_b)
+
+
+def test_structurally_invalid_when_exercise_repeats() -> None:
+    candidate = _candidate("0ac590e1-2a46-4cb7-8944-803e364cc46b", duration=10)
+    context = _context(candidate)
+    duplicate = PlanIndividual(
+        selections=(
+            PlanExerciseSelection(1, candidate, 8),
+            PlanExerciseSelection(1, candidate, 13),
+        )
+    )
+
+    assert not is_structurally_valid(context, duplicate)
+    assert _evaluate(to_deap(duplicate, 1), context=context) == (-1.0,)
+
+
+def test_mutation_replace_only_picks_unused_exercise() -> None:
+    kept = _candidate("0ac590e1-2a46-4cb7-8944-803e364cc46b", duration=10)
+    replaced = _candidate("1ac590e1-2a46-4cb7-8944-803e364cc46b", duration=12)
+    unused = _candidate("2ac590e1-2a46-4cb7-8944-803e364cc46b", duration=14)
+    individual = to_deap(
+        PlanIndividual(
+            selections=(
+                PlanExerciseSelection(1, kept, 10),
+                PlanExerciseSelection(1, replaced, 12),
+            )
+        ),
+        1,
+    )
+
+    class ReplaceMutationRandom:
+        def randint(self, low: int, high: int) -> int:
+            return 1
+
+        def randrange(self, stop: int) -> int:
+            return 1
+
+        def choice(self, sequence):  # noqa: ANN001
+            assert kept not in sequence
+            assert replaced in sequence
+            assert unused in sequence
+            return unused
+
+    _mutate(
+        individual,
+        candidates=(kept, replaced, unused),
+        schema_position=1,
+        random=ReplaceMutationRandom(),
+    )
+
+    assert individual[1].candidate.trainer_exercise_id == unused.trainer_exercise_id
+    assert _unique_exercise_ids(individual)
+
+
+def test_mutation_can_insert_unused_candidate() -> None:
+    kept = _candidate("0ac590e1-2a46-4cb7-8944-803e364cc46b", duration=10)
+    unused = _candidate("1ac590e1-2a46-4cb7-8944-803e364cc46b", duration=12)
+    individual = to_deap(
+        PlanIndividual(selections=(PlanExerciseSelection(1, kept, 10),)),
+        1,
+    )
+
+    class InsertMutationRandom:
+        def randint(self, low: int, high: int) -> int:
+            return 2
+
+        def randrange(self, stop: int) -> int:
+            return stop - 1
+
+        def choice(self, sequence):  # noqa: ANN001
+            assert sequence == [unused]
+            return unused
+
+    _mutate(
+        individual,
+        candidates=(kept, unused),
+        schema_position=1,
+        random=InsertMutationRandom(),
+    )
+
+    assert len(individual) == 2
+    assert individual[1].candidate.trainer_exercise_id == unused.trainer_exercise_id
+    assert individual[1].schema_position == 1
+    assert _unique_exercise_ids(individual)
+
+
+def _unique_exercise_ids(individual) -> bool:  # noqa: ANN001
+    ids = [gene.candidate.trainer_exercise_id for gene in individual]
+    return len(ids) == len(set(ids))
 
 
 def test_mutation_can_change_allocated_duration() -> None:
@@ -145,7 +310,7 @@ def test_mutation_can_change_allocated_duration() -> None:
 
     class DurationMutationRandom:
         def randint(self, low: int, high: int) -> int:
-            if (low, high) == (0, 2):
+            if (low, high) == (0, 3):
                 return 0
             return 3
 
@@ -155,7 +320,12 @@ def test_mutation_can_change_allocated_duration() -> None:
         def choice(self, sequence):  # noqa: ANN001
             return 1
 
-    _mutate(individual, candidates=(candidate,), random=DurationMutationRandom())
+    _mutate(
+        individual,
+        candidates=(candidate,),
+        schema_position=1,
+        random=DurationMutationRandom(),
+    )
 
     assert individual[0].allocated_duration_minutes == 13
 

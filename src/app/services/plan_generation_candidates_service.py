@@ -5,10 +5,15 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import exercises as exercises_db
+from app.db import training_plans as training_plans_db
 from app.models.enums import EquipmentRequirementMode
 from app.models.exercises import TrainerExercise
 from app.models.training import TrainingGroup
 from app.schemas.plan_generation import PlanGenerationParameters
+from app.services.plan_generation_constants import (
+    RECENT_USAGE_MAX_DISTANCE,
+    RECENT_USAGE_PLAN_COUNT,
+)
 from app.services.plan_generation_domain import PlanExerciseCandidate
 
 
@@ -28,20 +33,46 @@ async def prepare_candidates(
     )
     available_equipment_ids = set(parameters.available_equipment_ids)
     group_segment_ids = {item.segment_id for item in group.schema_items}
+    recent_distances = await _recent_usage_distances(session, trainer_id, group.id)
     candidates: list[PlanExerciseCandidate] = []
     for source in sources:
         candidate = _candidate_for_source(
-            source, available_equipment_ids, group_segment_ids
+            source,
+            available_equipment_ids,
+            group_segment_ids,
+            recent_usage_distance=recent_distances.get(
+                source.id, RECENT_USAGE_MAX_DISTANCE
+            ),
         )
         if candidate is not None:
             candidates.append(candidate)
     return tuple(candidates)
 
 
+async def _recent_usage_distances(
+    session: AsyncSession, trainer_id: UUID, training_group_id: UUID
+) -> dict[UUID, int]:
+    """Map trainer_exercise_id → distance; newest plan wins (plans are newest-first)."""
+    recent_plans = await training_plans_db.list_recent_group_exercise_ids(
+        session,
+        trainer_id,
+        training_group_id,
+        limit=RECENT_USAGE_PLAN_COUNT,
+    )
+    distances: dict[UUID, int] = {}
+    for index, exercise_ids in enumerate(recent_plans):
+        distance = index + 1
+        for exercise_id in exercise_ids:
+            distances.setdefault(exercise_id, distance)
+    return distances
+
+
 def _candidate_for_source(
     source: TrainerExercise,
     available_equipment_ids: set[UUID],
     group_segment_ids: set[int],
+    *,
+    recent_usage_distance: int,
 ) -> PlanExerciseCandidate | None:
     """Return one source only when its catalog requirements fit this request."""
     if not _has_required_equipment(source, available_equipment_ids):
@@ -69,6 +100,7 @@ def _candidate_for_source(
         upper_body_load=source.upper_body_load,
         lower_body_load=source.lower_body_load,
         core_load=source.core_load,
+        recent_usage_distance=recent_usage_distance,
     )
 
 

@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from dataclasses import replace
 from datetime import UTC, datetime
 from random import Random
 from typing import Any
+from uuid import UUID
 
 from deap import base, creator, tools
 
@@ -26,6 +28,7 @@ from app.services.plan_generation_domain import (
     PlanIndividual,
 )
 from app.services.plan_generation_errors import NoValidPlanError
+from app.services.plan_generation_fitness import evaluate as score_plan
 
 logger = logging.getLogger(__name__)
 
@@ -42,12 +45,10 @@ if not hasattr(creator, "PlanGeneIndividual"):
     )
 
 
-def temporary_fitness(individual: Any, *, context: GenerationContext) -> tuple[float,]:
-    """Placeholder score until SCRUM-237 supplies the real fitness function."""
-    # TODO(SCRUM-237): replace this function; use context for duration/prefs grading
-    _ = context
-    seed = int(getattr(individual, "context_seed", 0)) ^ _hash_genes(individual)
-    return (Random(seed).uniform(0, 100),)
+def has_unique_exercises(selections: Sequence[PlanExerciseSelection]) -> bool:
+    """True when each trainer_exercise_id appears at most once."""
+    exercise_ids = [selection.candidate.trainer_exercise_id for selection in selections]
+    return len(exercise_ids) == len(set(exercise_ids))
 
 
 def is_structurally_valid(
@@ -55,6 +56,8 @@ def is_structurally_valid(
 ) -> bool:
     """Hard GA-side checks; exact segment duration is a soft fitness concern."""
     if not individual.selections:
+        return False
+    if not has_unique_exercises(individual.selections):
         return False
     candidate_ids = {candidate.trainer_exercise_id for candidate in context.candidates}
     for selection in individual.selections:
@@ -171,6 +174,7 @@ def _toolbox(context: GenerationContext, random: Random) -> base.Toolbox:
         "mutate",
         _mutate,
         candidates=context.candidates,
+        schema_position=context.segment.position,
         random=random,
     )
     toolbox.register(
@@ -184,10 +188,11 @@ def _toolbox(context: GenerationContext, random: Random) -> base.Toolbox:
 
 
 def _evaluate(individual: Any, *, context: GenerationContext) -> tuple[float,]:
-    """Single validity gate: invalid chromosomes get a sentinel score."""
-    if not is_structurally_valid(context, from_deap(individual)):
+    """Single validity gate, then SCRUM-237 weighted fitness in [0, 1]."""
+    plan = from_deap(individual)
+    if not is_structurally_valid(context, plan):
         return (INVALID_FITNESS,)
-    return temporary_fitness(individual, context=context)
+    return (score_plan(context, plan),)
 
 
 def _assign_fitness(individuals: list[Any], toolbox: base.Toolbox) -> int:
@@ -289,29 +294,59 @@ def _clone(individual: Any) -> Any:
 
 
 def _crossover(first: Any, second: Any, *, random: Random) -> tuple[Any, Any]:
-    """One-point crossover that preserves gene durations as-is."""
+    """Prefix-preserving recombination that never emits duplicate exercises."""
     if min(len(first), len(second)) < 2:
         return first, second
     point = random.randint(1, min(len(first), len(second)) - 1)
-    first[point:], second[point:] = second[point:], first[point:]
+    first_child = _recombine_unique(first[:point], second[point:])
+    second_child = _recombine_unique(second[:point], first[point:])
+    first[:] = first_child
+    second[:] = second_child
     return first, second
+
+
+def _recombine_unique(
+    prefix: Sequence[PlanExerciseSelection],
+    donor_suffix: Sequence[PlanExerciseSelection],
+) -> list[PlanExerciseSelection]:
+    """Keep prefix, then unused genes from the donor suffix only."""
+    used_ids = {gene.candidate.trainer_exercise_id for gene in prefix}
+    child = list(prefix)
+    for gene in donor_suffix:
+        exercise_id = gene.candidate.trainer_exercise_id
+        if exercise_id in used_ids:
+            continue
+        child.append(gene)
+        used_ids.add(exercise_id)
+    return child
+
+
+def _unused_candidates(
+    candidates: tuple[PlanExerciseCandidate, ...],
+    used_ids: set[UUID],
+) -> list[PlanExerciseCandidate]:
+    return [
+        candidate
+        for candidate in candidates
+        if candidate.trainer_exercise_id not in used_ids
+    ]
 
 
 def _mutate(
     individual: Any,
     *,
     candidates: tuple[PlanExerciseCandidate, ...],
+    schema_position: int,
     random: Random,
 ) -> tuple[Any]:
-    """Mutate duration, replace a candidate, or shuffle gene order."""
+    """Adjust duration, replace, insert an unused candidate, or shuffle order."""
     if not individual:
         return (individual,)
 
-    mode = random.randint(0, 2)
-    index = random.randrange(len(individual))
-    selection: PlanExerciseSelection = individual[index]
-
+    mode = random.randint(0, 3)
     if mode == 0:
+        index = random.randrange(len(individual))
+        selection: PlanExerciseSelection = individual[index]
         delta = random.randint(1, MUTATION_DURATION_DELTA) * random.choice((-1, 1))
         individual[index] = replace(
             selection,
@@ -320,25 +355,33 @@ def _mutate(
             ),
         )
     elif mode == 1 and candidates:
-        candidate = random.choice(candidates)
-        individual[index] = replace(
-            selection,
-            candidate=candidate,
-            allocated_duration_minutes=candidate.default_duration_minutes,
-        )
+        index = random.randrange(len(individual))
+        used_ids = {
+            gene.candidate.trainer_exercise_id
+            for i, gene in enumerate(individual)
+            if i != index
+        }
+        unused = _unused_candidates(candidates, used_ids)
+        if unused:
+            candidate = random.choice(unused)
+            individual[index] = replace(
+                individual[index],
+                candidate=candidate,
+                allocated_duration_minutes=candidate.default_duration_minutes,
+            )
+    elif mode == 2 and candidates:
+        used_ids = {gene.candidate.trainer_exercise_id for gene in individual}
+        unused = _unused_candidates(candidates, used_ids)
+        if unused:
+            candidate = random.choice(unused)
+            individual.insert(
+                random.randrange(len(individual) + 1),
+                PlanExerciseSelection(
+                    schema_position=schema_position,
+                    candidate=candidate,
+                    allocated_duration_minutes=candidate.default_duration_minutes,
+                ),
+            )
     else:
         random.shuffle(individual)
     return (individual,)
-
-
-def _hash_genes(individual: Any) -> int:
-    digest = 0
-    for selection in individual:
-        digest ^= hash(
-            (
-                selection.candidate.trainer_exercise_id.int,
-                selection.allocated_duration_minutes,
-                selection.schema_position,
-            )
-        )
-    return digest

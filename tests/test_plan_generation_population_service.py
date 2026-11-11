@@ -41,6 +41,7 @@ def _candidate(identifier: str, *, duration: int = 10) -> PlanExerciseCandidate:
         upper_body_load=3,
         lower_body_load=3,
         core_load=3,
+        recent_usage_distance=4,
     )
 
 
