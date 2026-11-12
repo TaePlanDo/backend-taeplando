@@ -115,6 +115,10 @@ def test_prepare_candidates_applies_equipment_and_segment_rules() -> None:
     session = AsyncMock()
     with (
         patch(
+            "app.services.plan_generation_candidates_service.exercises_db.ensure_global_configurations_for_trainer",
+            new=AsyncMock(),
+        ) as ensure_global_configurations,
+        patch(
             "app.services.plan_generation_candidates_service.exercises_db.list_candidate_sources",
             new=AsyncMock(
                 return_value=[
@@ -177,6 +181,7 @@ def test_prepare_candidates_applies_equipment_and_segment_rules() -> None:
         recent_usage_distance=4,
     )
     assert candidates == (all_candidate, any_candidate)
+    ensure_global_configurations.assert_awaited_once_with(session, TRAINER_ID)
     list_candidate_sources.assert_awaited_once_with(
         session,
         TRAINER_ID,
@@ -211,6 +216,10 @@ def test_prepare_candidates_keeps_every_training_type_for_fitness() -> None:
         segment_ids=[1],
     )
     with (
+        patch(
+            "app.services.plan_generation_candidates_service.exercises_db.ensure_global_configurations_for_trainer",
+            new=AsyncMock(),
+        ),
         patch(
             "app.services.plan_generation_candidates_service.exercises_db.list_candidate_sources",
             new=AsyncMock(return_value=[matching_type, another_type, untyped]),
@@ -263,6 +272,10 @@ def test_prepare_candidates_sets_recent_usage_distances_from_last_plans() -> Non
     ]
 
     with (
+        patch(
+            "app.services.plan_generation_candidates_service.exercises_db.ensure_global_configurations_for_trainer",
+            new=AsyncMock(),
+        ),
         patch(
             "app.services.plan_generation_candidates_service.exercises_db.list_candidate_sources",
             new=AsyncMock(return_value=sources),
@@ -321,3 +334,45 @@ def test_list_candidate_sources_accepts_exercises_with_an_age_range_overlap() ->
     assert "trainer_exercises.max_participants" in statement
     assert "exercises.scope" in statement
     assert "order by trainer_exercises.id" in statement
+
+
+def test_ensure_global_configurations_creates_only_missing_public_sources() -> None:
+    """Only approved global sources without a trainer record are materialized."""
+    source_version = SimpleNamespace(
+        id=EXERCISE_VERSION_ID,
+        exercise_id=EXERCISE_ID,
+        min_age=7,
+        max_age=14,
+        min_participants=1,
+        max_participants=20,
+        duration_minutes=10,
+        equipment_requirement_mode=EquipmentRequirementMode.ALL,
+        physical_difficulty=3,
+        technical_difficulty=3,
+        upper_body_load=3,
+        lower_body_load=3,
+        core_load=3,
+        equipment=[],
+        training_types=[],
+        segments=[],
+    )
+    session = MagicMock()
+    session.scalars = AsyncMock(return_value=[source_version])
+
+    asyncio.run(
+        exercises_db.ensure_global_configurations_for_trainer(session, TRAINER_ID)
+    )
+
+    trainer_exercise = session.add.call_args.args[0]
+    assert trainer_exercise.trainer_id == TRAINER_ID
+    assert trainer_exercise.exercise_id == EXERCISE_ID
+    assert trainer_exercise.source_version_id == EXERCISE_VERSION_ID
+    statement = session.scalars.await_args.args[0]
+    compiled = str(
+        statement.compile(
+            dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}
+        )
+    ).lower()
+    assert "not (exists" in compiled
+    assert "trainer_exercises.trainer_id" in compiled
+    assert "trainer_exercises.exercise_id = exercise_versions.exercise_id" in compiled
