@@ -294,7 +294,7 @@ async def ensure_global_configurations_for_trainer(
     """
     source_versions = await session.scalars(
         select(ExerciseVersion)
-        .join(Exercise)
+        .join(Exercise, Exercise.id == ExerciseVersion.exercise_id)
         .where(
             Exercise.scope == ExerciseScope.GLOBAL,
             Exercise.latest_approved_version_id == ExerciseVersion.id,
