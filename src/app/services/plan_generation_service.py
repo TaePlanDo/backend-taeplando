@@ -140,10 +140,12 @@ async def run(job_id: UUID) -> None:
         finally:
             logger.info(
                 "job %s: total_duration_seconds=%.3f",
-                job.id,
+                job_id,
                 time.perf_counter() - started_at,
             )
 
+        # Rollback expires the ORM instance; refresh before salvage / terminal marks.
+        await session.refresh(job)
         await _finish_with_salvage(session, job, best, failure=failure)
 
 
