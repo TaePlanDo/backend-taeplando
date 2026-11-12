@@ -292,16 +292,6 @@ async def ensure_global_configurations_for_trainer(
     The record holds a trainer's availability state and immutable source-version
     reference.  It does not change the source exercise's GLOBAL scope or owner.
     """
-    configured_exercise_ids = set(
-        await session.scalars(
-            select(TrainerExercise.exercise_id)
-            .join(Exercise)
-            .where(
-                TrainerExercise.trainer_id == trainer_id,
-                Exercise.scope == ExerciseScope.GLOBAL,
-            )
-        )
-    )
     source_versions = await session.scalars(
         select(ExerciseVersion)
         .join(Exercise)
@@ -309,12 +299,17 @@ async def ensure_global_configurations_for_trainer(
             Exercise.scope == ExerciseScope.GLOBAL,
             Exercise.latest_approved_version_id == ExerciseVersion.id,
             ExerciseVersion.status == ExerciseVersionStatus.APPROVED,
+            ~exists(
+                select(TrainerExercise.id).where(
+                    TrainerExercise.trainer_id == trainer_id,
+                    TrainerExercise.exercise_id == ExerciseVersion.exercise_id,
+                )
+            ),
         )
         .options(*_configuration_loader_options(ExerciseVersion))
     )
     for source_version in source_versions:
-        if source_version.exercise_id not in configured_exercise_ids:
-            session.add(_configuration_for_global_version(trainer_id, source_version))
+        session.add(_configuration_for_global_version(trainer_id, source_version))
 
 
 async def list_sources_for_generated_plan(
