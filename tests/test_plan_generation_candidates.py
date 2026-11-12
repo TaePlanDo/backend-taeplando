@@ -115,6 +115,10 @@ def test_prepare_candidates_applies_equipment_and_segment_rules() -> None:
     session = AsyncMock()
     with (
         patch(
+            "app.services.plan_generation_candidates_service.exercises_db.ensure_global_configurations_for_trainer",
+            new=AsyncMock(),
+        ) as ensure_global_configurations,
+        patch(
             "app.services.plan_generation_candidates_service.exercises_db.list_candidate_sources",
             new=AsyncMock(
                 return_value=[
@@ -177,6 +181,7 @@ def test_prepare_candidates_applies_equipment_and_segment_rules() -> None:
         recent_usage_distance=4,
     )
     assert candidates == (all_candidate, any_candidate)
+    ensure_global_configurations.assert_awaited_once_with(session, TRAINER_ID)
     list_candidate_sources.assert_awaited_once_with(
         session,
         TRAINER_ID,
@@ -211,6 +216,10 @@ def test_prepare_candidates_keeps_every_training_type_for_fitness() -> None:
         segment_ids=[1],
     )
     with (
+        patch(
+            "app.services.plan_generation_candidates_service.exercises_db.ensure_global_configurations_for_trainer",
+            new=AsyncMock(),
+        ),
         patch(
             "app.services.plan_generation_candidates_service.exercises_db.list_candidate_sources",
             new=AsyncMock(return_value=[matching_type, another_type, untyped]),
@@ -263,6 +272,10 @@ def test_prepare_candidates_sets_recent_usage_distances_from_last_plans() -> Non
     ]
 
     with (
+        patch(
+            "app.services.plan_generation_candidates_service.exercises_db.ensure_global_configurations_for_trainer",
+            new=AsyncMock(),
+        ),
         patch(
             "app.services.plan_generation_candidates_service.exercises_db.list_candidate_sources",
             new=AsyncMock(return_value=sources),

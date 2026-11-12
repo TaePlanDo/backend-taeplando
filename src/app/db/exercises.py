@@ -284,6 +284,39 @@ async def list_candidate_sources(
     return list(result.unique())
 
 
+async def ensure_global_configurations_for_trainer(
+    session: AsyncSession, trainer_id: UUID
+) -> None:
+    """Give every approved public exercise its trainer-local availability record.
+
+    The record holds a trainer's availability state and immutable source-version
+    reference.  It does not change the source exercise's GLOBAL scope or owner.
+    """
+    configured_exercise_ids = set(
+        await session.scalars(
+            select(TrainerExercise.exercise_id)
+            .join(Exercise)
+            .where(
+                TrainerExercise.trainer_id == trainer_id,
+                Exercise.scope == ExerciseScope.GLOBAL,
+            )
+        )
+    )
+    source_versions = await session.scalars(
+        select(ExerciseVersion)
+        .join(Exercise)
+        .where(
+            Exercise.scope == ExerciseScope.GLOBAL,
+            Exercise.latest_approved_version_id == ExerciseVersion.id,
+            ExerciseVersion.status == ExerciseVersionStatus.APPROVED,
+        )
+        .options(*_configuration_loader_options(ExerciseVersion))
+    )
+    for source_version in source_versions:
+        if source_version.exercise_id not in configured_exercise_ids:
+            session.add(_configuration_for_global_version(trainer_id, source_version))
+
+
 async def list_sources_for_generated_plan(
     session: AsyncSession, trainer_id: UUID, source_ids: set[UUID]
 ) -> dict[UUID, TrainerExercise]:
@@ -583,6 +616,15 @@ async def create_configuration_for_global_exercise(
     if source_version is None:
         return None
 
+    trainer_exercise = _configuration_for_global_version(trainer_id, source_version)
+    session.add(trainer_exercise)
+    return trainer_exercise
+
+
+def _configuration_for_global_version(
+    trainer_id: UUID, source_version: ExerciseVersion
+) -> TrainerExercise:
+    """Create an active availability record without changing a global source."""
     trainer_exercise = TrainerExercise(
         trainer_id=trainer_id,
         exercise_id=source_version.exercise_id,
@@ -603,5 +645,4 @@ async def create_configuration_for_global_exercise(
     trainer_exercise.equipment = list(source_version.equipment)
     trainer_exercise.training_types = list(source_version.training_types)
     trainer_exercise.segments = list(source_version.segments)
-    session.add(trainer_exercise)
     return trainer_exercise

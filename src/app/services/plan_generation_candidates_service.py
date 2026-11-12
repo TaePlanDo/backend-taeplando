@@ -24,6 +24,7 @@ async def prepare_candidates(
     parameters: PlanGenerationParameters,
 ) -> tuple[PlanExerciseCandidate, ...]:
     """Build candidates compatible with the request and at least one group segment."""
+    await exercises_db.ensure_global_configurations_for_trainer(session, trainer_id)
     sources = await exercises_db.list_candidate_sources(
         session,
         trainer_id,
