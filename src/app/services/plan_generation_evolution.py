@@ -20,6 +20,7 @@ from app.services.plan_generation_constants import (
     MUTPB,
     TOURNAMENT_K,
 )
+from app.services.plan_generation_constraints import has_unique_exercises
 from app.services.plan_generation_domain import (
     GenerationContext,
     InitialPopulation,
@@ -43,12 +44,6 @@ if not hasattr(creator, "PlanGeneIndividual"):
         fitness=creator.FitnessMax,
         context_seed=0,
     )
-
-
-def has_unique_exercises(selections: Sequence[PlanExerciseSelection]) -> bool:
-    """True when each trainer_exercise_id appears at most once."""
-    exercise_ids = [selection.candidate.trainer_exercise_id for selection in selections]
-    return len(exercise_ids) == len(set(exercise_ids))
 
 
 def is_structurally_valid(

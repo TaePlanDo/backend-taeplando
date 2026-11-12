@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import exercises as exercises_db
 from app.db import training_plans as training_plans_db
-from app.models.enums import EquipmentRequirementMode
 from app.models.exercises import TrainerExercise
 from app.models.training import TrainingGroup
 from app.schemas.plan_generation import PlanGenerationParameters
@@ -14,6 +13,7 @@ from app.services.plan_generation_constants import (
     RECENT_USAGE_MAX_DISTANCE,
     RECENT_USAGE_PLAN_COUNT,
 )
+from app.services.plan_generation_constraints import satisfies_equipment_requirement
 from app.services.plan_generation_domain import PlanExerciseCandidate
 
 
@@ -108,9 +108,8 @@ def _has_required_equipment(
     source: TrainerExercise, available_equipment_ids: set[UUID]
 ) -> bool:
     """Apply the configuration's ALL or ANY equipment requirement."""
-    required_equipment_ids = {equipment.id for equipment in source.equipment}
-    if source.equipment_requirement_mode == EquipmentRequirementMode.ALL:
-        return required_equipment_ids <= available_equipment_ids
-    return not required_equipment_ids or bool(
-        required_equipment_ids & available_equipment_ids
+    return satisfies_equipment_requirement(
+        mode=source.equipment_requirement_mode,
+        required_equipment_ids={equipment.id for equipment in source.equipment},
+        available_equipment_ids=available_equipment_ids,
     )
