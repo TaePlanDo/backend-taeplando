@@ -18,7 +18,10 @@ from app.services.plan_generation_domain import (
     PlanExerciseSelection,
     PlanIndividual,
 )
-from app.services.plan_generation_errors import NoCandidateForSchemaPositionError
+from app.services.plan_generation_errors import (
+    InvalidGeneratedPlanError,
+    NoCandidateForSchemaPositionError,
+)
 
 JOB_ID = UUID("0ac590e1-2a46-4cb7-8944-803e364cc46b")
 PLAN_ID = UUID("1ac590e1-2a46-4cb7-8944-803e364cc46b")
@@ -412,6 +415,42 @@ def test_runner_marks_missing_candidates_as_a_failed_job() -> None:
     )
 
 
+def test_runner_marks_invalid_generated_plan_as_a_failed_job() -> None:
+    """Pre-persist validation failure is pollable and does not salvage-write."""
+
+    session = AsyncMock()
+    with (
+        patch(
+            "app.services.plan_generation_service.get_session_factory",
+            return_value=_factory(session),
+        ),
+        patch(
+            "app.services.plan_generation_service.jobs_db.claim",
+            new=AsyncMock(return_value=_job()),
+        ),
+        patch(
+            "app.services.plan_generation_service._generate_plan",
+            new=AsyncMock(side_effect=InvalidGeneratedPlanError("bad segment")),
+        ),
+        patch(
+            "app.services.plan_generation_service._salvage_best_plan",
+            new=AsyncMock(return_value=False),
+        ),
+        patch(
+            "app.services.plan_generation_service.jobs_db.mark_failed",
+            new=AsyncMock(),
+        ) as mark_failed,
+    ):
+        asyncio.run(plan_generation_service.run(JOB_ID))
+
+    mark_failed.assert_awaited_once_with(
+        session,
+        JOB_ID,
+        code="INVALID_GENERATED_PLAN",
+        message="Generated plan does not meet requirements and was not saved.",
+    )
+
+
 def test_runner_marks_a_timed_out_generation_without_salvage() -> None:
     """A timeout without a valid BestSoFar snapshot stays timed out."""
 
@@ -474,3 +513,74 @@ def test_runner_salvages_a_valid_best_after_timeout() -> None:
 
     salvage.assert_awaited_once()
     mark_timed_out.assert_not_awaited()
+
+
+def test_persist_plan_rejects_invalid_generated_plan_without_writing() -> None:
+    """Hard validation runs before exercise source lookup or plan flush."""
+    session = AsyncMock()
+    job = SimpleNamespace(id=JOB_ID, trainer_id=PLAN_ID)
+    group = SimpleNamespace(
+        id=PLAN_ID,
+        name="Jaworzyna gr. 1",
+        min_age=7,
+        max_age=14,
+        duration_minutes=60,
+        schema_items=[
+            SimpleNamespace(position=1, segment_id=1, percentage=Decimal("100")),
+        ],
+    )
+    parameters = PlanGenerationParameters(
+        training_group_id=PLAN_ID,
+        participant_count=12,
+        available_equipment_ids=[],
+    )
+    candidate = PlanExerciseCandidate(
+        trainer_exercise_id=PLAN_ID,
+        exercise_id=PLAN_ID,
+        exercise_version_id=None,
+        min_age=7,
+        max_age=14,
+        min_participants=1,
+        max_participants=20,
+        default_duration_minutes=10,
+        equipment_requirement_mode=EquipmentRequirementMode.ALL,
+        equipment_ids=(),
+        training_type_ids=(),
+        segment_ids=(2,),
+        physical_difficulty=3,
+        technical_difficulty=3,
+        upper_body_load=3,
+        lower_body_load=3,
+        core_load=3,
+        recent_usage_distance=4,
+    )
+    generated = PlanIndividual(
+        selections=(
+            PlanExerciseSelection(
+                schema_position=1,
+                candidate=candidate,
+                allocated_duration_minutes=10,
+            ),
+        )
+    )
+
+    with (
+        patch(
+            "app.services.plan_generation_service.exercises_db.list_sources_for_generated_plan",
+            new=AsyncMock(),
+        ) as list_sources,
+        pytest.raises(InvalidGeneratedPlanError) as error,
+    ):
+        asyncio.run(
+            plan_generation_service._persist_plan(
+                session,
+                job,
+                SimpleNamespace(group=group, equipment=[], training_types=[]),
+                parameters,
+                generated,
+            )
+        )
+
+    assert error.value.error_code == "INVALID_GENERATED_PLAN"
+    list_sources.assert_not_awaited()
+    session.add.assert_not_called()

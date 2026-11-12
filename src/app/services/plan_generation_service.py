@@ -46,6 +46,7 @@ from app.services.plan_generation_strategies import (
     GeneticPlanGenerationStrategy,
     PlanGenerationStrategyFactory,
 )
+from app.services.plan_generation_validation import validate_generated_plan
 
 logger = logging.getLogger(__name__)
 
@@ -124,10 +125,11 @@ async def run(job_id: UUID) -> None:
             await session.rollback()
         except PlanGenerationError as exc:
             logger.info(
-                "job %s: generation error code=%s message=%s",
+                "job %s: generation error code=%s message=%s reason=%s",
                 job_id,
                 exc.error_code,
                 exc,
+                exc.reason,
             )
             await session.rollback()
             failure = (exc.error_code, str(exc))
@@ -410,6 +412,16 @@ async def _persist_plan(
 ) -> TrainingPlan:
     """Write immutable plan snapshots from the strategy's selected candidates."""
     group = validated_input.group
+    validate_generated_plan(
+        segment_by_position={
+            item.position: item.segment_id for item in group.schema_items
+        },
+        group_min_age=group.min_age,
+        group_max_age=group.max_age,
+        participant_count=parameters.participant_count,
+        available_equipment_ids=parameters.available_equipment_ids,
+        plan=generated,
+    )
     selected_sources = await exercises_db.list_sources_for_generated_plan(
         session,
         job.trainer_id,

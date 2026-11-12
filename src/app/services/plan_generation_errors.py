@@ -7,6 +7,7 @@ class PlanGenerationError(Exception):
     """Base error raised before a generated plan can be persisted."""
 
     error_code: ClassVar[str] = "GENERATION_ERROR"
+    reason: str | None = None
 
 
 class NoCandidateForSchemaPositionError(PlanGenerationError):
@@ -47,3 +48,13 @@ class NoValidPlanError(PlanGenerationError):
 
     def __init__(self) -> None:
         super().__init__("No valid training plan could be generated")
+
+
+class InvalidGeneratedPlanError(PlanGenerationError):
+    """Raised when a generated plan fails the pre-persist hard validation gate."""
+
+    error_code = "INVALID_GENERATED_PLAN"
+
+    def __init__(self, reason: str | None = None) -> None:
+        self.reason = reason
+        super().__init__("Generated plan does not meet requirements and was not saved.")
