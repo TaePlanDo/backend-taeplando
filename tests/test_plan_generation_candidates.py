@@ -36,6 +36,7 @@ def _parameters(
 
 def _group() -> SimpleNamespace:
     return SimpleNamespace(
+        id=GROUP_ID,
         min_age=7,
         max_age=14,
         schema_items=[
@@ -112,17 +113,23 @@ def test_prepare_candidates_applies_equipment_and_segment_rules() -> None:
         segment_ids=[3],
     )
     session = AsyncMock()
-    with patch(
-        "app.services.plan_generation_candidates_service.exercises_db.list_candidate_sources",
-        new=AsyncMock(
-            return_value=[
-                all_requirement,
-                any_requirement,
-                missing_required_equipment,
-                unmatched_segment,
-            ]
+    with (
+        patch(
+            "app.services.plan_generation_candidates_service.exercises_db.list_candidate_sources",
+            new=AsyncMock(
+                return_value=[
+                    all_requirement,
+                    any_requirement,
+                    missing_required_equipment,
+                    unmatched_segment,
+                ]
+            ),
+        ) as list_candidate_sources,
+        patch(
+            "app.services.plan_generation_candidates_service.training_plans_db.list_recent_group_exercise_ids",
+            new=AsyncMock(return_value=[]),
         ),
-    ) as list_candidate_sources:
+    ):
         candidates = asyncio.run(
             plan_generation_candidates_service.prepare_candidates(
                 session, TRAINER_ID, _group(), _parameters()
@@ -147,6 +154,7 @@ def test_prepare_candidates_applies_equipment_and_segment_rules() -> None:
         upper_body_load=3,
         lower_body_load=3,
         core_load=3,
+        recent_usage_distance=4,
     )
     any_candidate = PlanExerciseCandidate(
         trainer_exercise_id=any_requirement.id,
@@ -166,6 +174,7 @@ def test_prepare_candidates_applies_equipment_and_segment_rules() -> None:
         upper_body_load=3,
         lower_body_load=3,
         core_load=3,
+        recent_usage_distance=4,
     )
     assert candidates == (all_candidate, any_candidate)
     list_candidate_sources.assert_awaited_once_with(
@@ -201,9 +210,15 @@ def test_prepare_candidates_keeps_every_training_type_for_fitness() -> None:
         training_type_ids=[],
         segment_ids=[1],
     )
-    with patch(
-        "app.services.plan_generation_candidates_service.exercises_db.list_candidate_sources",
-        new=AsyncMock(return_value=[matching_type, another_type, untyped]),
+    with (
+        patch(
+            "app.services.plan_generation_candidates_service.exercises_db.list_candidate_sources",
+            new=AsyncMock(return_value=[matching_type, another_type, untyped]),
+        ),
+        patch(
+            "app.services.plan_generation_candidates_service.training_plans_db.list_recent_group_exercise_ids",
+            new=AsyncMock(return_value=[]),
+        ),
     ):
         candidates = asyncio.run(
             plan_generation_candidates_service.prepare_candidates(
@@ -216,6 +231,58 @@ def test_prepare_candidates_keeps_every_training_type_for_fitness() -> None:
         another_type.id,
         untyped.id,
     ]
+
+
+def test_prepare_candidates_sets_recent_usage_distances_from_last_plans() -> None:
+    """Candidates pick up 1..3 from the group's newest plans, else 4."""
+    newest = UUID("6ac590e1-2a46-4cb7-8944-803e364cc46b")
+    older = UUID("7ac590e1-2a46-4cb7-8944-803e364cc46b")
+    never = UUID("8ac590e1-2a46-4cb7-8944-803e364cc46b")
+    sources = [
+        _source(
+            newest,
+            equipment_ids=[],
+            equipment_mode=EquipmentRequirementMode.ALL,
+            training_type_ids=[],
+            segment_ids=[1],
+        ),
+        _source(
+            older,
+            equipment_ids=[],
+            equipment_mode=EquipmentRequirementMode.ALL,
+            training_type_ids=[],
+            segment_ids=[1],
+        ),
+        _source(
+            never,
+            equipment_ids=[],
+            equipment_mode=EquipmentRequirementMode.ALL,
+            training_type_ids=[],
+            segment_ids=[1],
+        ),
+    ]
+
+    with (
+        patch(
+            "app.services.plan_generation_candidates_service.exercises_db.list_candidate_sources",
+            new=AsyncMock(return_value=sources),
+        ),
+        patch(
+            "app.services.plan_generation_candidates_service.training_plans_db.list_recent_group_exercise_ids",
+            new=AsyncMock(return_value=[(newest,), (newest, older)]),
+        ),
+    ):
+        candidates = asyncio.run(
+            plan_generation_candidates_service.prepare_candidates(
+                AsyncMock(), TRAINER_ID, _group(), _parameters()
+            )
+        )
+
+    by_id = {
+        item.trainer_exercise_id: item.recent_usage_distance for item in candidates
+    }
+    # newest also appears in plan 2; first-seen keeps distance 1.
+    assert by_id == {newest: 1, older: 2, never: 4}
 
 
 def test_list_candidate_sources_accepts_exercises_with_an_age_range_overlap() -> None:

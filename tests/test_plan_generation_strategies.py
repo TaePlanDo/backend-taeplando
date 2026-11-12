@@ -1,16 +1,22 @@
 """Coverage for the interchangeable one-segment generation strategy contract."""
 
 from datetime import UTC, datetime
+from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 from app.models.enums import EquipmentRequirementMode
+from app.services.plan_generation_best import BestSoFar
 from app.services.plan_generation_domain import (
     GenerationContext,
     GenerationSchemaItem,
     PlanExerciseCandidate,
+    PlanIndividual,
 )
 from app.services.plan_generation_population_service import build_initial_population
-from app.services.plan_generation_strategies import RandomPlanGenerationStrategy
+from app.services.plan_generation_strategies import (
+    GeneticPlanGenerationStrategy,
+    RandomPlanGenerationStrategy,
+)
 
 
 def _candidate(identifier: str) -> PlanExerciseCandidate:
@@ -32,11 +38,29 @@ def _candidate(identifier: str) -> PlanExerciseCandidate:
         upper_body_load=3,
         lower_body_load=3,
         core_load=3,
+        recent_usage_distance=4,
     )
 
 
-def test_random_strategy_selects_a_duration_complete_segment() -> None:
-    """The temporary strategy has a stable result for one job-segment seed."""
+def test_genetic_strategy_delegates_to_evolve_with_injected_best() -> None:
+    """Genetic strategy injects BestSoFar and forwards it to evolve."""
+    context = MagicMock()
+    population = MagicMock()
+    best = BestSoFar()
+    generated = PlanIndividual(selections=())
+
+    with patch(
+        "app.services.plan_generation_strategies.evolve",
+        return_value=generated,
+    ) as evolve:
+        result = GeneticPlanGenerationStrategy(best).generate(context, population)
+
+    assert result is generated
+    evolve.assert_called_once_with(context, population, best=best)
+
+
+def test_random_strategy_selects_a_stable_segment() -> None:
+    """The random strategy has a stable result for one job-segment seed."""
     context = GenerationContext(
         participant_count=12,
         available_equipment_ids=(),
@@ -56,11 +80,14 @@ def test_random_strategy_selects_a_duration_complete_segment() -> None:
         random_seed=123,
     )
 
-    strategy = RandomPlanGenerationStrategy()
+    strategy = RandomPlanGenerationStrategy(BestSoFar())
     population = build_initial_population(context, population_size=3)
     generated = strategy.generate(context, population)
 
     assert generated == strategy.generate(context, population)
     assert {item.schema_position for item in generated.selections} == {2}
-    assert sum(item.allocated_duration_minutes for item in generated.selections) == 36
+    assert all(
+        item.allocated_duration_minutes == item.candidate.default_duration_minutes
+        for item in generated.selections
+    )
     assert all(2 in item.candidate.segment_ids for item in generated.selections)

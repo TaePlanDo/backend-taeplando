@@ -29,6 +29,7 @@ class PlanExerciseCandidate:
     upper_body_load: int
     lower_body_load: int
     core_load: int
+    recent_usage_distance: int
 
 
 @dataclass(frozen=True)

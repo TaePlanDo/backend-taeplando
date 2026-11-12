@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.sql_filters import ilike_contains
-from app.models.training import TrainingPlan
+from app.models.training import TrainingPlan, TrainingPlanExercise
 from app.schemas.training_plans import TrainingPlanListFilters
 
 
@@ -126,3 +126,42 @@ async def get_for_trainer(
         .options(selectinload(TrainingPlan.exercises))
     )
     return result.scalar_one_or_none()
+
+
+async def list_recent_group_exercise_ids(
+    session: AsyncSession,
+    trainer_id: UUID,
+    training_group_id: UUID,
+    *,
+    limit: int,
+) -> list[tuple[UUID, ...]]:
+    """Return newest-first trainer_exercise_id tuples for one group's recent plans."""
+    plan_ids = list(
+        await session.scalars(
+            select(TrainingPlan.id)
+            .where(
+                TrainingPlan.trainer_id == trainer_id,
+                TrainingPlan.training_group_id == training_group_id,
+            )
+            .order_by(TrainingPlan.generated_at.desc(), TrainingPlan.id.desc())
+            .limit(limit)
+        )
+    )
+    if not plan_ids:
+        return []
+
+    rows = await session.execute(
+        select(
+            TrainingPlanExercise.training_plan_id,
+            TrainingPlanExercise.trainer_exercise_id,
+        )
+        .where(TrainingPlanExercise.training_plan_id.in_(plan_ids))
+        .order_by(
+            TrainingPlanExercise.training_plan_id,
+            TrainingPlanExercise.position,
+        )
+    )
+    by_plan: dict[UUID, list[UUID]] = {plan_id: [] for plan_id in plan_ids}
+    for plan_id, exercise_id in rows.all():
+        by_plan[plan_id].append(exercise_id)
+    return [tuple(by_plan[plan_id]) for plan_id in plan_ids]

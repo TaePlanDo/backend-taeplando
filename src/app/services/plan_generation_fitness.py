@@ -3,6 +3,7 @@
 from collections.abc import Callable
 from uuid import UUID
 
+from app.services.plan_generation_constants import RECENT_USAGE_MAX_DISTANCE
 from app.services.plan_generation_domain import (
     GenerationContext,
     PlanExerciseCandidate,
@@ -21,6 +22,7 @@ from app.services.plan_generation_fitness_constants import (
     EQUIPMENT_USAGE_WEIGHT,
     PHYSICAL_DIFFICULTY_DEMAND,
     PHYSICAL_DIFFICULTY_WEIGHT,
+    RECENT_USAGE_WEIGHT,
     TECHNICAL_DIFFICULTY_DEMAND,
     TECHNICAL_DIFFICULTY_WEIGHT,
     TRAINING_TYPE_WEIGHT,
@@ -134,6 +136,18 @@ def evaluate_body_balance(
     return (window_balance + segment_demand) / 2
 
 
+def evaluate_recent_usage(
+    context: GenerationContext, individual: PlanIndividual
+) -> float:
+    """Reward exercises that were not used in the group's most recent plans."""
+    return time_weighted_score(
+        individual,
+        lambda selection: (
+            selection.candidate.recent_usage_distance / RECENT_USAGE_MAX_DISTANCE
+        ),
+    )
+
+
 FITNESS_CRITERIA: tuple[tuple[FitnessCriterion, float], ...] = (
     (evaluate_duration_time, DURATION_WEIGHT),
     (evaluate_physical_difficulty, PHYSICAL_DIFFICULTY_WEIGHT),
@@ -142,6 +156,7 @@ FITNESS_CRITERIA: tuple[tuple[FitnessCriterion, float], ...] = (
     (evaluate_age_coverage, AGE_COVERAGE_WEIGHT),
     (evaluate_training_type, TRAINING_TYPE_WEIGHT),
     (evaluate_equipment_usage, EQUIPMENT_USAGE_WEIGHT),
+    (evaluate_recent_usage, RECENT_USAGE_WEIGHT),
 )
 
 

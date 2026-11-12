@@ -21,6 +21,7 @@ from app.services.plan_generation_fitness import (
     evaluate_duration_time,
     evaluate_equipment_usage,
     evaluate_physical_difficulty,
+    evaluate_recent_usage,
     evaluate_technical_difficulty,
     evaluate_training_type,
 )
@@ -55,6 +56,7 @@ def _candidate(
     equipment: tuple[UUID, ...] = (),
     age: tuple[int, int] = (7, 14),
     loads: tuple[int, int, int] = (3, 3, 3),
+    recent_usage_distance: int = 4,
 ) -> PlanExerciseCandidate:
     return PlanExerciseCandidate(
         trainer_exercise_id=UUID("0ac590e1-2a46-4cb7-8944-803e364cc46b"),
@@ -74,6 +76,7 @@ def _candidate(
         upper_body_load=loads[0],
         lower_body_load=loads[1],
         core_load=loads[2],
+        recent_usage_distance=recent_usage_distance,
     )
 
 
@@ -366,3 +369,22 @@ def test_evaluate_stays_in_unit_range() -> None:
         (_candidate(physical=3, age=(10, 18)), 18),
     )
     assert 0.0 <= evaluate(_context(None), individual) <= 1.0
+
+
+@pytest.mark.parametrize(
+    ("distance", "expected"),
+    [(1, 0.25), (2, 0.5), (3, 0.75), (4, 1.0)],
+)
+def test_recent_usage_scores_distance_over_max(distance: int, expected: float) -> None:
+    individual = _individual((_candidate(recent_usage_distance=distance), 10))
+    assert evaluate_recent_usage(_context(None), individual) == pytest.approx(expected)
+
+
+def test_recent_usage_is_time_weighted() -> None:
+    individual = _individual(
+        (_candidate(recent_usage_distance=1), 10),
+        (_candidate(recent_usage_distance=4), 30),
+    )
+    assert evaluate_recent_usage(_context(None), individual) == pytest.approx(
+        (10 * 0.25 + 30 * 1.0) / 40
+    )

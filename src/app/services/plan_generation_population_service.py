@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from decimal import Decimal
 from random import Random
 
+from app.services.plan_generation_constants import INITIAL_POPULATION_SIZE
 from app.services.plan_generation_domain import (
     GenerationContext,
     GenerationSchemaItem,
@@ -18,8 +18,6 @@ from app.services.plan_generation_errors import (
     InvalidSchemaPercentageTotalError,
     NoDurationForSchemaPositionError,
 )
-
-INITIAL_POPULATION_SIZE = 20
 
 
 def build_initial_population(
@@ -46,7 +44,7 @@ def _individual(
     candidates: tuple[PlanExerciseCandidate, ...],
     random: Random,
 ) -> PlanIndividual:
-    """Greedily fill this context's one segment up to its allocated duration."""
+    """Greedily pack default-duration exercises under the segment minute budget."""
     return PlanIndividual(
         selections=_selections_for_position(
             schema_position=context.segment.position,
@@ -63,7 +61,7 @@ def _selections_for_position(
     candidates: tuple[PlanExerciseCandidate, ...],
     random: Random,
 ) -> tuple[PlanExerciseSelection, ...]:
-    """Use the longest fitting exercises, then extend the final selection."""
+    """Pack longest fitting defaults; never stretch allocations to fill leftovers."""
     remaining_duration = target_duration
     available_candidates = list(candidates)
     selections: list[PlanExerciseSelection] = []
@@ -99,17 +97,10 @@ def _selections_for_position(
             PlanExerciseSelection(
                 schema_position=schema_position,
                 candidate=candidate,
-                allocated_duration_minutes=target_duration,
+                allocated_duration_minutes=candidate.default_duration_minutes,
             ),
         )
 
-    if remaining_duration:
-        selections[-1] = replace(
-            selections[-1],
-            allocated_duration_minutes=(
-                selections[-1].allocated_duration_minutes + remaining_duration
-            ),
-        )
     return tuple(selections)
 
 
