@@ -11,6 +11,7 @@ from app.services.plan_generation_domain import (
     GenerationContext,
     GenerationSchemaItem,
     PlanExerciseCandidate,
+    PlanExerciseSelection,
 )
 from app.services.plan_generation_errors import (
     InvalidSchemaPercentageTotalError,
@@ -98,6 +99,23 @@ def test_population_greedily_packs_default_durations_under_budget() -> None:
     assert (
         sum(selection.allocated_duration_minutes for selection in individual.selections)
         == 18
+    )
+
+
+def test_population_falls_back_to_closest_when_nothing_fits_budget() -> None:
+    closer = _candidate("5ac590e1-2a46-4cb7-8944-803e364cc46b", duration=40)
+    farther = _candidate("6ac590e1-2a46-4cb7-8944-803e364cc46b", duration=50)
+
+    individual = build_initial_population(
+        _context(closer, farther), population_size=1
+    ).individuals[0]
+
+    assert individual.selections == (
+        PlanExerciseSelection(
+            schema_position=1,
+            candidate=closer,
+            allocated_duration_minutes=40,
+        ),
     )
 
 
