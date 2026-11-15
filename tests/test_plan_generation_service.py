@@ -21,6 +21,10 @@ from app.services.plan_generation_domain import (
 from app.services.plan_generation_errors import (
     InvalidGeneratedPlanError,
     NoCandidateForSchemaPositionError,
+    NoValidPlanError,
+)
+from app.services.plan_generation_population_service import (
+    build_initial_population as real_build_initial_population,
 )
 
 JOB_ID = UUID("0ac590e1-2a46-4cb7-8944-803e364cc46b")
@@ -243,6 +247,92 @@ def test_generate_plan_runs_one_strategy_call_per_schema_segment() -> None:
     persist_plan.assert_awaited_once()
 
 
+def test_generate_plan_runs_ga_from_candidates_to_persist(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "app.services.plan_generation_evolution.MAX_GENERATIONS",
+        2,
+    )
+    candidate = PlanExerciseCandidate(
+        trainer_exercise_id=PLAN_ID,
+        exercise_id=PLAN_ID,
+        exercise_version_id=None,
+        min_age=7,
+        max_age=14,
+        min_participants=1,
+        max_participants=20,
+        default_duration_minutes=10,
+        equipment_requirement_mode=EquipmentRequirementMode.ALL,
+        equipment_ids=(),
+        training_type_ids=(),
+        segment_ids=(1,),
+        physical_difficulty=3,
+        technical_difficulty=3,
+        upper_body_load=3,
+        lower_body_load=3,
+        core_load=3,
+        recent_usage_distance=4,
+    )
+    group = SimpleNamespace(
+        id=PLAN_ID,
+        name="Jaworzyna gr. 1",
+        min_age=7,
+        max_age=14,
+        duration_minutes=30,
+        schema_items=[
+            SimpleNamespace(position=1, segment_id=1, percentage=Decimal("100")),
+        ],
+    )
+    job = SimpleNamespace(
+        id=JOB_ID,
+        trainer_id=PLAN_ID,
+        training_group_id=PLAN_ID,
+        participant_count=12,
+        available_equipment_ids=[],
+        training_type_id=None,
+        deadline_at=datetime(2099, 1, 1, tzinfo=UTC),
+    )
+    persisted_plan = SimpleNamespace(id=PLAN_ID)
+
+    with (
+        patch(
+            "app.services.plan_generation_service.plan_generation_parameters_service.validate_parameters",
+            new=AsyncMock(return_value=SimpleNamespace(group=group)),
+        ),
+        patch(
+            "app.services.plan_generation_service.plan_generation_candidates_service.prepare_candidates",
+            new=AsyncMock(return_value=(candidate,)),
+        ),
+        patch(
+            "app.services.plan_generation_service.build_initial_population",
+            side_effect=lambda context: real_build_initial_population(
+                context, population_size=4
+            ),
+        ),
+        patch(
+            "app.services.plan_generation_service._persist_plan",
+            new=AsyncMock(return_value=persisted_plan),
+        ) as persist_plan,
+    ):
+        result = asyncio.run(
+            plan_generation_service._generate_plan(
+                AsyncMock(),
+                job,
+                best=plan_generation_service.BestSoFar(),
+                strategy_factory=plan_generation_service.GeneticPlanGenerationStrategy,
+            )
+        )
+
+    assert result is persisted_plan
+    generated = persist_plan.await_args.args[4]
+    assert generated.selections
+    assert {item.schema_position for item in generated.selections} == {1}
+    assert {item.candidate.trainer_exercise_id for item in generated.selections} == {
+        candidate.trainer_exercise_id
+    }
+
+
 def test_generate_segment_creates_an_independent_strategy_instance() -> None:
     """Segment execution does not share mutable algorithm state with another run."""
     context = MagicMock()
@@ -412,6 +502,36 @@ def test_runner_marks_missing_candidates_as_a_failed_job() -> None:
         JOB_ID,
         code="NO_CANDIDATE",
         message="No exercise can fill schema position 3",
+    )
+
+
+def test_runner_marks_no_valid_plan_as_a_failed_job() -> None:
+    session = AsyncMock()
+    with (
+        patch(
+            "app.services.plan_generation_service.get_session_factory",
+            return_value=_factory(session),
+        ),
+        patch(
+            "app.services.plan_generation_service.jobs_db.claim",
+            new=AsyncMock(return_value=_job()),
+        ),
+        patch(
+            "app.services.plan_generation_service._generate_plan",
+            new=AsyncMock(side_effect=NoValidPlanError()),
+        ),
+        patch(
+            "app.services.plan_generation_service.jobs_db.mark_failed",
+            new=AsyncMock(),
+        ) as mark_failed,
+    ):
+        asyncio.run(plan_generation_service.run(JOB_ID))
+
+    mark_failed.assert_awaited_once_with(
+        session,
+        JOB_ID,
+        code="NO_VALID_PLAN",
+        message="No valid training plan could be generated",
     )
 
 
