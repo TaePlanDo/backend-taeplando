@@ -89,7 +89,7 @@ def test_validate_generated_plan_accepts_a_valid_plan() -> None:
     second = _candidate("1ac590e1-2a46-4cb7-8944-803e364cc46b", segment_ids=(2,))
 
     _validate(
-        _plan((1, candidate, 20), (2, second, 15)),
+        _plan((1, candidate, 10), (2, second, 10)),
         segment_by_position={1: 1, 2: 2},
     )
 
@@ -191,8 +191,38 @@ def test_validate_generated_plan_allows_short_and_long_totals() -> None:
     second = _candidate("1ac590e1-2a46-4cb7-8944-803e364cc46b", segment_ids=(2,))
     positions = {1: 1, 2: 2}
 
-    _validate(_plan((1, candidate, 1), (2, second, 1)), segment_by_position=positions)
+    _validate(_plan((1, candidate, 8), (2, second, 8)), segment_by_position=positions)
     _validate(
-        _plan((1, candidate, 90), (2, second, 90)),
+        _plan((1, candidate, 12), (2, second, 12)),
         segment_by_position=positions,
     )
+
+
+@pytest.mark.parametrize(
+    "default,allocated,valid",
+    [
+        (1, 1, True),
+        (1, 2, False),
+        (4, 3, True),
+        (4, 4, True),
+        (5, 4, True),
+        (5, 6, True),
+        (5, 7, False),
+        (10, 13, False),
+    ],
+)
+def test_duration_bounds_are_enforced(
+    default: int, allocated: int, valid: bool
+) -> None:
+    from dataclasses import replace
+
+    candidate = replace(
+        _candidate("0ac590e1-2a46-4cb7-8944-803e364cc46b"),
+        default_duration_minutes=default,
+    )
+    plan = _plan((1, candidate, allocated))
+    if valid:
+        _validate(plan)
+    else:
+        with pytest.raises(InvalidGeneratedPlanError):
+            _validate(plan)

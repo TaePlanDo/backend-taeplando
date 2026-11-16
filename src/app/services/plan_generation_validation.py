@@ -10,6 +10,7 @@ from uuid import UUID
 
 from app.services.plan_generation_constraints import (
     has_unique_exercises,
+    has_valid_duration,
     satisfies_equipment_requirement,
 )
 from app.services.plan_generation_domain import PlanExerciseSelection, PlanIndividual
@@ -73,8 +74,8 @@ def _validate_selection(
     available_equipment_ids: set[UUID],
 ) -> None:
     position = selection.schema_position
-    if selection.allocated_duration_minutes < 1:
-        _reject(f"non-positive duration at schema position {position}")
+    if not has_valid_duration(selection):
+        _reject(f"duration outside allowed range at schema position {position}")
     candidate = selection.candidate
     if segment_id not in candidate.segment_ids:
         _reject(f"exercise does not belong to segment for schema position {position}")

@@ -7,6 +7,19 @@ from app.models.enums import EquipmentRequirementMode
 from app.services.plan_generation_domain import PlanExerciseSelection
 
 
+def duration_bounds(default_minutes: int) -> tuple[int, int]:
+    """Allow a rounded 20% deviation, at least one minute except at one minute."""
+    if default_minutes == 1:
+        return (1, 1)
+    deviation = max(1, (default_minutes + 2) // 5)
+    return (max(1, default_minutes - deviation), default_minutes + deviation)
+
+
+def has_valid_duration(selection: PlanExerciseSelection) -> bool:
+    minimum, maximum = duration_bounds(selection.candidate.default_duration_minutes)
+    return minimum <= selection.allocated_duration_minutes <= maximum
+
+
 def has_unique_exercises(selections: Sequence[PlanExerciseSelection]) -> bool:
     """True when each trainer_exercise_id appears at most once."""
     exercise_ids = [selection.candidate.trainer_exercise_id for selection in selections]
