@@ -81,8 +81,7 @@ def test_population_contains_only_one_segment_and_duration_genes() -> None:
         ] == [8]
 
 
-def test_population_greedily_packs_default_durations_under_budget() -> None:
-    """Longer fitting defaults are selected first; leftover minutes are not filled."""
+def test_population_packs_default_durations_under_budget() -> None:
     first = _candidate("5ac590e1-2a46-4cb7-8944-803e364cc46b", duration=8)
     second = _candidate("6ac590e1-2a46-4cb7-8944-803e364cc46b", duration=10)
 
@@ -90,15 +89,40 @@ def test_population_greedily_packs_default_durations_under_budget() -> None:
         _context(first, second), population_size=1
     ).individuals[0]
 
-    assert [
-        selection.allocated_duration_minutes for selection in individual.selections
-    ] == [
-        10,
+    assert sorted(
+        [selection.allocated_duration_minutes for selection in individual.selections]
+    ) == [
         8,
+        10,
     ]
     assert (
         sum(selection.allocated_duration_minutes for selection in individual.selections)
         == 18
+    )
+
+
+def test_population_explores_short_and_long_combinations() -> None:
+    from dataclasses import replace
+
+    candidates = tuple(
+        _candidate(f"00000000-0000-0000-0000-{i:012d}", duration=d)
+        for i, d in enumerate((1, 1, 1, 2, 3, 8, 9), 1)
+    )
+    context = replace(_context(*candidates), segment_duration_minutes=10)
+    population = build_initial_population(context)
+    combinations = {
+        tuple(sorted(s.candidate.trainer_exercise_id for s in p.selections))
+        for p in population.individuals
+    }
+    assert len(combinations) > 1
+    assert any(len(p.selections) >= 4 for p in population.individuals)
+    assert any(
+        any(s.candidate.default_duration_minutes >= 8 for s in p.selections)
+        for p in population.individuals
+    )
+    assert all(
+        sum(s.allocated_duration_minutes for s in p.selections) <= 10
+        for p in population.individuals
     )
 
 

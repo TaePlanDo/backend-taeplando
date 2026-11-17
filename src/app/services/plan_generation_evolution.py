@@ -20,7 +20,11 @@ from app.services.plan_generation_constants import (
     MUTPB,
     TOURNAMENT_K,
 )
-from app.services.plan_generation_constraints import has_unique_exercises
+from app.services.plan_generation_constraints import (
+    duration_bounds,
+    has_unique_exercises,
+    has_valid_duration,
+)
 from app.services.plan_generation_domain import (
     GenerationContext,
     InitialPopulation,
@@ -58,7 +62,7 @@ def is_structurally_valid(
     for selection in individual.selections:
         if selection.schema_position != context.segment.position:
             return False
-        if selection.allocated_duration_minutes < 1:
+        if not has_valid_duration(selection):
             return False
         if selection.candidate.trainer_exercise_id not in candidate_ids:
             return False
@@ -343,10 +347,11 @@ def _mutate(
         index = random.randrange(len(individual))
         selection: PlanExerciseSelection = individual[index]
         delta = random.randint(1, MUTATION_DURATION_DELTA) * random.choice((-1, 1))
+        minimum, maximum = duration_bounds(selection.candidate.default_duration_minutes)
         individual[index] = replace(
             selection,
-            allocated_duration_minutes=max(
-                1, selection.allocated_duration_minutes + delta
+            allocated_duration_minutes=min(
+                maximum, max(minimum, selection.allocated_duration_minutes + delta)
             ),
         )
     elif mode == 1 and candidates:

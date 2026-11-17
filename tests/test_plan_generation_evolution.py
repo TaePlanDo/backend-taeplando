@@ -75,13 +75,15 @@ def _context(
 
 def test_evaluate_uses_plan_fitness_and_prefers_on_budget_duration() -> None:
     candidate = _candidate("0ac590e1-2a46-4cb7-8944-803e364cc46b")
-    context = _context(candidate)
+    from dataclasses import replace
+
+    context = replace(_context(candidate), segment_duration_minutes=10)
     on_budget = to_deap(
-        PlanIndividual(selections=(PlanExerciseSelection(1, candidate, 30),)),
+        PlanIndividual(selections=(PlanExerciseSelection(1, candidate, 10),)),
         context_seed=1,
     )
     short = to_deap(
-        PlanIndividual(selections=(PlanExerciseSelection(1, candidate, 10),)),
+        PlanIndividual(selections=(PlanExerciseSelection(1, candidate, 8),)),
         context_seed=1,
     )
 
@@ -327,7 +329,7 @@ def test_mutation_can_change_allocated_duration() -> None:
         random=DurationMutationRandom(),
     )
 
-    assert individual[0].allocated_duration_minutes == 13
+    assert individual[0].allocated_duration_minutes == 12
 
 
 def test_evolve_publishes_best_so_far() -> None:

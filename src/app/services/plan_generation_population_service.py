@@ -61,7 +61,7 @@ def _selections_for_position(
     candidates: tuple[PlanExerciseCandidate, ...],
     random: Random,
 ) -> tuple[PlanExerciseSelection, ...]:
-    """Pack longest fitting defaults; never stretch allocations to fill leftovers."""
+    """Pack randomly selected fitting defaults, including short and long ones."""
     remaining_duration = target_duration
     available_candidates = list(candidates)
     selections: list[PlanExerciseSelection] = []
@@ -71,16 +71,7 @@ def _selections_for_position(
         for candidate in available_candidates
         if candidate.default_duration_minutes <= remaining_duration
     ]:
-        longest_duration = max(
-            candidate.default_duration_minutes for candidate in fitting_candidates
-        )
-        candidate = random.choice(
-            [
-                candidate
-                for candidate in fitting_candidates
-                if candidate.default_duration_minutes == longest_duration
-            ]
-        )
+        candidate = random.choice(fitting_candidates)
         available_candidates.remove(candidate)
         selections.append(
             PlanExerciseSelection(
