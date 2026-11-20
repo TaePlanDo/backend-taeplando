@@ -117,14 +117,21 @@ async def _count_matching(
 
 
 async def get_for_trainer(
-    session: AsyncSession, trainer_id: UUID, plan_id: UUID
+    session: AsyncSession,
+    trainer_id: UUID,
+    plan_id: UUID,
+    *,
+    for_update: bool = False,
 ) -> TrainingPlan | None:
-    """Find an owned plan with exercise snapshots for detail and delete."""
-    result = await session.execute(
+    """Find an owned plan with exercise snapshots for detail and mutation."""
+    statement = (
         select(TrainingPlan)
         .where(TrainingPlan.id == plan_id, TrainingPlan.trainer_id == trainer_id)
         .options(selectinload(TrainingPlan.exercises))
     )
+    if for_update:
+        statement = statement.with_for_update()
+    result = await session.execute(statement)
     return result.scalar_one_or_none()
 
 
