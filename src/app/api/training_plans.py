@@ -13,10 +13,11 @@ from app.models.users import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.training_plans import (
     PlanDetail,
+    PlanExerciseAlternative,
     PlanListItem,
     TrainingPlanListFilters,
 )
-from app.services import training_plan_service
+from app.services import plan_exercise_alternatives_service, training_plan_service
 
 router = APIRouter(prefix="/training-plans", tags=["training-plans"])
 
@@ -26,9 +27,9 @@ PlanFilters = Annotated[
 ]
 
 
-def _not_found() -> HTTPException:
-    """Use one response for missing and foreign-owned plans."""
-    return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plan not found")
+def _not_found(detail: str = "Plan not found") -> HTTPException:
+    """Use one status for missing and foreign-owned resources."""
+    return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=detail)
 
 
 @router.get("", response_model=PaginatedResponse[PlanListItem])
@@ -62,6 +63,32 @@ async def get_plan(
         )
     except training_plan_service.PlanNotFoundError as exc:
         raise _not_found() from exc
+
+
+@router.get(
+    "/{plan_id}/exercises/{plan_exercise_id}/alternatives",
+    response_model=list[PlanExerciseAlternative],
+)
+async def list_plan_exercise_alternatives(
+    plan_id: UUID,
+    plan_exercise_id: UUID,
+    current_trainer: CurrentTrainer,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+) -> list[PlanExerciseAlternative]:
+    """Rank hard-filtered alternatives for one exercise slot in a saved plan."""
+    try:
+        return await plan_exercise_alternatives_service.list_alternatives(
+            session,
+            current_trainer.id,
+            plan_id,
+            plan_exercise_id,
+            limit=limit,
+        )
+    except training_plan_service.PlanNotFoundError as exc:
+        raise _not_found() from exc
+    except plan_exercise_alternatives_service.PlanExerciseNotFoundError as exc:
+        raise _not_found("Plan exercise not found") from exc
 
 
 @router.delete("/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
