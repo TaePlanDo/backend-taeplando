@@ -635,8 +635,13 @@ def test_runner_salvages_a_valid_best_after_timeout() -> None:
     mark_timed_out.assert_not_awaited()
 
 
-@pytest.mark.parametrize("group_name", ["Jaworzyna gr. 1", "Ż" * 255])
-def test_persist_plan_names_include_the_saved_generation_timestamp(group_name) -> None:
+@pytest.mark.parametrize(
+    ("group_name", "expected_group_name"),
+    [("Jaworzyna gr. 1", "Jaworzyna gr. 1"), ("Ż" * 255, "Ż" * 215)],
+)
+def test_persist_plan_names_include_the_saved_generation_timestamp(
+    group_name: str, expected_group_name: str
+) -> None:
     """Names show whole seconds while preserving the precise saved timestamp."""
     session = AsyncMock()
     session.add = MagicMock()
@@ -653,10 +658,7 @@ def test_persist_plan_names_include_the_saved_generation_timestamp(group_name) -
         participant_count=12,
         available_equipment_ids=[],
     )
-    timestamps = [
-        datetime(2026, 11, 20, 18, 30, second, 123456, tzinfo=UTC)
-        for second in (45, 46)
-    ]
+    generated_at = datetime(2026, 11, 20, 18, 30, 45, 123456, tzinfo=UTC)
 
     with (
         patch("app.services.plan_generation_service.validate_generated_plan"),
@@ -664,29 +666,24 @@ def test_persist_plan_names_include_the_saved_generation_timestamp(group_name) -
             "app.services.plan_generation_service.exercises_db.list_sources_for_generated_plan",
             new=AsyncMock(return_value={}),
         ),
-        patch("app.services.plan_generation_service.datetime") as clock,
+        patch(
+            "app.services.plan_generation_service.utc_now", return_value=generated_at
+        ),
     ):
-        clock.now.side_effect = timestamps
-        plans = [
-            asyncio.run(
-                plan_generation_service._persist_plan(
-                    session,
-                    SimpleNamespace(trainer_id=PLAN_ID),
-                    SimpleNamespace(group=group, equipment=[], training_types=[]),
-                    parameters,
-                    PlanIndividual(selections=()),
-                )
+        plan = asyncio.run(
+            plan_generation_service._persist_plan(
+                session,
+                SimpleNamespace(trainer_id=PLAN_ID),
+                SimpleNamespace(group=group, equipment=[], training_types=[]),
+                parameters,
+                PlanIndividual(selections=()),
             )
-            for _ in timestamps
-        ]
+        )
 
-    assert plans[0].name != plans[1].name
-    for plan, timestamp in zip(plans, timestamps, strict=True):
-        assert plan.generated_at == timestamp
-        assert plan.name.startswith(f"Plan treningowy – {group_name[:20]}")
-        assert plan.name.endswith(f" – {timestamp:%d.%m.%Y %H:%M:%S}")
-        assert len(plan.name) <= 255
-        assert plan.group_name_snapshot == group_name
+    assert plan.generated_at == generated_at
+    assert plan.name == f"Plan treningowy – {expected_group_name} – 20.11.2026 18:30:45"
+    assert len(plan.name) <= 255
+    assert plan.group_name_snapshot == group_name
 
 
 def test_persist_plan_rejects_invalid_generated_plan_without_writing() -> None:
