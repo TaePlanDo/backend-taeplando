@@ -466,7 +466,7 @@ async def _persist_plan(
 def _plan_name(group_name: str, generated_at: datetime) -> str:
     """Keep the generation timestamp visible within the plan name's DB limit."""
     prefix = "Plan treningowy – "
-    suffix = f" – {generated_at:%d.%m.%Y %H:%M:%S.%f} UTC"
+    suffix = f" – {generated_at:%d.%m.%Y %H:%M:%S}"
     group_name_limit = 255 - len(prefix) - len(suffix)
     return f"{prefix}{group_name[:group_name_limit]}{suffix}"
 
