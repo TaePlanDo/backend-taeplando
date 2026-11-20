@@ -637,7 +637,7 @@ def test_runner_salvages_a_valid_best_after_timeout() -> None:
 
 @pytest.mark.parametrize("group_name", ["Jaworzyna gr. 1", "Ż" * 255])
 def test_persist_plan_names_include_the_saved_generation_timestamp(group_name) -> None:
-    """Same-second generations and long group names retain their timestamps."""
+    """Names show whole seconds while preserving the precise saved timestamp."""
     session = AsyncMock()
     session.add = MagicMock()
     group = SimpleNamespace(
@@ -654,8 +654,8 @@ def test_persist_plan_names_include_the_saved_generation_timestamp(group_name) -
         available_equipment_ids=[],
     )
     timestamps = [
-        datetime(2026, 11, 20, 18, 30, 45, microsecond, tzinfo=UTC)
-        for microsecond in (123456, 123457)
+        datetime(2026, 11, 20, 18, 30, second, 123456, tzinfo=UTC)
+        for second in (45, 46)
     ]
 
     with (
@@ -684,7 +684,7 @@ def test_persist_plan_names_include_the_saved_generation_timestamp(group_name) -
     for plan, timestamp in zip(plans, timestamps, strict=True):
         assert plan.generated_at == timestamp
         assert plan.name.startswith(f"Plan treningowy – {group_name[:20]}")
-        assert plan.name.endswith(f" – {timestamp:%d.%m.%Y %H:%M:%S.%f} UTC")
+        assert plan.name.endswith(f" – {timestamp:%d.%m.%Y %H:%M:%S}")
         assert len(plan.name) <= 255
         assert plan.group_name_snapshot == group_name
 
