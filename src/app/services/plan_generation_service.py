@@ -434,11 +434,13 @@ async def _persist_plan(
     ):
         raise PlanGenerationError("A selected exercise is no longer available")
 
+    generated_at = datetime.now(UTC)
     plan = TrainingPlan(
         trainer_id=job.trainer_id,
         training_group_id=group.id,
         participant_count=parameters.participant_count,
-        name=f"Plan treningowy – {group.name}",
+        name=_plan_name(group.name, generated_at),
+        generated_at=generated_at,
         group_name_snapshot=group.name,
         group_min_age_snapshot=group.min_age,
         group_max_age_snapshot=group.max_age,
@@ -459,6 +461,14 @@ async def _persist_plan(
     session.add(plan)
     await session.flush()
     return plan
+
+
+def _plan_name(group_name: str, generated_at: datetime) -> str:
+    """Keep the generation timestamp visible within the plan name's DB limit."""
+    prefix = "Plan treningowy – "
+    suffix = f" – {generated_at:%d.%m.%Y %H:%M:%S.%f} UTC"
+    group_name_limit = 255 - len(prefix) - len(suffix)
+    return f"{prefix}{group_name[:group_name_limit]}{suffix}"
 
 
 def _plan_exercise(
