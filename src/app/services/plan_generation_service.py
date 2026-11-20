@@ -13,7 +13,6 @@ from app.core.config import get_settings
 from app.db import exercises as exercises_db
 from app.db import plan_generation_jobs as jobs_db
 from app.db.session import get_session_factory
-from app.models.catalogs import Equipment, TrainingType
 from app.models.exercises import TrainerExercise
 from app.models.plan_generation import PlanGenerationJob
 from app.models.training import TrainingGroup, TrainingPlan, TrainingPlanExercise
@@ -25,6 +24,10 @@ from app.schemas.plan_generation import (
 from app.services import (
     plan_generation_candidates_service,
     plan_generation_parameters_service,
+)
+from app.services.plan_exercise_snapshots import (
+    catalog_snapshot,
+    fill_plan_exercise_from_source,
 )
 from app.services.plan_generation_best import BestSoFar
 from app.services.plan_generation_domain import (
@@ -443,8 +446,8 @@ async def _persist_plan(
         group_min_age_snapshot=group.min_age,
         group_max_age_snapshot=group.max_age,
         training_duration_snapshot=group.duration_minutes,
-        available_equipment_snapshot=_catalog_snapshot(validated_input.equipment),
-        training_types_snapshot=_catalog_snapshot(validated_input.training_types),
+        available_equipment_snapshot=catalog_snapshot(validated_input.equipment),
+        training_types_snapshot=catalog_snapshot(validated_input.training_types),
         schema_snapshot=_schema_snapshot(group),
     )
     plan.exercises = [
@@ -467,46 +470,20 @@ def _plan_exercise(
     source: TrainerExercise,
 ) -> TrainingPlanExercise:
     """Create one immutable exercise occurrence from a selected configuration."""
-    details = source.source_version or source.exercise
-    return TrainingPlanExercise(
-        trainer_exercise_id=source.id,
-        exercise_id=source.exercise_id,
-        exercise_version_id=source.source_version_id,
+    exercise = TrainingPlanExercise(
         position=position,
         schema_position=selected.schema_position,
-        name_snapshot=details.name,
-        description_snapshot=details.description,
-        image_url_snapshot=details.image_url,
-        min_age_snapshot=source.min_age,
-        max_age_snapshot=source.max_age,
-        min_participants_snapshot=source.min_participants,
-        max_participants_snapshot=source.max_participants,
-        duration_minutes_snapshot=selected.allocated_duration_minutes,
-        physical_difficulty_snapshot=source.physical_difficulty,
-        technical_difficulty_snapshot=source.technical_difficulty,
-        upper_body_load_snapshot=source.upper_body_load,
-        lower_body_load_snapshot=source.lower_body_load,
-        core_load_snapshot=source.core_load,
-        equipment_snapshot=_catalog_snapshot(source.equipment),
-        training_types_snapshot=_catalog_snapshot(source.training_types),
-        segments_snapshot=[
-            {"id": segment.id, "code": segment.code, "name": segment.name}
-            for segment in sorted(source.segments, key=lambda segment: segment.id)
-        ],
     )
+    fill_plan_exercise_from_source(
+        exercise,
+        source,
+        duration_minutes=selected.allocated_duration_minutes,
+    )
+    return exercise
 
 
 def _accepted(job: PlanGenerationJob) -> PlanGenerationAccepted:
     return PlanGenerationAccepted(id=job.id, status=job.status)
-
-
-def _catalog_snapshot(
-    items: Sequence[Equipment | TrainingType],
-) -> list[dict[str, str]]:
-    return [
-        {"id": str(item.id), "name": item.name}
-        for item in sorted(items, key=lambda item: (item.name, item.id))
-    ]
 
 
 def _schema_snapshot(group: TrainingGroup) -> list[dict[str, object]]:

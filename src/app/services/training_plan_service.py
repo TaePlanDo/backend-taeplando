@@ -7,7 +7,10 @@ from uuid import UUID
 from pydantic import TypeAdapter
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db import exercises as exercises_db
 from app.db import training_plans as training_plans_db
+from app.models.enums import TrainerExerciseStatus
+from app.models.exercises import TrainerExercise
 from app.models.training import TrainingPlan, TrainingPlanExercise
 from app.schemas.common import PaginatedResponse, paginate
 from app.schemas.exercises import CatalogReference, TrainingSegmentResponse
@@ -18,14 +21,33 @@ from app.schemas.training_plans import (
     PlanSchemaSnapshotItem,
     TrainingPlanListFilters,
 )
+from app.services.plan_exercise_snapshots import fill_plan_exercise_from_source
 
 _CATALOG_SNAPSHOTS = TypeAdapter(list[CatalogReference])
 _SCHEMA_SNAPSHOTS = TypeAdapter(list[PlanSchemaSnapshotItem])
 _SEGMENT_SNAPSHOTS = TypeAdapter(list[TrainingSegmentResponse])
 
 
-class PlanNotFoundError(Exception):
+class PlanResourceNotFoundError(Exception):
+    """Uniform not-found boundary for plan mutation HTTP mapping."""
+
+    detail = "Plan not found"
+
+
+class PlanNotFoundError(PlanResourceNotFoundError):
     """Raised when a plan is absent or belongs to another trainer."""
+
+
+class PlanExerciseNotFoundError(PlanResourceNotFoundError):
+    """Raised when a plan slot is absent on an owned plan."""
+
+    detail = "Plan exercise not found"
+
+
+class PlanExerciseUnavailableError(PlanResourceNotFoundError):
+    """Raised when the replacement exercise is not available to the trainer."""
+
+    detail = "Exercise not found"
 
 
 async def list_plans(
@@ -66,14 +88,88 @@ async def delete_plan(session: AsyncSession, trainer_id: UUID, plan_id: UUID) ->
     await session.commit()
 
 
+async def replace_plan_exercise(
+    session: AsyncSession,
+    trainer_id: UUID,
+    plan_id: UUID,
+    plan_exercise_id: UUID,
+    exercise_id: UUID,
+) -> PlanExerciseResponse:
+    """Replace one plan slot's identity and snapshots, keeping order and duration."""
+    plan = await _get_owned_or_raise(session, trainer_id, plan_id, for_update=True)
+    slot = _slot_or_raise(plan, plan_exercise_id)
+    source = await _resolve_active_source(session, trainer_id, exercise_id)
+    fill_plan_exercise_from_source(
+        slot,
+        source,
+        duration_minutes=slot.duration_minutes_snapshot,
+    )
+    await session.commit()
+    return _to_exercise(slot)
+
+
+async def delete_plan_exercise(
+    session: AsyncSession,
+    trainer_id: UUID,
+    plan_id: UUID,
+    plan_exercise_id: UUID,
+) -> None:
+    """Remove one plan slot and renumber remaining positions to 1..n."""
+    plan = await _get_owned_or_raise(session, trainer_id, plan_id, for_update=True)
+    plan.exercises.remove(_slot_or_raise(plan, plan_exercise_id))
+    await session.flush()
+    remaining = sorted(plan.exercises, key=lambda item: item.position)
+    # Unique (plan_id, position) is checked per UPDATE, so park rows first.
+    temporary_base = len(remaining)
+    for offset, exercise in enumerate(remaining, start=1):
+        exercise.position = temporary_base + offset
+    await session.flush()
+    for position, exercise in enumerate(remaining, start=1):
+        exercise.position = position
+    await session.commit()
+
+
 async def _get_owned_or_raise(
-    session: AsyncSession, trainer_id: UUID, plan_id: UUID
+    session: AsyncSession,
+    trainer_id: UUID,
+    plan_id: UUID,
+    *,
+    for_update: bool = False,
 ) -> TrainingPlan:
     """Return an owned plan or raise a uniform not-found outcome."""
-    plan = await training_plans_db.get_for_trainer(session, trainer_id, plan_id)
+    plan = await training_plans_db.get_for_trainer(
+        session, trainer_id, plan_id, for_update=for_update
+    )
     if plan is None:
         raise PlanNotFoundError
     return plan
+
+
+def _slot_or_raise(plan: TrainingPlan, plan_exercise_id: UUID) -> TrainingPlanExercise:
+    """Return one exercise slot on the plan or raise a uniform not-found outcome."""
+    for exercise in plan.exercises:
+        if exercise.id == plan_exercise_id:
+            return exercise
+    raise PlanExerciseNotFoundError
+
+
+async def _resolve_active_source(
+    session: AsyncSession, trainer_id: UUID, exercise_id: UUID
+) -> TrainerExercise:
+    """Resolve one active trainer configuration for a single replacement exercise."""
+    configuration = await exercises_db.get_plan_source_for_trainer(
+        session, trainer_id, exercise_id
+    )
+    if configuration is None:
+        configuration = await exercises_db.create_configuration_for_global_exercise(
+            session, trainer_id, exercise_id
+        )
+        if configuration is None:
+            raise PlanExerciseUnavailableError
+        await session.flush()
+    if configuration.status != TrainerExerciseStatus.ACTIVE:
+        raise PlanExerciseUnavailableError
+    return configuration
 
 
 def _plan_fields(plan: TrainingPlan) -> dict[str, Any]:
