@@ -635,6 +635,60 @@ def test_runner_salvages_a_valid_best_after_timeout() -> None:
     mark_timed_out.assert_not_awaited()
 
 
+@pytest.mark.parametrize("group_name", ["Jaworzyna gr. 1", "Ż" * 255])
+def test_persist_plan_names_include_the_saved_generation_timestamp(group_name) -> None:
+    """Same-second generations and long group names retain their timestamps."""
+    session = AsyncMock()
+    session.add = MagicMock()
+    group = SimpleNamespace(
+        id=PLAN_ID,
+        name=group_name,
+        min_age=7,
+        max_age=14,
+        duration_minutes=60,
+        schema_items=[],
+    )
+    parameters = PlanGenerationParameters(
+        training_group_id=PLAN_ID,
+        participant_count=12,
+        available_equipment_ids=[],
+    )
+    timestamps = [
+        datetime(2026, 11, 20, 18, 30, 45, microsecond, tzinfo=UTC)
+        for microsecond in (123456, 123457)
+    ]
+
+    with (
+        patch("app.services.plan_generation_service.validate_generated_plan"),
+        patch(
+            "app.services.plan_generation_service.exercises_db.list_sources_for_generated_plan",
+            new=AsyncMock(return_value={}),
+        ),
+        patch("app.services.plan_generation_service.datetime") as clock,
+    ):
+        clock.now.side_effect = timestamps
+        plans = [
+            asyncio.run(
+                plan_generation_service._persist_plan(
+                    session,
+                    SimpleNamespace(trainer_id=PLAN_ID),
+                    SimpleNamespace(group=group, equipment=[], training_types=[]),
+                    parameters,
+                    PlanIndividual(selections=()),
+                )
+            )
+            for _ in timestamps
+        ]
+
+    assert plans[0].name != plans[1].name
+    for plan, timestamp in zip(plans, timestamps, strict=True):
+        assert plan.generated_at == timestamp
+        assert plan.name.startswith(f"Plan treningowy – {group_name[:20]}")
+        assert plan.name.endswith(f" – {timestamp:%d.%m.%Y %H:%M:%S.%f} UTC")
+        assert len(plan.name) <= 255
+        assert plan.group_name_snapshot == group_name
+
+
 def test_persist_plan_rejects_invalid_generated_plan_without_writing() -> None:
     """Hard validation runs before exercise source lookup or plan flush."""
     session = AsyncMock()
