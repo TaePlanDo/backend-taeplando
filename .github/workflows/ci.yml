@@ -75,7 +75,8 @@ jobs:
         with:
           repository: TaePlanDo/frontend-taeplando
           path: frontend-taeplando
-          ref: main
+          # E2E tests read persisted plan names, including the SCRUM-274 timestamp.
+          ref: 7b45bcd66bb5503c38dc1a876b4f5ffddf34dc18
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
