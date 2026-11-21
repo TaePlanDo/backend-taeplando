@@ -18,10 +18,12 @@ dependencies = [
     "pyjwt>=2.10.0",
     "sqlalchemy[asyncio]>=2.1.4",
     "uvicorn[standard]>=0.32.0",
+    "boto3>=1.44.9",
 ]
 
 [project.scripts]
 seed-system-data = "app.db.seed:main"
+seed-exercise-media = "app.media.cli:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -32,6 +34,7 @@ packages = ["src/app"]
 
 [dependency-groups]
 dev = [
+    "boto3-stubs[s3]>=1.44.9",
     "httpx>=0.27.0",
     "mypy>=1.13.0",
     "pre-commit>=4.0.0",
@@ -51,6 +54,7 @@ select = ["E", "F", "I", "UP", "B"]
 "migrations/versions/*.py" = ["E501"]
 
 [tool.mypy]
+plugins = ["pydantic.mypy"]
 python_version = "3.12"
 strict = true
 mypy_path = "src"

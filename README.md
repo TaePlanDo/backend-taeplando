@@ -195,3 +195,68 @@ uv run ruff check .
 uv run mypy src
 uv run pytest
 ```
+
+
+## Exercise media (SCRUM-284)
+
+`seed-exercise-media` imports the SCRUM-282 artist package into S3-compatible
+storage (including Cloudflare R2). Configure the `EXERCISE_MEDIA_*` variables
+from `.env.example`; credentials stay outside Git. The application itself does
+not require storage credentials at startup. Apply migrations and seed the
+catalogue before importing.
+
+The checked-in `src/app/media/exercise_media.csv` maps all 318 catalogue source
+IDs to the delivered folders and SHA-256 checksums. Each exercise has light/dark
+WebP thumbnails, SVG thumbnails and animated WebP files. Source `0` is the
+standalone SVG placeholder; it does not create an exercise in the database.
+Binary assets are supplied separately and are not committed to this repository.
+
+```powershell
+uv run alembic upgrade head
+# For a database without the catalogue:
+uv run seed-system-data
+
+# Use the final directory containing 1-bieg-miedzy-liniami, etc.
+uv run seed-exercise-media import --media-root "C:/path/to/final" --dry-run
+uv run seed-exercise-media import --media-root "C:/path/to/final"
+```
+
+The preflight checks every local file and the seeded exercise/version identities
+before uploading. Objects use stable keys `exercises/<source_id>/<filename>`.
+A repeated import skips unchanged SHA-256 metadata and overwrites missing or
+changed objects at the same keys, with the correct content type and a one-hour
+public cache lifetime. Storage permission errors are failures, not missing files.
+URLs are committed in one database transaction after all uploads succeed. On a
+failure, rerun the same command; uploaded objects are reusable. Existing object
+keys may already have been replaced before a failed import completes.
+
+The exercise API accepts and returns:
+
+| Field | Asset |
+| --- | --- |
+| `image_url` | Dark thumbnail (existing compatible field) |
+| `animation_url` | Dark animation |
+| `image_url_light` | Light thumbnail |
+| `animation_url_light` | Light animation |
+
+Fields are nullable for exercises without media. A private-exercise update from
+an older client preserves omitted new media fields; an explicit `null` clears
+one. Global exercise list responses resolve media from the approved version.
+The importer updates the catalogue exercise and its deterministic approved seed
+versions, including archived seed versions still used by trainer configurations.
+It leaves custom moderation versions and historical plan snapshots unchanged.
+Ordinary catalogue seeding preserves imported media URLs on existing rows.
+SVG variants are uploaded too, under the manifest's stable keys. Displaying media
+and theme selection in the frontend belong to SCRUM-285.
+
+For a deliberately revised artist delivery, regenerate and review the manifest
+before importing. The builder requires the complete catalogue and exact file set:
+
+```powershell
+uv run seed-exercise-media build-manifest --media-root "C:/path/to/final"
+```
+
+Automated coverage uses S3 request stubs and checks manifest mapping/checksums,
+repeat uploads, replacements, permission failures, transactional DB linkage,
+light/dark API payloads, legacy edits and explicit clearing. CI applies migrations
+and verifies their round trip using PostgreSQL.

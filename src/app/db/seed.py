@@ -6,7 +6,7 @@ import asyncio
 import logging
 from collections.abc import Sequence
 from typing import TypedDict, cast
-from uuid import UUID, uuid5
+from uuid import UUID
 
 from sqlalchemy import Table, case, delete, select, update
 from sqlalchemy.dialects.postgresql import insert
@@ -29,6 +29,7 @@ from app.db.exercise_catalog import (
     load_exercise_catalog,
     training_type_names,
 )
+from app.db.seed_identity import seed_id as _seed_id
 from app.db.session import dispose_engine, get_session_factory
 from app.db.training_catalog import SYSTEM_TRAINING_SEGMENTS
 from app.models.associations import (
@@ -56,7 +57,6 @@ from app.models.users import User
 
 logger = logging.getLogger(__name__)
 
-SEED_NAMESPACE = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a00")
 DEMO_TRAINER_ID = UUID("a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a01")
 DEMO_TRAINER_EMAIL = "demo.trener@gmail.com"
 DEMO_TRAINER_PASSWORD = "Demo123!"
@@ -69,10 +69,6 @@ class LocalUserSeed(TypedDict):
     email: str
     full_name: str
     password: str
-
-
-def _seed_id(kind: str, key: str | int) -> UUID:
-    return uuid5(SEED_NAMESPACE, f"{kind}:{key}")
 
 
 DEMO_LOCAL_USERS: Sequence[LocalUserSeed] = (
