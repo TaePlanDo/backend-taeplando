@@ -9,11 +9,14 @@ from pathlib import Path
 
 from app.db.exercise_catalog import load_exercise_catalog
 
+MEDIA_URL_FILES = {
+    "image_url": "thumb-dark.webp",
+    "image_url_light": "thumb-light.webp",
+    "animation_url": "anim-dark.webp",
+    "animation_url_light": "anim-light.webp",
+}
 MEDIA_FILES = (
-    "thumb-dark.webp",
-    "thumb-light.webp",
-    "anim-dark.webp",
-    "anim-light.webp",
+    *MEDIA_URL_FILES.values(),
     "thumb-dark.svg",
     "thumb-light.svg",
 )
@@ -83,20 +86,35 @@ def validate_entries(entries: list[MediaEntry]) -> None:
 def load_manifest(path: Path = MANIFEST_PATH) -> list[MediaEntry]:
     """Read and validate a portable, reviewable manifest without absolute paths."""
     with path.open(encoding="utf-8", newline="") as stream:
-        reader = csv.DictReader(stream)
-        if tuple(reader.fieldnames or ()) != _COLUMNS:
-            raise ValueError("Unexpected media manifest columns")
-        entries = [
-            MediaEntry(
-                source_id=int(row["source_id"]),
-                name=row["name"],
-                directory=row["directory"],
-                digests={
-                    filename: row[filename] for filename in MEDIA_FILES if row[filename]
-                },
-            )
-            for row in reader
-        ]
+        try:
+            reader = csv.reader(stream, strict=True)
+            if tuple(next(reader, ())) != _COLUMNS:
+                raise ValueError("Unexpected media manifest columns")
+            entries = []
+            for row in reader:
+                if not row:
+                    continue
+                if len(row) != len(_COLUMNS):
+                    raise ValueError(
+                        f"Unexpected column count in manifest row {reader.line_num}"
+                    )
+                source_id, name, directory, *digests = row
+                entries.append(
+                    MediaEntry(
+                        source_id=int(source_id),
+                        name=name,
+                        directory=directory,
+                        digests={
+                            filename: value
+                            for filename, value in zip(
+                                MEDIA_FILES, digests, strict=True
+                            )
+                            if value
+                        },
+                    )
+                )
+        except csv.Error as exc:
+            raise ValueError(f"Malformed media manifest CSV: {exc}") from exc
     validate_entries(entries)
     return entries
 

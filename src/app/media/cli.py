@@ -43,7 +43,7 @@ async def run_import(root: Path, manifest: Path, *, dry_run: bool) -> None:
             )
         finally:
             client.close()
-        async with get_session_factory()() as session:
+        async with get_session_factory().begin() as session:
             count = await save_urls(session, entries, settings)
         print(f"Uploaded {uploaded}; unchanged {skipped}; linked {count} exercises.")
     finally:

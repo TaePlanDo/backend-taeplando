@@ -170,6 +170,9 @@ def _private_listed_exercise() -> ListedExercise:
         status=TrainerExerciseStatus.ACTIVE,
         **private_planning_attributes(),
         version_id=None,
+        animation_url=None,
+        image_url_light=None,
+        animation_url_light=None,
     )
 
 
@@ -190,6 +193,9 @@ def _global_listed_exercise() -> ListedExercise:
         status=TrainerExerciseStatus.SUSPENDED,
         **global_planning_attributes(),
         version_id=GLOBAL_VERSION_ID,
+        animation_url=None,
+        image_url_light=None,
+        animation_url_light=None,
     )
 
 

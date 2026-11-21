@@ -59,7 +59,9 @@ def test_conflicting_catalogue_fails_before_mutation(db_case, conflict):
     session.commit.assert_not_called()
 
 
-def test_urls_written_to_exercise_and_version_atomically(db_case):
+def test_urls_written_to_exercise_and_version_without_committing_caller_transaction(
+    db_case,
+):
     entry, exercise, version, session = db_case
     settings = MediaStorageSettings(
         _env_file=None,
@@ -102,4 +104,4 @@ def test_urls_written_to_exercise_and_version_atomically(db_case):
         query.args[0]._for_update_arg is not None
         for query in session.scalars.call_args_list
     )
-    session.commit.assert_awaited_once()
+    session.commit.assert_not_called()

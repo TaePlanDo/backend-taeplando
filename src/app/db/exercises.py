@@ -63,9 +63,9 @@ class ListedExercise(NamedTuple):
     lower_body_load: int
     core_load: int
     version_id: UUID | None
-    animation_url: str | None = None
-    image_url_light: str | None = None
-    animation_url_light: str | None = None
+    animation_url: str | None
+    image_url_light: str | None
+    animation_url_light: str | None
 
 
 class ExerciseConfiguration(NamedTuple):

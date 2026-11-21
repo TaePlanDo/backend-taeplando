@@ -1,5 +1,6 @@
 """Media manifests must cover the catalogue and pin the exact delivered bytes."""
 
+import csv
 import hashlib
 from dataclasses import replace
 from pathlib import Path
@@ -102,4 +103,33 @@ def test_invalid_manifest_columns_fail(tmp_path: Path):
     path = tmp_path / "bad.csv"
     path.write_text("source_id,directory\n1,1-test\n", encoding="utf-8")
     with pytest.raises(ValueError, match="columns"):
+        manifest.load_manifest(path)
+
+
+@pytest.mark.parametrize(
+    "change", ["missing_directory", "missing_digest", "extra_cell"]
+)
+def test_manifest_rejects_wrong_row_width(media_package, change):
+    path = media_package.parent / "media.csv"
+    manifest.build_manifest(media_package, path)
+    with path.open(encoding="utf-8", newline="") as stream:
+        rows = list(csv.reader(stream))
+    if change == "missing_directory":
+        rows[1] = rows[1][:2]
+    elif change == "missing_digest":
+        rows[1].pop()
+    else:
+        rows[1].append("ignored data")
+    with path.open("w", encoding="utf-8", newline="") as stream:
+        csv.writer(stream).writerows(rows)
+    with pytest.raises(ValueError, match="column count.*row 2"):
+        manifest.load_manifest(path)
+
+
+def test_manifest_rejects_unclosed_csv_quote(media_package):
+    path = media_package.parent / "media.csv"
+    manifest.build_manifest(media_package, path)
+    prefix, last_digest = path.read_text(encoding="utf-8").rstrip().rsplit(",", 1)
+    path.write_text(f'{prefix},"{last_digest}', encoding="utf-8")
+    with pytest.raises(ValueError, match="Malformed.*CSV"):
         manifest.load_manifest(path)

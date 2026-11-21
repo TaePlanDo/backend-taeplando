@@ -8,7 +8,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.seed_identity import seed_id
-from app.media.manifest import MediaEntry
+from app.media.manifest import MEDIA_URL_FILES, MediaEntry
 from app.media.storage import MediaStorageSettings
 from app.models.enums import ExerciseScope, ExerciseVersionStatus
 from app.models.exercises import Exercise, ExerciseVersion
@@ -58,7 +58,7 @@ async def load_targets(
 async def save_urls(
     session: AsyncSession, entries: list[MediaEntry], settings: MediaStorageSettings
 ) -> int:
-    """Atomically publish URLs after every asset upload has succeeded.
+    """Write uploaded media URLs in the caller's transaction.
 
     Recheck and lock targets after the network work. Historical plan snapshots and
     non-seeded moderation versions retain their original contents.
@@ -68,10 +68,8 @@ async def save_urls(
         if not entry.source_id:
             continue
         values = {
-            "image_url": settings.public_url(entry.key("thumb-dark.webp")),
-            "animation_url": settings.public_url(entry.key("anim-dark.webp")),
-            "image_url_light": settings.public_url(entry.key("thumb-light.webp")),
-            "animation_url_light": settings.public_url(entry.key("anim-light.webp")),
+            field: settings.public_url(entry.key(filename))
+            for field, filename in MEDIA_URL_FILES.items()
         }
         await session.execute(
             update(Exercise)
@@ -83,5 +81,4 @@ async def save_urls(
             .where(ExerciseVersion.id.in_(targets[entry.source_id]))
             .values(**values)
         )
-    await session.commit()
     return len(targets)
