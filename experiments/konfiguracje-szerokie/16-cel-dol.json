@@ -1,0 +1,46 @@
+{
+  "trainer_id": null,
+  "plans_per_scenario": 10,
+  "seed": 42,
+  "timeout_seconds": 30,
+  "history_exercises_per_plan": 10,
+  "output_dir": "experiments/results",
+  "variants": [
+    {
+      "name": "cel-dol-1",
+      "fitness": {
+        "body_lower_demand": 1
+      }
+    },
+    {
+      "name": "cel-dol-2",
+      "fitness": {
+        "body_lower_demand": 2
+      }
+    },
+    {
+      "name": "cel-dol-2.5",
+      "fitness": {
+        "body_lower_demand": 2.5
+      }
+    },
+    {
+      "name": "cel-dol-3",
+      "fitness": {
+        "body_lower_demand": 3
+      }
+    },
+    {
+      "name": "cel-dol-4",
+      "fitness": {
+        "body_lower_demand": 4
+      }
+    },
+    {
+      "name": "cel-dol-5",
+      "fitness": {
+        "body_lower_demand": 5
+      }
+    }
+  ]
+}

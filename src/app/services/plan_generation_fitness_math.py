@@ -52,6 +52,7 @@ def windowed_score(
     individual: PlanIndividual,
     values: Callable[[PlanExerciseCandidate], tuple[int, ...]],
     window_score: Callable[[tuple[float, ...]], float],
+    window_size: int = WINDOW_TIME_SIZE,
 ) -> float:
     """Average window scores, weighting each window by its minutes."""
     total_minutes = 0
@@ -64,20 +65,20 @@ def windowed_score(
         total_minutes += remaining
 
         if open_minutes:
-            taken = min(remaining, WINDOW_TIME_SIZE - open_minutes)
+            taken = min(remaining, window_size - open_minutes)
             open_minutes += taken
             open_load = _add_load(open_load, value, taken)
             remaining -= taken
-            if open_minutes == WINDOW_TIME_SIZE:
+            if open_minutes == window_size:
                 weighted_scores += open_minutes * window_score(
                     _means(open_load, open_minutes)
                 )
                 open_minutes, open_load = 0, ()
 
-        full_windows, remaining = divmod(remaining, WINDOW_TIME_SIZE)
+        full_windows, remaining = divmod(remaining, window_size)
         if full_windows:
             weighted_scores += (
-                full_windows * WINDOW_TIME_SIZE * window_score(_means(value, 1))
+                full_windows * window_size * window_score(_means(value, 1))
             )
         if remaining:
             open_minutes += remaining

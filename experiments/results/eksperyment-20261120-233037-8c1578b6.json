@@ -1,0 +1,2810 @@
+{
+  "opis": "Oceny fitness są średnimi ważonymi czasem segmentów. Powtórzenia liczone są po wystąpieniach ćwiczeń. Ostatnio=4 oznacza brak w trzech mockowanych planach.",
+  "data": "2026-11-20T23:30:37.101584+01:00",
+  "trainer_id": "a1f8c50b-a3e1-4f4e-8ff0-3a02e5ec6a01",
+  "ustawienia": {
+    "trainer_id": null,
+    "plans_per_scenario": 10,
+    "seed": 42,
+    "timeout_seconds": 30.0,
+    "history_exercises_per_plan": 10,
+    "output_dir": "experiments/results",
+    "variants": [
+      {
+        "name": "cel-dol-1",
+        "population_size": 50,
+        "max_generations": 100,
+        "crossover_probability": 0.7,
+        "mutation_probability": 0.35,
+        "tournament_size": 4,
+        "mutation_duration_delta": 5,
+        "duration_deviation_percent": 20,
+        "fitness": {
+          "duration_over_sigma_ratio": 0.05,
+          "duration_under_sigma_ratio": 0.2,
+          "difficulty_sigma": 1.0,
+          "body_load_sigma": 1.0,
+          "physical_difficulty_demand": 2.5,
+          "technical_difficulty_demand": 2.5,
+          "body_upper_demand": 2.5,
+          "body_lower_demand": 1.0,
+          "body_core_demand": 2.5,
+          "window_time_size": 5
+        },
+        "mutation_mode_weights": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      {
+        "name": "cel-dol-2",
+        "population_size": 50,
+        "max_generations": 100,
+        "crossover_probability": 0.7,
+        "mutation_probability": 0.35,
+        "tournament_size": 4,
+        "mutation_duration_delta": 5,
+        "duration_deviation_percent": 20,
+        "fitness": {
+          "duration_over_sigma_ratio": 0.05,
+          "duration_under_sigma_ratio": 0.2,
+          "difficulty_sigma": 1.0,
+          "body_load_sigma": 1.0,
+          "physical_difficulty_demand": 2.5,
+          "technical_difficulty_demand": 2.5,
+          "body_upper_demand": 2.5,
+          "body_lower_demand": 2.0,
+          "body_core_demand": 2.5,
+          "window_time_size": 5
+        },
+        "mutation_mode_weights": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      {
+        "name": "cel-dol-2.5",
+        "population_size": 50,
+        "max_generations": 100,
+        "crossover_probability": 0.7,
+        "mutation_probability": 0.35,
+        "tournament_size": 4,
+        "mutation_duration_delta": 5,
+        "duration_deviation_percent": 20,
+        "fitness": {
+          "duration_over_sigma_ratio": 0.05,
+          "duration_under_sigma_ratio": 0.2,
+          "difficulty_sigma": 1.0,
+          "body_load_sigma": 1.0,
+          "physical_difficulty_demand": 2.5,
+          "technical_difficulty_demand": 2.5,
+          "body_upper_demand": 2.5,
+          "body_lower_demand": 2.5,
+          "body_core_demand": 2.5,
+          "window_time_size": 5
+        },
+        "mutation_mode_weights": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      {
+        "name": "cel-dol-3",
+        "population_size": 50,
+        "max_generations": 100,
+        "crossover_probability": 0.7,
+        "mutation_probability": 0.35,
+        "tournament_size": 4,
+        "mutation_duration_delta": 5,
+        "duration_deviation_percent": 20,
+        "fitness": {
+          "duration_over_sigma_ratio": 0.05,
+          "duration_under_sigma_ratio": 0.2,
+          "difficulty_sigma": 1.0,
+          "body_load_sigma": 1.0,
+          "physical_difficulty_demand": 2.5,
+          "technical_difficulty_demand": 2.5,
+          "body_upper_demand": 2.5,
+          "body_lower_demand": 3.0,
+          "body_core_demand": 2.5,
+          "window_time_size": 5
+        },
+        "mutation_mode_weights": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      {
+        "name": "cel-dol-4",
+        "population_size": 50,
+        "max_generations": 100,
+        "crossover_probability": 0.7,
+        "mutation_probability": 0.35,
+        "tournament_size": 4,
+        "mutation_duration_delta": 5,
+        "duration_deviation_percent": 20,
+        "fitness": {
+          "duration_over_sigma_ratio": 0.05,
+          "duration_under_sigma_ratio": 0.2,
+          "difficulty_sigma": 1.0,
+          "body_load_sigma": 1.0,
+          "physical_difficulty_demand": 2.5,
+          "technical_difficulty_demand": 2.5,
+          "body_upper_demand": 2.5,
+          "body_lower_demand": 4.0,
+          "body_core_demand": 2.5,
+          "window_time_size": 5
+        },
+        "mutation_mode_weights": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      {
+        "name": "cel-dol-5",
+        "population_size": 50,
+        "max_generations": 100,
+        "crossover_probability": 0.7,
+        "mutation_probability": 0.35,
+        "tournament_size": 4,
+        "mutation_duration_delta": 5,
+        "duration_deviation_percent": 20,
+        "fitness": {
+          "duration_over_sigma_ratio": 0.05,
+          "duration_under_sigma_ratio": 0.2,
+          "difficulty_sigma": 1.0,
+          "body_load_sigma": 1.0,
+          "physical_difficulty_demand": 2.5,
+          "technical_difficulty_demand": 2.5,
+          "body_upper_demand": 2.5,
+          "body_lower_demand": 5.0,
+          "body_core_demand": 2.5,
+          "window_time_size": 5
+        },
+        "mutation_mode_weights": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  "kandydaci_do_oceny": [
+    "cel-dol-1",
+    "cel-dol-2.5",
+    "cel-dol-3",
+    "cel-dol-4",
+    "cel-dol-5"
+  ],
+  "porownanie": [
+    {
+      "nazwa": "cel-dol-1",
+      "wyniki": {
+        "proby": 10,
+        "poprawne": 10,
+        "bledy": 0,
+        "przekroczony_limit_czasu": 0,
+        "duration_time": {
+          "srednia": 1.0,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "physical_difficulty": {
+          "srednia": 0.9284,
+          "mediana": 0.9286,
+          "p90": 0.9379
+        },
+        "technical_difficulty": {
+          "srednia": 0.9224,
+          "mediana": 0.9221,
+          "p90": 0.9333
+        },
+        "body_balance": {
+          "srednia": 0.5233,
+          "mediana": 0.5296,
+          "p90": 0.564
+        },
+        "age_coverage": {
+          "srednia": 0.2957,
+          "mediana": 0.3035,
+          "p90": 0.3263
+        },
+        "training_type": {
+          "srednia": 0.5417,
+          "mediana": 0.55,
+          "p90": 0.5667
+        },
+        "equipment_usage": {
+          "srednia": 1.0,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "recent_usage": {
+          "srednia": 0.9917,
+          "mediana": 0.9917,
+          "p90": 0.9917
+        },
+        "exercises": {
+          "srednia": 23.8,
+          "mediana": 23.5,
+          "p90": 26
+        },
+        "duration_deviation_minutes": {
+          "srednia": 0,
+          "mediana": 0.0,
+          "p90": 0
+        },
+        "repeat_1": {
+          "srednia": 0.0,
+          "mediana": 0.0,
+          "p90": 0.0
+        },
+        "repeat_2_3": {
+          "srednia": 0.0423,
+          "mediana": 0.0426,
+          "p90": 0.0476
+        },
+        "repeat_4_plus": {
+          "srednia": 0.9577,
+          "mediana": 0.9574,
+          "p90": 0.9615
+        },
+        "duration_seconds": {
+          "srednia": 1.3602,
+          "mediana": 1.3656,
+          "p90": 1.4438
+        }
+      },
+      "najwiecej_bledow": {
+        "scenariusz": "7-13 / sprzęt: pałki / typ: częsty / uczestnicy: 15",
+        "bledy": 0
+      }
+    },
+    {
+      "nazwa": "cel-dol-2",
+      "wyniki": {
+        "proby": 10,
+        "poprawne": 10,
+        "bledy": 0,
+        "przekroczony_limit_czasu": 0,
+        "duration_time": {
+          "srednia": 0.9991,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "physical_difficulty": {
+          "srednia": 0.9192,
+          "mediana": 0.9225,
+          "p90": 0.9329
+        },
+        "technical_difficulty": {
+          "srednia": 0.9166,
+          "mediana": 0.9198,
+          "p90": 0.9329
+        },
+        "body_balance": {
+          "srednia": 0.602,
+          "mediana": 0.6112,
+          "p90": 0.634
+        },
+        "age_coverage": {
+          "srednia": 0.2896,
+          "mediana": 0.2856,
+          "p90": 0.3276
+        },
+        "training_type": {
+          "srednia": 0.4916,
+          "mediana": 0.508,
+          "p90": 0.55
+        },
+        "equipment_usage": {
+          "srednia": 1.0,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "recent_usage": {
+          "srednia": 0.9917,
+          "mediana": 0.9917,
+          "p90": 0.9917
+        },
+        "exercises": {
+          "srednia": 24.5,
+          "mediana": 25.5,
+          "p90": 27
+        },
+        "duration_deviation_minutes": {
+          "srednia": 0.1,
+          "mediana": 0.0,
+          "p90": 0
+        },
+        "repeat_1": {
+          "srednia": 0.0,
+          "mediana": 0.0,
+          "p90": 0.0
+        },
+        "repeat_2_3": {
+          "srednia": 0.0412,
+          "mediana": 0.0392,
+          "p90": 0.0476
+        },
+        "repeat_4_plus": {
+          "srednia": 0.9588,
+          "mediana": 0.9608,
+          "p90": 0.963
+        },
+        "duration_seconds": {
+          "srednia": 1.3561,
+          "mediana": 1.3646,
+          "p90": 1.4104
+        }
+      },
+      "najwiecej_bledow": {
+        "scenariusz": "7-13 / sprzęt: pałki / typ: częsty / uczestnicy: 15",
+        "bledy": 0
+      }
+    },
+    {
+      "nazwa": "cel-dol-2.5",
+      "wyniki": {
+        "proby": 10,
+        "poprawne": 10,
+        "bledy": 0,
+        "przekroczony_limit_czasu": 0,
+        "duration_time": {
+          "srednia": 1.0,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "physical_difficulty": {
+          "srednia": 0.9185,
+          "mediana": 0.9204,
+          "p90": 0.9234
+        },
+        "technical_difficulty": {
+          "srednia": 0.9177,
+          "mediana": 0.9226,
+          "p90": 0.9362
+        },
+        "body_balance": {
+          "srednia": 0.6527,
+          "mediana": 0.6599,
+          "p90": 0.6954
+        },
+        "age_coverage": {
+          "srednia": 0.2827,
+          "mediana": 0.2739,
+          "p90": 0.3225
+        },
+        "training_type": {
+          "srednia": 0.4817,
+          "mediana": 0.4917,
+          "p90": 0.5333
+        },
+        "equipment_usage": {
+          "srednia": 1.0,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "recent_usage": {
+          "srednia": 0.9888,
+          "mediana": 0.9917,
+          "p90": 0.9917
+        },
+        "exercises": {
+          "srednia": 24.7,
+          "mediana": 25.5,
+          "p90": 27
+        },
+        "duration_deviation_minutes": {
+          "srednia": 0,
+          "mediana": 0.0,
+          "p90": 0
+        },
+        "repeat_1": {
+          "srednia": 0.0,
+          "mediana": 0.0,
+          "p90": 0.0
+        },
+        "repeat_2_3": {
+          "srednia": 0.0494,
+          "mediana": 0.0417,
+          "p90": 0.0769
+        },
+        "repeat_4_plus": {
+          "srednia": 0.9506,
+          "mediana": 0.9583,
+          "p90": 0.963
+        },
+        "duration_seconds": {
+          "srednia": 1.3868,
+          "mediana": 1.3754,
+          "p90": 1.5155
+        }
+      },
+      "najwiecej_bledow": {
+        "scenariusz": "7-13 / sprzęt: pałki / typ: częsty / uczestnicy: 15",
+        "bledy": 0
+      }
+    },
+    {
+      "nazwa": "cel-dol-3",
+      "wyniki": {
+        "proby": 10,
+        "poprawne": 10,
+        "bledy": 0,
+        "przekroczony_limit_czasu": 0,
+        "duration_time": {
+          "srednia": 1.0,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "physical_difficulty": {
+          "srednia": 0.9226,
+          "mediana": 0.9238,
+          "p90": 0.9311
+        },
+        "technical_difficulty": {
+          "srednia": 0.9211,
+          "mediana": 0.9209,
+          "p90": 0.9423
+        },
+        "body_balance": {
+          "srednia": 0.6745,
+          "mediana": 0.6743,
+          "p90": 0.7259
+        },
+        "age_coverage": {
+          "srednia": 0.2773,
+          "mediana": 0.2747,
+          "p90": 0.3043
+        },
+        "training_type": {
+          "srednia": 0.475,
+          "mediana": 0.4667,
+          "p90": 0.5333
+        },
+        "equipment_usage": {
+          "srednia": 1.0,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "recent_usage": {
+          "srednia": 0.9896,
+          "mediana": 0.9917,
+          "p90": 0.9917
+        },
+        "exercises": {
+          "srednia": 24.5,
+          "mediana": 25.0,
+          "p90": 26
+        },
+        "duration_deviation_minutes": {
+          "srednia": 0,
+          "mediana": 0.0,
+          "p90": 0
+        },
+        "repeat_1": {
+          "srednia": 0.0,
+          "mediana": 0.0,
+          "p90": 0.0
+        },
+        "repeat_2_3": {
+          "srednia": 0.0456,
+          "mediana": 0.04,
+          "p90": 0.0476
+        },
+        "repeat_4_plus": {
+          "srednia": 0.9544,
+          "mediana": 0.96,
+          "p90": 0.9615
+        },
+        "duration_seconds": {
+          "srednia": 1.3886,
+          "mediana": 1.4094,
+          "p90": 1.4382
+        }
+      },
+      "najwiecej_bledow": {
+        "scenariusz": "7-13 / sprzęt: pałki / typ: częsty / uczestnicy: 15",
+        "bledy": 0
+      }
+    },
+    {
+      "nazwa": "cel-dol-4",
+      "wyniki": {
+        "proby": 10,
+        "poprawne": 10,
+        "bledy": 0,
+        "przekroczony_limit_czasu": 0,
+        "duration_time": {
+          "srednia": 1.0,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "physical_difficulty": {
+          "srednia": 0.9261,
+          "mediana": 0.9275,
+          "p90": 0.9413
+        },
+        "technical_difficulty": {
+          "srednia": 0.9221,
+          "mediana": 0.9163,
+          "p90": 0.9333
+        },
+        "body_balance": {
+          "srednia": 0.6784,
+          "mediana": 0.6685,
+          "p90": 0.7123
+        },
+        "age_coverage": {
+          "srednia": 0.2868,
+          "mediana": 0.299,
+          "p90": 0.3223
+        },
+        "training_type": {
+          "srednia": 0.53,
+          "mediana": 0.5417,
+          "p90": 0.55
+        },
+        "equipment_usage": {
+          "srednia": 1.0,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "recent_usage": {
+          "srednia": 0.9917,
+          "mediana": 0.9917,
+          "p90": 0.9917
+        },
+        "exercises": {
+          "srednia": 23.9,
+          "mediana": 23.5,
+          "p90": 27
+        },
+        "duration_deviation_minutes": {
+          "srednia": 0,
+          "mediana": 0.0,
+          "p90": 0
+        },
+        "repeat_1": {
+          "srednia": 0.0,
+          "mediana": 0.0,
+          "p90": 0.0
+        },
+        "repeat_2_3": {
+          "srednia": 0.0422,
+          "mediana": 0.0426,
+          "p90": 0.0455
+        },
+        "repeat_4_plus": {
+          "srednia": 0.9578,
+          "mediana": 0.9574,
+          "p90": 0.963
+        },
+        "duration_seconds": {
+          "srednia": 1.3754,
+          "mediana": 1.3682,
+          "p90": 1.4074
+        }
+      },
+      "najwiecej_bledow": {
+        "scenariusz": "7-13 / sprzęt: pałki / typ: częsty / uczestnicy: 15",
+        "bledy": 0
+      }
+    },
+    {
+      "nazwa": "cel-dol-5",
+      "wyniki": {
+        "proby": 10,
+        "poprawne": 10,
+        "bledy": 0,
+        "przekroczony_limit_czasu": 0,
+        "duration_time": {
+          "srednia": 1.0,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "physical_difficulty": {
+          "srednia": 0.9218,
+          "mediana": 0.9244,
+          "p90": 0.93
+        },
+        "technical_difficulty": {
+          "srednia": 0.9214,
+          "mediana": 0.9201,
+          "p90": 0.9329
+        },
+        "body_balance": {
+          "srednia": 0.6132,
+          "mediana": 0.6054,
+          "p90": 0.654
+        },
+        "age_coverage": {
+          "srednia": 0.3029,
+          "mediana": 0.3207,
+          "p90": 0.3236
+        },
+        "training_type": {
+          "srednia": 0.525,
+          "mediana": 0.525,
+          "p90": 0.55
+        },
+        "equipment_usage": {
+          "srednia": 1.0,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "recent_usage": {
+          "srednia": 0.9908,
+          "mediana": 0.9917,
+          "p90": 0.9917
+        },
+        "exercises": {
+          "srednia": 23.4,
+          "mediana": 23.0,
+          "p90": 26
+        },
+        "duration_deviation_minutes": {
+          "srednia": 0,
+          "mediana": 0.0,
+          "p90": 0
+        },
+        "repeat_1": {
+          "srednia": 0.0,
+          "mediana": 0.0,
+          "p90": 0.0
+        },
+        "repeat_2_3": {
+          "srednia": 0.0468,
+          "mediana": 0.0445,
+          "p90": 0.0455
+        },
+        "repeat_4_plus": {
+          "srednia": 0.9532,
+          "mediana": 0.9555,
+          "p90": 0.96
+        },
+        "duration_seconds": {
+          "srednia": 1.4099,
+          "mediana": 1.3742,
+          "p90": 1.4587
+        }
+      },
+      "najwiecej_bledow": {
+        "scenariusz": "7-13 / sprzęt: pałki / typ: częsty / uczestnicy: 15",
+        "bledy": 0
+      }
+    }
+  ],
+  "wyniki": [
+    {
+      "konfiguracja": {
+        "name": "cel-dol-1",
+        "population_size": 50,
+        "max_generations": 100,
+        "crossover_probability": 0.7,
+        "mutation_probability": 0.35,
+        "tournament_size": 4,
+        "mutation_duration_delta": 5,
+        "duration_deviation_percent": 20,
+        "fitness": {
+          "duration_over_sigma_ratio": 0.05,
+          "duration_under_sigma_ratio": 0.2,
+          "difficulty_sigma": 1.0,
+          "body_load_sigma": 1.0,
+          "physical_difficulty_demand": 2.5,
+          "technical_difficulty_demand": 2.5,
+          "body_upper_demand": 2.5,
+          "body_lower_demand": 1.0,
+          "body_core_demand": 2.5,
+          "window_time_size": 5
+        },
+        "mutation_mode_weights": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "wyniki": {
+        "proby": 10,
+        "poprawne": 10,
+        "bledy": 0,
+        "przekroczony_limit_czasu": 0,
+        "duration_time": {
+          "srednia": 1.0,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "physical_difficulty": {
+          "srednia": 0.9284,
+          "mediana": 0.9286,
+          "p90": 0.9379
+        },
+        "technical_difficulty": {
+          "srednia": 0.9224,
+          "mediana": 0.9221,
+          "p90": 0.9333
+        },
+        "body_balance": {
+          "srednia": 0.5233,
+          "mediana": 0.5296,
+          "p90": 0.564
+        },
+        "age_coverage": {
+          "srednia": 0.2957,
+          "mediana": 0.3035,
+          "p90": 0.3263
+        },
+        "training_type": {
+          "srednia": 0.5417,
+          "mediana": 0.55,
+          "p90": 0.5667
+        },
+        "equipment_usage": {
+          "srednia": 1.0,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "recent_usage": {
+          "srednia": 0.9917,
+          "mediana": 0.9917,
+          "p90": 0.9917
+        },
+        "exercises": {
+          "srednia": 23.8,
+          "mediana": 23.5,
+          "p90": 26
+        },
+        "duration_deviation_minutes": {
+          "srednia": 0,
+          "mediana": 0.0,
+          "p90": 0
+        },
+        "repeat_1": {
+          "srednia": 0.0,
+          "mediana": 0.0,
+          "p90": 0.0
+        },
+        "repeat_2_3": {
+          "srednia": 0.0423,
+          "mediana": 0.0426,
+          "p90": 0.0476
+        },
+        "repeat_4_plus": {
+          "srednia": 0.9577,
+          "mediana": 0.9574,
+          "p90": 0.9615
+        },
+        "duration_seconds": {
+          "srednia": 1.3602,
+          "mediana": 1.3656,
+          "p90": 1.4438
+        }
+      },
+      "scenariusze": [
+        {
+          "scenariusz": "7-13 / sprzęt: pałki / typ: częsty / uczestnicy: 15",
+          "kandydaci": 196,
+          "historia_unikalne_cwiczenia": 28,
+          "wyniki": {
+            "proby": 10,
+            "poprawne": 10,
+            "bledy": 0,
+            "przekroczony_limit_czasu": 0,
+            "duration_time": {
+              "srednia": 1.0,
+              "mediana": 1.0,
+              "p90": 1.0
+            },
+            "physical_difficulty": {
+              "srednia": 0.9284,
+              "mediana": 0.9286,
+              "p90": 0.9379
+            },
+            "technical_difficulty": {
+              "srednia": 0.9224,
+              "mediana": 0.9221,
+              "p90": 0.9333
+            },
+            "body_balance": {
+              "srednia": 0.5233,
+              "mediana": 0.5296,
+              "p90": 0.564
+            },
+            "age_coverage": {
+              "srednia": 0.2957,
+              "mediana": 0.3035,
+              "p90": 0.3263
+            },
+            "training_type": {
+              "srednia": 0.5417,
+              "mediana": 0.55,
+              "p90": 0.5667
+            },
+            "equipment_usage": {
+              "srednia": 1.0,
+              "mediana": 1.0,
+              "p90": 1.0
+            },
+            "recent_usage": {
+              "srednia": 0.9917,
+              "mediana": 0.9917,
+              "p90": 0.9917
+            },
+            "exercises": {
+              "srednia": 23.8,
+              "mediana": 23.5,
+              "p90": 26
+            },
+            "duration_deviation_minutes": {
+              "srednia": 0,
+              "mediana": 0.0,
+              "p90": 0
+            },
+            "repeat_1": {
+              "srednia": 0.0,
+              "mediana": 0.0,
+              "p90": 0.0
+            },
+            "repeat_2_3": {
+              "srednia": 0.0423,
+              "mediana": 0.0426,
+              "p90": 0.0476
+            },
+            "repeat_4_plus": {
+              "srednia": 0.9577,
+              "mediana": 0.9574,
+              "p90": 0.9615
+            },
+            "duration_seconds": {
+              "srednia": 1.3602,
+              "mediana": 1.3656,
+              "p90": 1.4438
+            }
+          },
+          "przykladowy_plan": {
+            "scenariusz": "7-13 / sprzęt: pałki / typ: częsty / uczestnicy: 15",
+            "cwiczenia": [
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Sonkal na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Wyścig z pałką między nogami",
+                "minuty": 2,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Blok górny na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Churugi pojedyncze w podskoku",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Unik głową w prawo na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Bieg z pracą ramion w gardzie",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Wspięcia na palce na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Churugi podwójne na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Churugi po zmianie gardy",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Doskok i odskok w gardzie",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Blok dolny na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozciąganie",
+                "nazwa": "Przysiad kozacki płytki",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozciąganie",
+                "nazwa": "Dynamiczny skłon do palców",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozciąganie",
+                "nazwa": "Bark – ramię przez klatkę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozciąganie",
+                "nazwa": "Wymach nogi do pałki",
+                "minuty": 1,
+                "ostatnio": 2
+              },
+              {
+                "segment": "Rozciąganie",
+                "nazwa": "Klatka piersiowa przy ścianie",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozciąganie",
+                "nazwa": "Dynamiczna kobra do podporu",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Blok przed miękką pałką – dół",
+                "minuty": 3,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Poruszanie na boki w gardzie",
+                "minuty": 5,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Blok przed miękką pałką – bok",
+                "minuty": 3,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Pompki z dotknięciem barku",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Pivot na nodze podporowej",
+                "minuty": 6,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Niunja sogi – ustawienie pozycji",
+                "minuty": 6,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Zabawa",
+                "nazwa": "Murarz z miękką pałką",
+                "minuty": 10,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Zabawa",
+                "nazwa": "Szlaban",
+                "minuty": 5,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Zabawa",
+                "nazwa": "Wyścig z pałką między nogami",
+                "minuty": 3,
+                "ostatnio": 4
+              }
+            ],
+            "fitness": {
+              "duration_time": 1.0,
+              "physical_difficulty": 0.925,
+              "technical_difficulty": 0.9207,
+              "body_balance": 0.5196,
+              "age_coverage": 0.2679,
+              "training_type": 0.5333,
+              "equipment_usage": 1.0,
+              "recent_usage": 0.9917
+            }
+          }
+        }
+      ],
+      "ocena_trenera": {
+        "akceptowalne": null,
+        "ocena_1_5": null,
+        "komentarz": ""
+      }
+    },
+    {
+      "konfiguracja": {
+        "name": "cel-dol-2",
+        "population_size": 50,
+        "max_generations": 100,
+        "crossover_probability": 0.7,
+        "mutation_probability": 0.35,
+        "tournament_size": 4,
+        "mutation_duration_delta": 5,
+        "duration_deviation_percent": 20,
+        "fitness": {
+          "duration_over_sigma_ratio": 0.05,
+          "duration_under_sigma_ratio": 0.2,
+          "difficulty_sigma": 1.0,
+          "body_load_sigma": 1.0,
+          "physical_difficulty_demand": 2.5,
+          "technical_difficulty_demand": 2.5,
+          "body_upper_demand": 2.5,
+          "body_lower_demand": 2.0,
+          "body_core_demand": 2.5,
+          "window_time_size": 5
+        },
+        "mutation_mode_weights": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "wyniki": {
+        "proby": 10,
+        "poprawne": 10,
+        "bledy": 0,
+        "przekroczony_limit_czasu": 0,
+        "duration_time": {
+          "srednia": 0.9991,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "physical_difficulty": {
+          "srednia": 0.9192,
+          "mediana": 0.9225,
+          "p90": 0.9329
+        },
+        "technical_difficulty": {
+          "srednia": 0.9166,
+          "mediana": 0.9198,
+          "p90": 0.9329
+        },
+        "body_balance": {
+          "srednia": 0.602,
+          "mediana": 0.6112,
+          "p90": 0.634
+        },
+        "age_coverage": {
+          "srednia": 0.2896,
+          "mediana": 0.2856,
+          "p90": 0.3276
+        },
+        "training_type": {
+          "srednia": 0.4916,
+          "mediana": 0.508,
+          "p90": 0.55
+        },
+        "equipment_usage": {
+          "srednia": 1.0,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "recent_usage": {
+          "srednia": 0.9917,
+          "mediana": 0.9917,
+          "p90": 0.9917
+        },
+        "exercises": {
+          "srednia": 24.5,
+          "mediana": 25.5,
+          "p90": 27
+        },
+        "duration_deviation_minutes": {
+          "srednia": 0.1,
+          "mediana": 0.0,
+          "p90": 0
+        },
+        "repeat_1": {
+          "srednia": 0.0,
+          "mediana": 0.0,
+          "p90": 0.0
+        },
+        "repeat_2_3": {
+          "srednia": 0.0412,
+          "mediana": 0.0392,
+          "p90": 0.0476
+        },
+        "repeat_4_plus": {
+          "srednia": 0.9588,
+          "mediana": 0.9608,
+          "p90": 0.963
+        },
+        "duration_seconds": {
+          "srednia": 1.3561,
+          "mediana": 1.3646,
+          "p90": 1.4104
+        }
+      },
+      "scenariusze": [
+        {
+          "scenariusz": "7-13 / sprzęt: pałki / typ: częsty / uczestnicy: 15",
+          "kandydaci": 196,
+          "historia_unikalne_cwiczenia": 28,
+          "wyniki": {
+            "proby": 10,
+            "poprawne": 10,
+            "bledy": 0,
+            "przekroczony_limit_czasu": 0,
+            "duration_time": {
+              "srednia": 0.9991,
+              "mediana": 1.0,
+              "p90": 1.0
+            },
+            "physical_difficulty": {
+              "srednia": 0.9192,
+              "mediana": 0.9225,
+              "p90": 0.9329
+            },
+            "technical_difficulty": {
+              "srednia": 0.9166,
+              "mediana": 0.9198,
+              "p90": 0.9329
+            },
+            "body_balance": {
+              "srednia": 0.602,
+              "mediana": 0.6112,
+              "p90": 0.634
+            },
+            "age_coverage": {
+              "srednia": 0.2896,
+              "mediana": 0.2856,
+              "p90": 0.3276
+            },
+            "training_type": {
+              "srednia": 0.4916,
+              "mediana": 0.508,
+              "p90": 0.55
+            },
+            "equipment_usage": {
+              "srednia": 1.0,
+              "mediana": 1.0,
+              "p90": 1.0
+            },
+            "recent_usage": {
+              "srednia": 0.9917,
+              "mediana": 0.9917,
+              "p90": 0.9917
+            },
+            "exercises": {
+              "srednia": 24.5,
+              "mediana": 25.5,
+              "p90": 27
+            },
+            "duration_deviation_minutes": {
+              "srednia": 0.1,
+              "mediana": 0.0,
+              "p90": 0
+            },
+            "repeat_1": {
+              "srednia": 0.0,
+              "mediana": 0.0,
+              "p90": 0.0
+            },
+            "repeat_2_3": {
+              "srednia": 0.0412,
+              "mediana": 0.0392,
+              "p90": 0.0476
+            },
+            "repeat_4_plus": {
+              "srednia": 0.9588,
+              "mediana": 0.9608,
+              "p90": 0.963
+            },
+            "duration_seconds": {
+              "srednia": 1.3561,
+              "mediana": 1.3646,
+              "p90": 1.4104
+            }
+          },
+          "przykladowy_plan": {
+            "scenariusz": "7-13 / sprzęt: pałki / typ: częsty / uczestnicy: 15",
+            "cwiczenia": [
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Sonkal na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Churugi pojedyncze na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Blok dolny na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Wyścig z pałką między nogami",
+                "minuty": 3,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Bieg z pracą ramion w gardzie",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Churugi po zmianie gardy",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Unik głową w prawo na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Blok górny na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Churugi podwójne na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Bieg z bokserskim unikaniem głową",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozciąganie",
+                "nazwa": "Wymach nogi do pałki",
+                "minuty": 1,
+                "ostatnio": 2
+              },
+              {
+                "segment": "Rozciąganie",
+                "nazwa": "Rozciąganie dynamiczne za trenerem",
+                "minuty": 5,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Blok przed miękką pałką – dół",
+                "minuty": 3,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Interwał 20/20 – bieg",
+                "minuty": 4,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Blok przed miękką pałką – góra",
+                "minuty": 4,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Poruszanie na boki w gardzie",
+                "minuty": 6,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Blok przed miękką pałką – bok",
+                "minuty": 3,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Zmiana gardy na komendę",
+                "minuty": 4,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Zabawa",
+                "nazwa": "Wyścig z pałką między nogami",
+                "minuty": 2,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Zabawa",
+                "nazwa": "Murarz z miękką pałką",
+                "minuty": 8,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Zabawa",
+                "nazwa": "Szlaban",
+                "minuty": 5,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Zabawa",
+                "nazwa": "Szczurek z makaronem",
+                "minuty": 3,
+                "ostatnio": 4
+              }
+            ],
+            "fitness": {
+              "duration_time": 1.0,
+              "physical_difficulty": 0.9329,
+              "technical_difficulty": 0.9229,
+              "body_balance": 0.5987,
+              "age_coverage": 0.2969,
+              "training_type": 0.4833,
+              "equipment_usage": 1.0,
+              "recent_usage": 0.9917
+            }
+          }
+        }
+      ],
+      "ocena_trenera": {
+        "akceptowalne": null,
+        "ocena_1_5": null,
+        "komentarz": ""
+      }
+    },
+    {
+      "konfiguracja": {
+        "name": "cel-dol-2.5",
+        "population_size": 50,
+        "max_generations": 100,
+        "crossover_probability": 0.7,
+        "mutation_probability": 0.35,
+        "tournament_size": 4,
+        "mutation_duration_delta": 5,
+        "duration_deviation_percent": 20,
+        "fitness": {
+          "duration_over_sigma_ratio": 0.05,
+          "duration_under_sigma_ratio": 0.2,
+          "difficulty_sigma": 1.0,
+          "body_load_sigma": 1.0,
+          "physical_difficulty_demand": 2.5,
+          "technical_difficulty_demand": 2.5,
+          "body_upper_demand": 2.5,
+          "body_lower_demand": 2.5,
+          "body_core_demand": 2.5,
+          "window_time_size": 5
+        },
+        "mutation_mode_weights": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "wyniki": {
+        "proby": 10,
+        "poprawne": 10,
+        "bledy": 0,
+        "przekroczony_limit_czasu": 0,
+        "duration_time": {
+          "srednia": 1.0,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "physical_difficulty": {
+          "srednia": 0.9185,
+          "mediana": 0.9204,
+          "p90": 0.9234
+        },
+        "technical_difficulty": {
+          "srednia": 0.9177,
+          "mediana": 0.9226,
+          "p90": 0.9362
+        },
+        "body_balance": {
+          "srednia": 0.6527,
+          "mediana": 0.6599,
+          "p90": 0.6954
+        },
+        "age_coverage": {
+          "srednia": 0.2827,
+          "mediana": 0.2739,
+          "p90": 0.3225
+        },
+        "training_type": {
+          "srednia": 0.4817,
+          "mediana": 0.4917,
+          "p90": 0.5333
+        },
+        "equipment_usage": {
+          "srednia": 1.0,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "recent_usage": {
+          "srednia": 0.9888,
+          "mediana": 0.9917,
+          "p90": 0.9917
+        },
+        "exercises": {
+          "srednia": 24.7,
+          "mediana": 25.5,
+          "p90": 27
+        },
+        "duration_deviation_minutes": {
+          "srednia": 0,
+          "mediana": 0.0,
+          "p90": 0
+        },
+        "repeat_1": {
+          "srednia": 0.0,
+          "mediana": 0.0,
+          "p90": 0.0
+        },
+        "repeat_2_3": {
+          "srednia": 0.0494,
+          "mediana": 0.0417,
+          "p90": 0.0769
+        },
+        "repeat_4_plus": {
+          "srednia": 0.9506,
+          "mediana": 0.9583,
+          "p90": 0.963
+        },
+        "duration_seconds": {
+          "srednia": 1.3868,
+          "mediana": 1.3754,
+          "p90": 1.5155
+        }
+      },
+      "scenariusze": [
+        {
+          "scenariusz": "7-13 / sprzęt: pałki / typ: częsty / uczestnicy: 15",
+          "kandydaci": 196,
+          "historia_unikalne_cwiczenia": 28,
+          "wyniki": {
+            "proby": 10,
+            "poprawne": 10,
+            "bledy": 0,
+            "przekroczony_limit_czasu": 0,
+            "duration_time": {
+              "srednia": 1.0,
+              "mediana": 1.0,
+              "p90": 1.0
+            },
+            "physical_difficulty": {
+              "srednia": 0.9185,
+              "mediana": 0.9204,
+              "p90": 0.9234
+            },
+            "technical_difficulty": {
+              "srednia": 0.9177,
+              "mediana": 0.9226,
+              "p90": 0.9362
+            },
+            "body_balance": {
+              "srednia": 0.6527,
+              "mediana": 0.6599,
+              "p90": 0.6954
+            },
+            "age_coverage": {
+              "srednia": 0.2827,
+              "mediana": 0.2739,
+              "p90": 0.3225
+            },
+            "training_type": {
+              "srednia": 0.4817,
+              "mediana": 0.4917,
+              "p90": 0.5333
+            },
+            "equipment_usage": {
+              "srednia": 1.0,
+              "mediana": 1.0,
+              "p90": 1.0
+            },
+            "recent_usage": {
+              "srednia": 0.9888,
+              "mediana": 0.9917,
+              "p90": 0.9917
+            },
+            "exercises": {
+              "srednia": 24.7,
+              "mediana": 25.5,
+              "p90": 27
+            },
+            "duration_deviation_minutes": {
+              "srednia": 0,
+              "mediana": 0.0,
+              "p90": 0
+            },
+            "repeat_1": {
+              "srednia": 0.0,
+              "mediana": 0.0,
+              "p90": 0.0
+            },
+            "repeat_2_3": {
+              "srednia": 0.0494,
+              "mediana": 0.0417,
+              "p90": 0.0769
+            },
+            "repeat_4_plus": {
+              "srednia": 0.9506,
+              "mediana": 0.9583,
+              "p90": 0.963
+            },
+            "duration_seconds": {
+              "srednia": 1.3868,
+              "mediana": 1.3754,
+              "p90": 1.5155
+            }
+          },
+          "przykladowy_plan": {
+            "scenariusz": "7-13 / sprzęt: pałki / typ: częsty / uczestnicy: 15",
+            "cwiczenia": [
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Sonkal na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Unik głową w lewo na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Wyścig z pałką między nogami",
+                "minuty": 2,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Blok dolny na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Pompka na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Bieg z bokserskim unikaniem głową",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Zmiana gardy podskokiem",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Churugi podwójne na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Bieg z pracą ramion w gardzie",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Churugi pojedyncze na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Unik głową w prawo na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozciąganie",
+                "nazwa": "Dynamiczny skłon do palców",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozciąganie",
+                "nazwa": "Bark – ramię przez klatkę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozciąganie",
+                "nazwa": "Przysiad kozacki płytki",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozciąganie",
+                "nazwa": "Klatka piersiowa przy ścianie",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozciąganie",
+                "nazwa": "Wymach nogi do pałki",
+                "minuty": 1,
+                "ostatnio": 2
+              },
+              {
+                "segment": "Rozciąganie",
+                "nazwa": "Dynamiczna kobra do podporu",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Zmiana pozycji gunnun–niunja",
+                "minuty": 8,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Pompki z dotknięciem barku",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Most biodrowy",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Blok przed miękką pałką – dół",
+                "minuty": 4,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Izometryczny przysiad",
+                "minuty": 2,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Blok przed miękką pałką – bok",
+                "minuty": 3,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Yop chagi – w miejscu w powietrze",
+                "minuty": 5,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Zabawa",
+                "nazwa": "Murarz z miękką pałką",
+                "minuty": 10,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Zabawa",
+                "nazwa": "Szlaban",
+                "minuty": 6,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Zabawa",
+                "nazwa": "Wyścig z pałką między nogami",
+                "minuty": 2,
+                "ostatnio": 4
+              }
+            ],
+            "fitness": {
+              "duration_time": 1.0,
+              "physical_difficulty": 0.9178,
+              "technical_difficulty": 0.9362,
+              "body_balance": 0.6548,
+              "age_coverage": 0.2621,
+              "training_type": 0.4833,
+              "equipment_usage": 1.0,
+              "recent_usage": 0.9917
+            }
+          }
+        }
+      ],
+      "ocena_trenera": {
+        "akceptowalne": null,
+        "ocena_1_5": null,
+        "komentarz": ""
+      }
+    },
+    {
+      "konfiguracja": {
+        "name": "cel-dol-3",
+        "population_size": 50,
+        "max_generations": 100,
+        "crossover_probability": 0.7,
+        "mutation_probability": 0.35,
+        "tournament_size": 4,
+        "mutation_duration_delta": 5,
+        "duration_deviation_percent": 20,
+        "fitness": {
+          "duration_over_sigma_ratio": 0.05,
+          "duration_under_sigma_ratio": 0.2,
+          "difficulty_sigma": 1.0,
+          "body_load_sigma": 1.0,
+          "physical_difficulty_demand": 2.5,
+          "technical_difficulty_demand": 2.5,
+          "body_upper_demand": 2.5,
+          "body_lower_demand": 3.0,
+          "body_core_demand": 2.5,
+          "window_time_size": 5
+        },
+        "mutation_mode_weights": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "wyniki": {
+        "proby": 10,
+        "poprawne": 10,
+        "bledy": 0,
+        "przekroczony_limit_czasu": 0,
+        "duration_time": {
+          "srednia": 1.0,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "physical_difficulty": {
+          "srednia": 0.9226,
+          "mediana": 0.9238,
+          "p90": 0.9311
+        },
+        "technical_difficulty": {
+          "srednia": 0.9211,
+          "mediana": 0.9209,
+          "p90": 0.9423
+        },
+        "body_balance": {
+          "srednia": 0.6745,
+          "mediana": 0.6743,
+          "p90": 0.7259
+        },
+        "age_coverage": {
+          "srednia": 0.2773,
+          "mediana": 0.2747,
+          "p90": 0.3043
+        },
+        "training_type": {
+          "srednia": 0.475,
+          "mediana": 0.4667,
+          "p90": 0.5333
+        },
+        "equipment_usage": {
+          "srednia": 1.0,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "recent_usage": {
+          "srednia": 0.9896,
+          "mediana": 0.9917,
+          "p90": 0.9917
+        },
+        "exercises": {
+          "srednia": 24.5,
+          "mediana": 25.0,
+          "p90": 26
+        },
+        "duration_deviation_minutes": {
+          "srednia": 0,
+          "mediana": 0.0,
+          "p90": 0
+        },
+        "repeat_1": {
+          "srednia": 0.0,
+          "mediana": 0.0,
+          "p90": 0.0
+        },
+        "repeat_2_3": {
+          "srednia": 0.0456,
+          "mediana": 0.04,
+          "p90": 0.0476
+        },
+        "repeat_4_plus": {
+          "srednia": 0.9544,
+          "mediana": 0.96,
+          "p90": 0.9615
+        },
+        "duration_seconds": {
+          "srednia": 1.3886,
+          "mediana": 1.4094,
+          "p90": 1.4382
+        }
+      },
+      "scenariusze": [
+        {
+          "scenariusz": "7-13 / sprzęt: pałki / typ: częsty / uczestnicy: 15",
+          "kandydaci": 196,
+          "historia_unikalne_cwiczenia": 28,
+          "wyniki": {
+            "proby": 10,
+            "poprawne": 10,
+            "bledy": 0,
+            "przekroczony_limit_czasu": 0,
+            "duration_time": {
+              "srednia": 1.0,
+              "mediana": 1.0,
+              "p90": 1.0
+            },
+            "physical_difficulty": {
+              "srednia": 0.9226,
+              "mediana": 0.9238,
+              "p90": 0.9311
+            },
+            "technical_difficulty": {
+              "srednia": 0.9211,
+              "mediana": 0.9209,
+              "p90": 0.9423
+            },
+            "body_balance": {
+              "srednia": 0.6745,
+              "mediana": 0.6743,
+              "p90": 0.7259
+            },
+            "age_coverage": {
+              "srednia": 0.2773,
+              "mediana": 0.2747,
+              "p90": 0.3043
+            },
+            "training_type": {
+              "srednia": 0.475,
+              "mediana": 0.4667,
+              "p90": 0.5333
+            },
+            "equipment_usage": {
+              "srednia": 1.0,
+              "mediana": 1.0,
+              "p90": 1.0
+            },
+            "recent_usage": {
+              "srednia": 0.9896,
+              "mediana": 0.9917,
+              "p90": 0.9917
+            },
+            "exercises": {
+              "srednia": 24.5,
+              "mediana": 25.0,
+              "p90": 26
+            },
+            "duration_deviation_minutes": {
+              "srednia": 0,
+              "mediana": 0.0,
+              "p90": 0
+            },
+            "repeat_1": {
+              "srednia": 0.0,
+              "mediana": 0.0,
+              "p90": 0.0
+            },
+            "repeat_2_3": {
+              "srednia": 0.0456,
+              "mediana": 0.04,
+              "p90": 0.0476
+            },
+            "repeat_4_plus": {
+              "srednia": 0.9544,
+              "mediana": 0.96,
+              "p90": 0.9615
+            },
+            "duration_seconds": {
+              "srednia": 1.3886,
+              "mediana": 1.4094,
+              "p90": 1.4382
+            }
+          },
+          "przykladowy_plan": {
+            "scenariusz": "7-13 / sprzęt: pałki / typ: częsty / uczestnicy: 15",
+            "cwiczenia": [
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Churugi podwójne na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Wyścig z pałką między nogami",
+                "minuty": 2,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Sonkal na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Unik głową w prawo na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Mobilizacja nadgarstków",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Blok górny na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Doskok–dollyo chagi–odskok",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Churugi potrójne na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Bieg z bokserskim unikaniem głową",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Unik głową w lewo na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Churugi pojedyncze na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozciąganie",
+                "nazwa": "Wymach nogi do pałki",
+                "minuty": 1,
+                "ostatnio": 2
+              },
+              {
+                "segment": "Rozciąganie",
+                "nazwa": "Rozciąganie dynamiczne za trenerem",
+                "minuty": 5,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Blok przed miękką pałką – góra",
+                "minuty": 3,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Poruszanie na boki w gardzie",
+                "minuty": 5,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Blok przed miękką pałką – bok",
+                "minuty": 3,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Zmiana gardy na komendę",
+                "minuty": 3,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Pompki z dotknięciem barku",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Blok niski + churugi",
+                "minuty": 3,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Sprint wahadłowy 5–10–5",
+                "minuty": 3,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Blok przed miękką pałką – dół",
+                "minuty": 3,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Zabawa",
+                "nazwa": "Murarz z miękką pałką",
+                "minuty": 10,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Zabawa",
+                "nazwa": "Szlaban",
+                "minuty": 6,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Zabawa",
+                "nazwa": "Wyścig niedźwiedzi",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Zabawa",
+                "nazwa": "Wyścig raków",
+                "minuty": 1,
+                "ostatnio": 4
+              }
+            ],
+            "fitness": {
+              "duration_time": 1.0,
+              "physical_difficulty": 0.9245,
+              "technical_difficulty": 0.9149,
+              "body_balance": 0.6702,
+              "age_coverage": 0.2942,
+              "training_type": 0.4833,
+              "equipment_usage": 1.0,
+              "recent_usage": 0.9917
+            }
+          }
+        }
+      ],
+      "ocena_trenera": {
+        "akceptowalne": null,
+        "ocena_1_5": null,
+        "komentarz": ""
+      }
+    },
+    {
+      "konfiguracja": {
+        "name": "cel-dol-4",
+        "population_size": 50,
+        "max_generations": 100,
+        "crossover_probability": 0.7,
+        "mutation_probability": 0.35,
+        "tournament_size": 4,
+        "mutation_duration_delta": 5,
+        "duration_deviation_percent": 20,
+        "fitness": {
+          "duration_over_sigma_ratio": 0.05,
+          "duration_under_sigma_ratio": 0.2,
+          "difficulty_sigma": 1.0,
+          "body_load_sigma": 1.0,
+          "physical_difficulty_demand": 2.5,
+          "technical_difficulty_demand": 2.5,
+          "body_upper_demand": 2.5,
+          "body_lower_demand": 4.0,
+          "body_core_demand": 2.5,
+          "window_time_size": 5
+        },
+        "mutation_mode_weights": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "wyniki": {
+        "proby": 10,
+        "poprawne": 10,
+        "bledy": 0,
+        "przekroczony_limit_czasu": 0,
+        "duration_time": {
+          "srednia": 1.0,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "physical_difficulty": {
+          "srednia": 0.9261,
+          "mediana": 0.9275,
+          "p90": 0.9413
+        },
+        "technical_difficulty": {
+          "srednia": 0.9221,
+          "mediana": 0.9163,
+          "p90": 0.9333
+        },
+        "body_balance": {
+          "srednia": 0.6784,
+          "mediana": 0.6685,
+          "p90": 0.7123
+        },
+        "age_coverage": {
+          "srednia": 0.2868,
+          "mediana": 0.299,
+          "p90": 0.3223
+        },
+        "training_type": {
+          "srednia": 0.53,
+          "mediana": 0.5417,
+          "p90": 0.55
+        },
+        "equipment_usage": {
+          "srednia": 1.0,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "recent_usage": {
+          "srednia": 0.9917,
+          "mediana": 0.9917,
+          "p90": 0.9917
+        },
+        "exercises": {
+          "srednia": 23.9,
+          "mediana": 23.5,
+          "p90": 27
+        },
+        "duration_deviation_minutes": {
+          "srednia": 0,
+          "mediana": 0.0,
+          "p90": 0
+        },
+        "repeat_1": {
+          "srednia": 0.0,
+          "mediana": 0.0,
+          "p90": 0.0
+        },
+        "repeat_2_3": {
+          "srednia": 0.0422,
+          "mediana": 0.0426,
+          "p90": 0.0455
+        },
+        "repeat_4_plus": {
+          "srednia": 0.9578,
+          "mediana": 0.9574,
+          "p90": 0.963
+        },
+        "duration_seconds": {
+          "srednia": 1.3754,
+          "mediana": 1.3682,
+          "p90": 1.4074
+        }
+      },
+      "scenariusze": [
+        {
+          "scenariusz": "7-13 / sprzęt: pałki / typ: częsty / uczestnicy: 15",
+          "kandydaci": 196,
+          "historia_unikalne_cwiczenia": 28,
+          "wyniki": {
+            "proby": 10,
+            "poprawne": 10,
+            "bledy": 0,
+            "przekroczony_limit_czasu": 0,
+            "duration_time": {
+              "srednia": 1.0,
+              "mediana": 1.0,
+              "p90": 1.0
+            },
+            "physical_difficulty": {
+              "srednia": 0.9261,
+              "mediana": 0.9275,
+              "p90": 0.9413
+            },
+            "technical_difficulty": {
+              "srednia": 0.9221,
+              "mediana": 0.9163,
+              "p90": 0.9333
+            },
+            "body_balance": {
+              "srednia": 0.6784,
+              "mediana": 0.6685,
+              "p90": 0.7123
+            },
+            "age_coverage": {
+              "srednia": 0.2868,
+              "mediana": 0.299,
+              "p90": 0.3223
+            },
+            "training_type": {
+              "srednia": 0.53,
+              "mediana": 0.5417,
+              "p90": 0.55
+            },
+            "equipment_usage": {
+              "srednia": 1.0,
+              "mediana": 1.0,
+              "p90": 1.0
+            },
+            "recent_usage": {
+              "srednia": 0.9917,
+              "mediana": 0.9917,
+              "p90": 0.9917
+            },
+            "exercises": {
+              "srednia": 23.9,
+              "mediana": 23.5,
+              "p90": 27
+            },
+            "duration_deviation_minutes": {
+              "srednia": 0,
+              "mediana": 0.0,
+              "p90": 0
+            },
+            "repeat_1": {
+              "srednia": 0.0,
+              "mediana": 0.0,
+              "p90": 0.0
+            },
+            "repeat_2_3": {
+              "srednia": 0.0422,
+              "mediana": 0.0426,
+              "p90": 0.0455
+            },
+            "repeat_4_plus": {
+              "srednia": 0.9578,
+              "mediana": 0.9574,
+              "p90": 0.963
+            },
+            "duration_seconds": {
+              "srednia": 1.3754,
+              "mediana": 1.3682,
+              "p90": 1.4074
+            }
+          },
+          "przykladowy_plan": {
+            "scenariusz": "7-13 / sprzęt: pałki / typ: częsty / uczestnicy: 15",
+            "cwiczenia": [
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Unik głową w prawo na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Podwójne churugi po zmianie gardy",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Bieg z pracą ramion w gardzie",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Churugi po zmianie gardy",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Wyścig z pałką między nogami",
+                "minuty": 2,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Sonkal na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Dollyo chagi na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Blok górny na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Churugi podwójne na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Zmiana gardy podskokiem",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Blok dolny na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozciąganie",
+                "nazwa": "Wymach nogi do pałki",
+                "minuty": 1,
+                "ostatnio": 2
+              },
+              {
+                "segment": "Rozciąganie",
+                "nazwa": "Rozciąganie dynamiczne za trenerem",
+                "minuty": 5,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Blok przed miękką pałką – dół",
+                "minuty": 3,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Interwał 20/10 – przysiady + ap chagi",
+                "minuty": 3,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Ap chagi – w miejscu w powietrze",
+                "minuty": 6,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Blok przed miękką pałką – góra",
+                "minuty": 3,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Pompki z dotknięciem barku",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Zmiana pozycji gunnun–niunja",
+                "minuty": 8,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Zabawa",
+                "nazwa": "Murarz z miękką pałką",
+                "minuty": 10,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Zabawa",
+                "nazwa": "Szlaban",
+                "minuty": 6,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Zabawa",
+                "nazwa": "Wyścig z pałką między nogami",
+                "minuty": 2,
+                "ostatnio": 4
+              }
+            ],
+            "fitness": {
+              "duration_time": 1.0,
+              "physical_difficulty": 0.93,
+              "technical_difficulty": 0.9297,
+              "body_balance": 0.6704,
+              "age_coverage": 0.3107,
+              "training_type": 0.55,
+              "equipment_usage": 1.0,
+              "recent_usage": 0.9917
+            }
+          }
+        }
+      ],
+      "ocena_trenera": {
+        "akceptowalne": null,
+        "ocena_1_5": null,
+        "komentarz": ""
+      }
+    },
+    {
+      "konfiguracja": {
+        "name": "cel-dol-5",
+        "population_size": 50,
+        "max_generations": 100,
+        "crossover_probability": 0.7,
+        "mutation_probability": 0.35,
+        "tournament_size": 4,
+        "mutation_duration_delta": 5,
+        "duration_deviation_percent": 20,
+        "fitness": {
+          "duration_over_sigma_ratio": 0.05,
+          "duration_under_sigma_ratio": 0.2,
+          "difficulty_sigma": 1.0,
+          "body_load_sigma": 1.0,
+          "physical_difficulty_demand": 2.5,
+          "technical_difficulty_demand": 2.5,
+          "body_upper_demand": 2.5,
+          "body_lower_demand": 5.0,
+          "body_core_demand": 2.5,
+          "window_time_size": 5
+        },
+        "mutation_mode_weights": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "wyniki": {
+        "proby": 10,
+        "poprawne": 10,
+        "bledy": 0,
+        "przekroczony_limit_czasu": 0,
+        "duration_time": {
+          "srednia": 1.0,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "physical_difficulty": {
+          "srednia": 0.9218,
+          "mediana": 0.9244,
+          "p90": 0.93
+        },
+        "technical_difficulty": {
+          "srednia": 0.9214,
+          "mediana": 0.9201,
+          "p90": 0.9329
+        },
+        "body_balance": {
+          "srednia": 0.6132,
+          "mediana": 0.6054,
+          "p90": 0.654
+        },
+        "age_coverage": {
+          "srednia": 0.3029,
+          "mediana": 0.3207,
+          "p90": 0.3236
+        },
+        "training_type": {
+          "srednia": 0.525,
+          "mediana": 0.525,
+          "p90": 0.55
+        },
+        "equipment_usage": {
+          "srednia": 1.0,
+          "mediana": 1.0,
+          "p90": 1.0
+        },
+        "recent_usage": {
+          "srednia": 0.9908,
+          "mediana": 0.9917,
+          "p90": 0.9917
+        },
+        "exercises": {
+          "srednia": 23.4,
+          "mediana": 23.0,
+          "p90": 26
+        },
+        "duration_deviation_minutes": {
+          "srednia": 0,
+          "mediana": 0.0,
+          "p90": 0
+        },
+        "repeat_1": {
+          "srednia": 0.0,
+          "mediana": 0.0,
+          "p90": 0.0
+        },
+        "repeat_2_3": {
+          "srednia": 0.0468,
+          "mediana": 0.0445,
+          "p90": 0.0455
+        },
+        "repeat_4_plus": {
+          "srednia": 0.9532,
+          "mediana": 0.9555,
+          "p90": 0.96
+        },
+        "duration_seconds": {
+          "srednia": 1.4099,
+          "mediana": 1.3742,
+          "p90": 1.4587
+        }
+      },
+      "scenariusze": [
+        {
+          "scenariusz": "7-13 / sprzęt: pałki / typ: częsty / uczestnicy: 15",
+          "kandydaci": 196,
+          "historia_unikalne_cwiczenia": 28,
+          "wyniki": {
+            "proby": 10,
+            "poprawne": 10,
+            "bledy": 0,
+            "przekroczony_limit_czasu": 0,
+            "duration_time": {
+              "srednia": 1.0,
+              "mediana": 1.0,
+              "p90": 1.0
+            },
+            "physical_difficulty": {
+              "srednia": 0.9218,
+              "mediana": 0.9244,
+              "p90": 0.93
+            },
+            "technical_difficulty": {
+              "srednia": 0.9214,
+              "mediana": 0.9201,
+              "p90": 0.9329
+            },
+            "body_balance": {
+              "srednia": 0.6132,
+              "mediana": 0.6054,
+              "p90": 0.654
+            },
+            "age_coverage": {
+              "srednia": 0.3029,
+              "mediana": 0.3207,
+              "p90": 0.3236
+            },
+            "training_type": {
+              "srednia": 0.525,
+              "mediana": 0.525,
+              "p90": 0.55
+            },
+            "equipment_usage": {
+              "srednia": 1.0,
+              "mediana": 1.0,
+              "p90": 1.0
+            },
+            "recent_usage": {
+              "srednia": 0.9908,
+              "mediana": 0.9917,
+              "p90": 0.9917
+            },
+            "exercises": {
+              "srednia": 23.4,
+              "mediana": 23.0,
+              "p90": 26
+            },
+            "duration_deviation_minutes": {
+              "srednia": 0,
+              "mediana": 0.0,
+              "p90": 0
+            },
+            "repeat_1": {
+              "srednia": 0.0,
+              "mediana": 0.0,
+              "p90": 0.0
+            },
+            "repeat_2_3": {
+              "srednia": 0.0468,
+              "mediana": 0.0445,
+              "p90": 0.0455
+            },
+            "repeat_4_plus": {
+              "srednia": 0.9532,
+              "mediana": 0.9555,
+              "p90": 0.96
+            },
+            "duration_seconds": {
+              "srednia": 1.4099,
+              "mediana": 1.3742,
+              "p90": 1.4587
+            }
+          },
+          "przykladowy_plan": {
+            "scenariusz": "7-13 / sprzęt: pałki / typ: częsty / uczestnicy: 15",
+            "cwiczenia": [
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Churugi pojedyncze w podskoku",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Bieg z bokserskim unikaniem głową",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Przysiad z churugi",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Blok dolny na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Wyścig z pałką między nogami",
+                "minuty": 2,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Churugi pojedyncze na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Podwójne churugi po zmianie gardy",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Bieg z pracą ramion w gardzie",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Unik głową w prawo na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Sonkal na komendę",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozgrzewka",
+                "nazwa": "Zmiana gardy podskokiem",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Rozciąganie",
+                "nazwa": "Wymach nogi do pałki",
+                "minuty": 1,
+                "ostatnio": 2
+              },
+              {
+                "segment": "Rozciąganie",
+                "nazwa": "Rozciąganie dynamiczne za trenerem",
+                "minuty": 5,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Wspięcia na palce jednonóż",
+                "minuty": 2,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Blok przed miękką pałką – góra",
+                "minuty": 4,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Zmiana pozycji gunnun–niunja",
+                "minuty": 8,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Zmiana gardy na komendę",
+                "minuty": 3,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Pompki z dotknięciem barku",
+                "minuty": 1,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Ćwiczenia",
+                "nazwa": "Gunnun sogi – ustawienie pozycji",
+                "minuty": 6,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Zabawa",
+                "nazwa": "Szlaban",
+                "minuty": 5,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Zabawa",
+                "nazwa": "Murarz z miękką pałką",
+                "minuty": 10,
+                "ostatnio": 4
+              },
+              {
+                "segment": "Zabawa",
+                "nazwa": "Wyścig z pałką między nogami",
+                "minuty": 3,
+                "ostatnio": 4
+              }
+            ],
+            "fitness": {
+              "duration_time": 1.0,
+              "physical_difficulty": 0.9239,
+              "technical_difficulty": 0.9229,
+              "body_balance": 0.6202,
+              "age_coverage": 0.3207,
+              "training_type": 0.5167,
+              "equipment_usage": 1.0,
+              "recent_usage": 0.9917
+            }
+          }
+        }
+      ],
+      "ocena_trenera": {
+        "akceptowalne": null,
+        "ocena_1_5": null,
+        "komentarz": ""
+      }
+    }
+  ]
+}

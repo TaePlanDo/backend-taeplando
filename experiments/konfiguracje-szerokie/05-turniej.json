@@ -1,0 +1,30 @@
+{
+  "trainer_id": null,
+  "plans_per_scenario": 10,
+  "seed": 42,
+  "timeout_seconds": 30,
+  "history_exercises_per_plan": 10,
+  "output_dir": "experiments/results",
+  "variants": [
+    {
+      "name": "turniej-1",
+      "tournament_size": 1
+    },
+    {
+      "name": "turniej-2",
+      "tournament_size": 2
+    },
+    {
+      "name": "turniej-4",
+      "tournament_size": 4
+    },
+    {
+      "name": "turniej-6",
+      "tournament_size": 6
+    },
+    {
+      "name": "turniej-10",
+      "tournament_size": 10
+    }
+  ]
+}

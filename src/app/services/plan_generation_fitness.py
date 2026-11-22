@@ -13,17 +13,10 @@ from app.services.plan_generation_domain import (
 from app.services.plan_generation_fitness_constants import (
     AGE_COVERAGE_WEIGHT,
     BODY_BALANCE_WEIGHT,
-    BODY_LOAD_DEMANDS,
-    BODY_LOAD_SIGMA,
-    DIFFICULTY_SIGMA,
-    DURATION_OVER_SIGMA_RATIO,
-    DURATION_UNDER_SIGMA_RATIO,
     DURATION_WEIGHT,
     EQUIPMENT_USAGE_WEIGHT,
-    PHYSICAL_DIFFICULTY_DEMAND,
     PHYSICAL_DIFFICULTY_WEIGHT,
     RECENT_USAGE_WEIGHT,
-    TECHNICAL_DIFFICULTY_DEMAND,
     TECHNICAL_DIFFICULTY_WEIGHT,
     TRAINING_TYPE_WEIGHT,
 )
@@ -43,9 +36,9 @@ def evaluate_duration_time(
     """Penalize overtime more harshly than undertime."""
     relative_deviation = _relative_duration_deviation(context, individual)
     sigma = (
-        DURATION_OVER_SIGMA_RATIO
+        context.fitness_parameters.duration_over_sigma_ratio
         if relative_deviation > 0
-        else DURATION_UNDER_SIGMA_RATIO
+        else context.fitness_parameters.duration_under_sigma_ratio
     )
     return gaussian(relative_deviation, sigma)
 
@@ -105,7 +98,9 @@ def evaluate_physical_difficulty(
     return _evaluate_windowed_difficulty(
         individual,
         lambda candidate: candidate.physical_difficulty,
-        PHYSICAL_DIFFICULTY_DEMAND,
+        context.fitness_parameters.physical_difficulty_demand,
+        context.fitness_parameters.difficulty_sigma,
+        context.fitness_parameters.window_time_size,
     )
 
 
@@ -116,7 +111,9 @@ def evaluate_technical_difficulty(
     return _evaluate_windowed_difficulty(
         individual,
         lambda candidate: candidate.technical_difficulty,
-        TECHNICAL_DIFFICULTY_DEMAND,
+        context.fitness_parameters.technical_difficulty_demand,
+        context.fitness_parameters.difficulty_sigma,
+        context.fitness_parameters.window_time_size,
     )
 
 
@@ -128,11 +125,28 @@ def evaluate_body_balance(
     if segment_means is None:
         return 0.0
 
-    window_balance = windowed_score(individual, _body_loads, _body_part_gap_score)
-    segment_demand = sum(
-        gaussian(mean - demand, BODY_LOAD_SIGMA)
-        for mean, demand in zip(segment_means, BODY_LOAD_DEMANDS, strict=True)
-    ) / len(BODY_LOAD_DEMANDS)
+    params = context.fitness_parameters
+    window_balance = windowed_score(
+        individual,
+        _body_loads,
+        lambda means: _body_part_gap_score(means, params.body_load_sigma),
+        params.window_time_size,
+    )
+    segment_demand = (
+        sum(
+            gaussian(mean - demand, params.body_load_sigma)
+            for mean, demand in zip(
+                segment_means,
+                (
+                    params.body_upper_demand,
+                    params.body_lower_demand,
+                    params.body_core_demand,
+                ),
+                strict=True,
+            )
+        )
+        / 3
+    )
     return (window_balance + segment_demand) / 2
 
 
@@ -182,11 +196,14 @@ def _evaluate_windowed_difficulty(
     individual: PlanIndividual,
     difficulty: Callable[[PlanExerciseCandidate], int],
     demand: float,
+    sigma: float,
+    window_size: int,
 ) -> float:
     return windowed_score(
         individual,
         lambda candidate: (difficulty(candidate),),
-        lambda means: gaussian(means[0] - demand, DIFFICULTY_SIGMA),
+        lambda means: gaussian(means[0] - demand, sigma),
+        window_size,
     )
 
 
@@ -194,6 +211,6 @@ def _body_loads(candidate: PlanExerciseCandidate) -> tuple[int, ...]:
     return (candidate.upper_body_load, candidate.lower_body_load, candidate.core_load)
 
 
-def _body_part_gap_score(means: tuple[float, ...]) -> float:
+def _body_part_gap_score(means: tuple[float, ...], sigma: float = 1.0) -> float:
     """Score the gap between the most and least loaded body parts."""
-    return gaussian(max(means) - min(means), BODY_LOAD_SIGMA)
+    return gaussian(max(means) - min(means), sigma)

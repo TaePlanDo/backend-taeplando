@@ -1,0 +1,30 @@
+{
+  "trainer_id": null,
+  "plans_per_scenario": 10,
+  "seed": 42,
+  "timeout_seconds": 30,
+  "history_exercises_per_plan": 10,
+  "output_dir": "experiments/results",
+  "variants": [
+    {
+      "name": "zmiana-czasu-1",
+      "mutation_duration_delta": 1
+    },
+    {
+      "name": "zmiana-czasu-2",
+      "mutation_duration_delta": 2
+    },
+    {
+      "name": "zmiana-czasu-5",
+      "mutation_duration_delta": 5
+    },
+    {
+      "name": "zmiana-czasu-10",
+      "mutation_duration_delta": 10
+    },
+    {
+      "name": "zmiana-czasu-20",
+      "mutation_duration_delta": 20
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "trainer_id": null,
+  "plans_per_scenario": 10,
+  "seed": 42,
+  "timeout_seconds": 30,
+  "history_exercises_per_plan": 10,
+  "output_dir": "experiments/results",
+  "variants": [
+    {
+      "name": "mutacja-0",
+      "mutation_probability": 0
+    },
+    {
+      "name": "mutacja-10",
+      "mutation_probability": 0.1
+    },
+    {
+      "name": "mutacja-20",
+      "mutation_probability": 0.2
+    },
+    {
+      "name": "mutacja-30",
+      "mutation_probability": 0.3
+    },
+    {
+      "name": "mutacja-35",
+      "mutation_probability": 0.35
+    },
+    {
+      "name": "mutacja-40",
+      "mutation_probability": 0.4
+    },
+    {
+      "name": "mutacja-50",
+      "mutation_probability": 0.5
+    },
+    {
+      "name": "mutacja-60",
+      "mutation_probability": 0.6
+    },
+    {
+      "name": "mutacja-70",
+      "mutation_probability": 0.7
+    },
+    {
+      "name": "mutacja-80",
+      "mutation_probability": 0.8
+    },
+    {
+      "name": "mutacja-90",
+      "mutation_probability": 0.9
+    },
+    {
+      "name": "mutacja-100",
+      "mutation_probability": 1
+    }
+  ]
+}

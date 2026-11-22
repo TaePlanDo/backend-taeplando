@@ -1,0 +1,40 @@
+{
+  "trainer_id": null,
+  "plans_per_scenario": 10,
+  "seed": 42,
+  "timeout_seconds": 30,
+  "history_exercises_per_plan": 10,
+  "output_dir": "experiments/results",
+  "variants": [
+    {
+      "name": "okno-oceny-1",
+      "fitness": {
+        "window_time_size": 1
+      }
+    },
+    {
+      "name": "okno-oceny-3",
+      "fitness": {
+        "window_time_size": 3
+      }
+    },
+    {
+      "name": "okno-oceny-5",
+      "fitness": {
+        "window_time_size": 5
+      }
+    },
+    {
+      "name": "okno-oceny-10",
+      "fitness": {
+        "window_time_size": 10
+      }
+    },
+    {
+      "name": "okno-oceny-15",
+      "fitness": {
+        "window_time_size": 15
+      }
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "trainer_id": null,
+  "plans_per_scenario": 10,
+  "seed": 42,
+  "timeout_seconds": 30,
+  "history_exercises_per_plan": 10,
+  "output_dir": "experiments/results",
+  "variants": [
+    {
+      "name": "limit-czasu-0",
+      "duration_deviation_percent": 0
+    },
+    {
+      "name": "limit-czasu-10",
+      "duration_deviation_percent": 10
+    },
+    {
+      "name": "limit-czasu-20",
+      "duration_deviation_percent": 20
+    },
+    {
+      "name": "limit-czasu-30",
+      "duration_deviation_percent": 30
+    },
+    {
+      "name": "limit-czasu-40",
+      "duration_deviation_percent": 40
+    },
+    {
+      "name": "limit-czasu-50",
+      "duration_deviation_percent": 50
+    },
+    {
+      "name": "limit-czasu-75",
+      "duration_deviation_percent": 75
+    },
+    {
+      "name": "limit-czasu-100",
+      "duration_deviation_percent": 100
+    }
+  ]
+}

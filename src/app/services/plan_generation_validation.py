@@ -27,6 +27,7 @@ def validate_generated_plan(
     participant_count: int,
     available_equipment_ids: Sequence[UUID],
     plan: PlanIndividual,
+    duration_deviation_percent: int = 20,
 ) -> None:
     """Reject plans that violate hard generation rules before snapshot persist."""
     required = set(segment_by_position)
@@ -49,6 +50,7 @@ def validate_generated_plan(
                 group_max_age=group_max_age,
                 participant_count=participant_count,
                 available_equipment_ids=available,
+                duration_deviation_percent=duration_deviation_percent,
             )
 
 
@@ -72,9 +74,10 @@ def _validate_selection(
     group_max_age: int,
     participant_count: int,
     available_equipment_ids: set[UUID],
+    duration_deviation_percent: int,
 ) -> None:
     position = selection.schema_position
-    if not has_valid_duration(selection):
+    if not has_valid_duration(selection, duration_deviation_percent):
         _reject(f"duration outside allowed range at schema position {position}")
     candidate = selection.candidate
     if segment_id not in candidate.segment_ids:

@@ -1,0 +1,34 @@
+{
+  "trainer_id": null,
+  "plans_per_scenario": 10,
+  "seed": 42,
+  "timeout_seconds": 30,
+  "history_exercises_per_plan": 10,
+  "output_dir": "experiments/results",
+  "variants": [
+    {
+      "name": "tolerancja-nadmiaru-0.02",
+      "fitness": {
+        "duration_over_sigma_ratio": 0.02
+      }
+    },
+    {
+      "name": "tolerancja-nadmiaru-0.05",
+      "fitness": {
+        "duration_over_sigma_ratio": 0.05
+      }
+    },
+    {
+      "name": "tolerancja-nadmiaru-0.1",
+      "fitness": {
+        "duration_over_sigma_ratio": 0.1
+      }
+    },
+    {
+      "name": "tolerancja-nadmiaru-0.2",
+      "fitness": {
+        "duration_over_sigma_ratio": 0.2
+      }
+    }
+  ]
+}

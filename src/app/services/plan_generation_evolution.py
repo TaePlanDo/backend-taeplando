@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import logging
+import math
 from collections.abc import Sequence
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from random import Random
 from typing import Any
@@ -39,6 +40,40 @@ logger = logging.getLogger(__name__)
 
 INVALID_FITNESS = -1.0
 
+
+@dataclass(frozen=True)
+class EvolutionConfig:
+    max_generations: int = MAX_GENERATIONS
+    crossover_probability: float = CXPB
+    mutation_probability: float = MUTPB
+    tournament_size: int = TOURNAMENT_K
+    mutation_duration_delta: int = MUTATION_DURATION_DELTA
+    duration_deviation_percent: int = 20
+    mutation_mode_weights: tuple[float, float, float, float] = (1, 1, 1, 1)
+
+    def __post_init__(self) -> None:
+        if (
+            self.max_generations < 0
+            or self.tournament_size < 1
+            or self.mutation_duration_delta < 1
+            or not 0 <= self.duration_deviation_percent <= 100
+        ):
+            raise ValueError("Invalid evolution limits")
+        if (
+            not 0 <= self.crossover_probability <= 1
+            or not 0 <= self.mutation_probability <= 1
+        ):
+            raise ValueError("Probabilities must be between 0 and 1")
+        if (
+            len(self.mutation_mode_weights) != 4
+            or any(not math.isfinite(w) or w < 0 for w in self.mutation_mode_weights)
+            or not sum(self.mutation_mode_weights) > 0
+        ):
+            raise ValueError(
+                "Mutation mode weights must be nonnegative and not all zero"
+            )
+
+
 if not hasattr(creator, "FitnessMax"):
     creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 if not hasattr(creator, "PlanGeneIndividual"):
@@ -51,7 +86,9 @@ if not hasattr(creator, "PlanGeneIndividual"):
 
 
 def is_structurally_valid(
-    context: GenerationContext, individual: PlanIndividual
+    context: GenerationContext,
+    individual: PlanIndividual,
+    duration_deviation_percent: int = 20,
 ) -> bool:
     """Hard GA-side checks; exact segment duration is a soft fitness concern."""
     if not individual.selections:
@@ -62,7 +99,7 @@ def is_structurally_valid(
     for selection in individual.selections:
         if selection.schema_position != context.segment.position:
             return False
-        if not has_valid_duration(selection):
+        if not has_valid_duration(selection, duration_deviation_percent):
             return False
         if selection.candidate.trainer_exercise_id not in candidate_ids:
             return False
@@ -74,6 +111,7 @@ def evolve(
     population: InitialPopulation,
     *,
     best: BestSoFar,
+    config: EvolutionConfig | None = None,
 ) -> PlanIndividual:
     """Run a seeded eaSimple-style GA for one segment and return the best valid plan.
 
@@ -81,13 +119,14 @@ def evolve(
     module, which is unsafe across parallel segment threads. This loop mirrors
     eaSimple (select → varAnd → evaluate → replace) with a per-run ``Random``.
     """
+    config = config or EvolutionConfig()
     position = context.segment.position
     if not population.individuals:
         logger.info("segment %s: evolve rejected empty population", position)
         raise NoValidPlanError()
 
     rng = Random(context.random_seed)
-    toolbox = _toolbox(context, rng)
+    toolbox = _toolbox(context, rng, config)
     deap_population = [
         to_deap(individual, context.random_seed)
         for individual in population.individuals
@@ -103,9 +142,9 @@ def evolve(
         "segment %s: evolve start pop=%d max_generations=%d cxpb=%.2f mutpb=%.2f",
         position,
         len(deap_population),
-        MAX_GENERATIONS,
-        CXPB,
-        MUTPB,
+        config.max_generations,
+        config.crossover_probability,
+        config.mutation_probability,
     )
 
     nevals = _assign_fitness(deap_population, toolbox)
@@ -115,7 +154,7 @@ def evolve(
 
     completed_generations = 0
     stopped_for_deadline = False
-    for generation in range(1, MAX_GENERATIONS + 1):
+    for generation in range(1, config.max_generations + 1):
         if datetime.now(UTC) >= context.deadline_at:
             stopped_for_deadline = True
             logger.info(
@@ -126,7 +165,13 @@ def evolve(
             break
 
         offspring = toolbox.select(deap_population, len(deap_population))
-        offspring = _var_and(offspring, toolbox, CXPB, MUTPB, rng)
+        offspring = _var_and(
+            offspring,
+            toolbox,
+            config.crossover_probability,
+            config.mutation_probability,
+            rng,
+        )
         nevals = _assign_fitness(offspring, toolbox)
         hall_of_fame.update(offspring)
         _publish_hall_of_fame(context, hall_of_fame, best)
@@ -165,9 +210,16 @@ def from_deap(individual: Any) -> PlanIndividual:
     return PlanIndividual(selections=tuple(individual))
 
 
-def _toolbox(context: GenerationContext, random: Random) -> base.Toolbox:
+def _toolbox(
+    context: GenerationContext, random: Random, config: EvolutionConfig
+) -> base.Toolbox:
     toolbox = base.Toolbox()
-    toolbox.register("evaluate", _evaluate, context=context)
+    toolbox.register(
+        "evaluate",
+        _evaluate,
+        context=context,
+        duration_deviation_percent=config.duration_deviation_percent,
+    )
     toolbox.register("mate", _crossover, random=random)
     toolbox.register(
         "mutate",
@@ -175,21 +227,26 @@ def _toolbox(context: GenerationContext, random: Random) -> base.Toolbox:
         candidates=context.candidates,
         schema_position=context.segment.position,
         random=random,
+        duration_delta=config.mutation_duration_delta,
+        duration_deviation_percent=config.duration_deviation_percent,
+        mode_weights=config.mutation_mode_weights,
     )
     toolbox.register(
         "select",
         _tournament_select,
-        tournsize=TOURNAMENT_K,
+        tournsize=config.tournament_size,
         random=random,
     )
     toolbox.register("clone", _clone)
     return toolbox
 
 
-def _evaluate(individual: Any, *, context: GenerationContext) -> tuple[float,]:
+def _evaluate(
+    individual: Any, *, context: GenerationContext, duration_deviation_percent: int = 20
+) -> tuple[float,]:
     """Single validity gate, then SCRUM-237 weighted fitness in [0, 1]."""
     plan = from_deap(individual)
-    if not is_structurally_valid(context, plan):
+    if not is_structurally_valid(context, plan, duration_deviation_percent):
         return (INVALID_FITNESS,)
     return (score_plan(context, plan),)
 
@@ -337,17 +394,25 @@ def _mutate(
     candidates: tuple[PlanExerciseCandidate, ...],
     schema_position: int,
     random: Random,
+    duration_delta: int = MUTATION_DURATION_DELTA,
+    duration_deviation_percent: int = 20,
+    mode_weights: tuple[float, float, float, float] = (1, 1, 1, 1),
 ) -> tuple[Any]:
     """Adjust duration, replace, insert an unused candidate, or shuffle order."""
     if not individual:
         return (individual,)
 
-    mode = random.randint(0, 3)
+    if mode_weights[0] == mode_weights[1] == mode_weights[2] == mode_weights[3]:
+        mode = random.randint(0, 3)
+    else:
+        mode = random.choices(range(4), weights=mode_weights, k=1)[0]
     if mode == 0:
         index = random.randrange(len(individual))
         selection: PlanExerciseSelection = individual[index]
-        delta = random.randint(1, MUTATION_DURATION_DELTA) * random.choice((-1, 1))
-        minimum, maximum = duration_bounds(selection.candidate.default_duration_minutes)
+        delta = random.randint(1, duration_delta) * random.choice((-1, 1))
+        minimum, maximum = duration_bounds(
+            selection.candidate.default_duration_minutes, duration_deviation_percent
+        )
         individual[index] = replace(
             selection,
             allocated_duration_minutes=min(

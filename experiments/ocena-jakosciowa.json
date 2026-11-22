@@ -1,0 +1,14 @@
+{
+  "trainer_id": null,
+  "plans_per_scenario": 1,
+  "seed": 42,
+  "timeout_seconds": 30,
+  "history_exercises_per_plan": 10,
+  "output_dir": "experiments/results",
+  "variants": [
+    {"name": "obecne"},
+    {"name": "A-wieksza-populacja", "population_size": 100, "mutation_probability": 0.30, "crossover_probability": 0.80},
+    {"name": "B-wiecej-generacji", "max_generations": 200, "tournament_size": 6},
+    {"name": "C-szybsza", "population_size": 25, "mutation_probability": 0.30, "crossover_probability": 0.30}
+  ]
+}

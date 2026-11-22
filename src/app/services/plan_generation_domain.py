@@ -6,6 +6,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from app.models.enums import EquipmentRequirementMode
+from app.services.plan_generation_fitness_constants import FitnessParameters
 
 
 @dataclass(frozen=True)
@@ -58,6 +59,7 @@ class GenerationContext:
     segment_duration_minutes: int
     candidates: tuple[PlanExerciseCandidate, ...]
     random_seed: int
+    fitness_parameters: FitnessParameters = FitnessParameters()
 
 
 @dataclass(frozen=True)
