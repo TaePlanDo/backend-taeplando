@@ -327,6 +327,11 @@ async def _assert_jsonb_snapshots(session: AsyncSession, fixture: ModelFixture) 
         name_snapshot="Test exercise",
         description_snapshot="Exercise used only by the model integration test.",
         image_url_snapshot="https://example.com/test-exercise.png",
+        animation_url_snapshot="https://example.com/test-exercise-animation.webp",
+        image_url_light_snapshot="https://example.com/test-exercise-light.png",
+        animation_url_light_snapshot=(
+            "https://example.com/test-exercise-animation-light.webp"
+        ),
         min_age_snapshot=7,
         max_age_snapshot=14,
         min_participants_snapshot=2,
@@ -356,6 +361,18 @@ async def _assert_jsonb_snapshots(session: AsyncSession, fixture: ModelFixture) 
     assert plan.training_types_snapshot == training_type_snapshot
     assert plan.schema_snapshot == schema_snapshot
     assert plan_exercise.image_url_snapshot == "https://example.com/test-exercise.png"
+    assert (
+        plan_exercise.animation_url_snapshot
+        == "https://example.com/test-exercise-animation.webp"
+    )
+    assert (
+        plan_exercise.image_url_light_snapshot
+        == "https://example.com/test-exercise-light.png"
+    )
+    assert (
+        plan_exercise.animation_url_light_snapshot
+        == "https://example.com/test-exercise-animation-light.webp"
+    )
     assert plan_exercise.physical_difficulty_snapshot == 3
     assert plan_exercise.technical_difficulty_snapshot == 4
     assert plan_exercise.upper_body_load_snapshot == 2

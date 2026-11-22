@@ -21,6 +21,9 @@ def fill_plan_exercise_from_source(
     exercise.name_snapshot = details.name
     exercise.description_snapshot = details.description
     exercise.image_url_snapshot = details.image_url
+    exercise.animation_url_snapshot = details.animation_url
+    exercise.image_url_light_snapshot = details.image_url_light
+    exercise.animation_url_light_snapshot = details.animation_url_light
     exercise.min_age_snapshot = source.min_age
     exercise.max_age_snapshot = source.max_age
     exercise.min_participants_snapshot = source.min_participants

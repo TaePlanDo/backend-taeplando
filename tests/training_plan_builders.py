@@ -92,6 +92,11 @@ def plan_detail() -> PlanDetail:
                 name_snapshot="Ap chagi",
                 description_snapshot="Kopnięcie frontalne.",
                 image_url_snapshot="https://example.com/ap-chagi.png",
+                animation_url_snapshot="https://example.com/ap-chagi-animation.webp",
+                image_url_light_snapshot="https://example.com/ap-chagi-light.png",
+                animation_url_light_snapshot=(
+                    "https://example.com/ap-chagi-animation-light.webp"
+                ),
                 min_age_snapshot=7,
                 max_age_snapshot=14,
                 min_participants_snapshot=2,
@@ -149,6 +154,9 @@ def orm_plan(
                 name_snapshot="Dollyo chagi",
                 description_snapshot="Kopnięcie okrężne.",
                 image_url_snapshot=None,
+                animation_url_snapshot=None,
+                image_url_light_snapshot=None,
+                animation_url_light_snapshot=None,
                 min_age_snapshot=8,
                 max_age_snapshot=16,
                 min_participants_snapshot=2,
@@ -174,6 +182,11 @@ def orm_plan(
                 name_snapshot="Ap chagi",
                 description_snapshot="Kopnięcie frontalne.",
                 image_url_snapshot="https://example.com/ap-chagi.png",
+                animation_url_snapshot="https://example.com/ap-chagi-animation.webp",
+                image_url_light_snapshot="https://example.com/ap-chagi-light.png",
+                animation_url_light_snapshot=(
+                    "https://example.com/ap-chagi-animation-light.webp"
+                ),
                 min_age_snapshot=7,
                 max_age_snapshot=14,
                 min_participants_snapshot=2,
