@@ -333,11 +333,7 @@ async def list_sources_for_generated_plan(
             TrainerExercise.trainer_id == trainer_id,
             TrainerExercise.id.in_(source_ids),
         )
-        .options(
-            *_configuration_loader_options(TrainerExercise),
-            selectinload(TrainerExercise.exercise),
-            selectinload(TrainerExercise.source_version),
-        )
+        .options(*_plan_source_loader_options())
     )
     return {source.id: source for source in result.unique()}
 
@@ -507,6 +503,15 @@ def _configuration_loader_options(
     )
 
 
+def _plan_source_loader_options() -> tuple[LoaderOption, ...]:
+    """Eager loaders for freezing a trainer configuration into a plan slot."""
+    return (
+        *_configuration_loader_options(TrainerExercise),
+        selectinload(TrainerExercise.exercise),
+        selectinload(TrainerExercise.source_version),
+    )
+
+
 def _configuration_from(
     source: TrainerExercise | ExerciseVersion,
 ) -> ExerciseConfiguration:
@@ -608,6 +613,21 @@ async def get_configuration_for_trainer(
     )
 
 
+async def get_plan_source_for_trainer(
+    session: AsyncSession, trainer_id: UUID, exercise_id: UUID
+) -> TrainerExercise | None:
+    """Find one trainer configuration with relations needed for plan snapshots."""
+    result = await session.scalars(
+        select(TrainerExercise)
+        .where(
+            TrainerExercise.trainer_id == trainer_id,
+            TrainerExercise.exercise_id == exercise_id,
+        )
+        .options(*_plan_source_loader_options())
+    )
+    return result.unique().one_or_none()
+
+
 async def create_configuration_for_global_exercise(
     session: AsyncSession, trainer_id: UUID, exercise_id: UUID
 ) -> TrainerExercise | None:
@@ -652,6 +672,7 @@ def _configuration_for_global_version(
         lower_body_load=source_version.lower_body_load,
         core_load=source_version.core_load,
     )
+    trainer_exercise.source_version = source_version
     trainer_exercise.equipment = list(source_version.equipment)
     trainer_exercise.training_types = list(source_version.training_types)
     trainer_exercise.segments = list(source_version.segments)
