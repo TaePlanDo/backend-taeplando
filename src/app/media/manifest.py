@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from app.db.exercise_catalog import load_exercise_catalog
@@ -145,11 +145,12 @@ def build_manifest(root: Path, output: Path) -> list[MediaEntry]:
         if {p.name for p in directory.iterdir()} != set(filenames):
             raise ValueError(f"Unexpected file set: {directory.name}")
         entry = MediaEntry(source_id, names[source_id], directory.name, {})
-        entry.digests.update(
-            {
+        entry = replace(
+            entry,
+            digests={
                 filename: digest(asset_path(root, entry, filename))
                 for filename in filenames
-            }
+            },
         )
         entries.append(entry)
     entries.sort(key=lambda entry: entry.source_id)

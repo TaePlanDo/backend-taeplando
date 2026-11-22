@@ -52,6 +52,9 @@ def _private_exercise() -> Exercise:
         name="Ap chagi",
         description="Kopnięcie frontalne.",
         image_url="https://example.com/ap-chagi.png",
+        animation_url=None,
+        image_url_light=None,
+        animation_url_light=None,
     )
 
 
@@ -138,6 +141,9 @@ def _private_response() -> ExerciseResponse:
         name="Ap chagi",
         description="Kopnięcie frontalne.",
         image_url="https://example.com/ap-chagi.png",
+        animation_url=None,
+        image_url_light=None,
+        animation_url_light=None,
         min_age=7,
         max_age=14,
         min_participants=2,
@@ -707,6 +713,9 @@ def test_list_exercises_maps_a_database_page() -> None:
                 name="Dollyo chagi",
                 description="Kopnięcie okrężne.",
                 image_url="https://example.com/dollyo-chagi.png",
+                animation_url=None,
+                image_url_light=None,
+                animation_url_light=None,
                 min_age=8,
                 max_age=18,
                 min_participants=3,

@@ -24,7 +24,6 @@ async def run_import(root: Path, manifest: Path, *, dry_run: bool) -> None:
     """Perform preflight checks, finish uploads, then commit URLs in one transaction."""
     entries = load_manifest(manifest)
     validate_files(root, entries)
-    settings = MediaStorageSettings()
     try:
         async with get_session_factory()() as session:
             targets = await load_targets(session, entries)
@@ -36,6 +35,7 @@ async def run_import(root: Path, manifest: Path, *, dry_run: bool) -> None:
         if dry_run:
             print("Dry run: no storage or database writes.")
             return
+        settings = MediaStorageSettings()
         client = create_client(settings)
         try:
             uploaded, skipped = await asyncio.to_thread(

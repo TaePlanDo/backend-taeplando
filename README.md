@@ -196,7 +196,6 @@ uv run mypy src
 uv run pytest
 ```
 
-
 ## Exercise media (SCRUM-284)
 
 `seed-exercise-media` imports the SCRUM-282 artist package into S3-compatible
@@ -222,7 +221,8 @@ uv run seed-exercise-media import --media-root "C:/path/to/final"
 ```
 
 The preflight checks every local file and the seeded exercise/version identities
-before uploading. Objects use stable keys `exercises/<source_id>/<filename>`.
+before uploading. The dry run does not require storage credentials. Objects use
+stable keys `exercises/<source_id>/<filename>`.
 A repeated import skips unchanged SHA-256 metadata and overwrites missing or
 changed objects at the same keys, with the correct content type and a one-hour
 public cache lifetime. Storage permission errors are failures, not missing files.

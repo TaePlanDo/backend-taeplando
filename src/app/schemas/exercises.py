@@ -134,9 +134,9 @@ class ExerciseResponse(ExercisePlanningAttributes):
     name: str
     description: str
     image_url: str | None = Field(description="Dark-theme thumbnail")
-    animation_url: str | None = Field(default=None, description="Dark-theme animation")
-    image_url_light: str | None = None
-    animation_url_light: str | None = None
+    animation_url: str | None = Field(description="Dark-theme animation")
+    image_url_light: str | None
+    animation_url_light: str | None
     min_age: int
     max_age: int
     min_participants: int

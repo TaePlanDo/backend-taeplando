@@ -4,7 +4,6 @@ import asyncio
 from unittest.mock import AsyncMock
 
 import pytest
-from sqlalchemy.dialects.postgresql import dialect
 
 from app.db.seed_identity import seed_id
 from app.media.database import load_targets, save_urls
@@ -80,9 +79,15 @@ def test_urls_written_to_exercise_and_version_without_committing_caller_transact
         == 1
     )
     statements = [call.args[0] for call in session.execute.call_args_list]
+    update_batches = [call.args[1] for call in session.execute.call_args_list]
     assert len(statements) == 2
-    for statement in statements:
-        params = statement.compile(dialect=dialect()).params
+    assert [statement.table.name for statement in statements] == [
+        "exercises",
+        "exercise_versions",
+    ]
+    assert [len(batch) for batch in update_batches] == [1, 1]
+    for batch in update_batches:
+        params = batch[0]
         assert (
             params["image_url"] == "https://cdn.example.com/exercises/1/thumb-dark.webp"
         )
@@ -98,8 +103,8 @@ def test_urls_written_to_exercise_and_version_without_committing_caller_transact
             params["animation_url_light"]
             == "https://cdn.example.com/exercises/1/anim-light.webp"
         )
-    assert statements[0].compile().params["id_1"] == exercise.id
-    assert statements[1].compile().params["id_1"] == [version.id]
+    assert update_batches[0][0]["id"] == exercise.id
+    assert update_batches[1][0]["id"] == version.id
     assert all(
         query.args[0]._for_update_arg is not None
         for query in session.scalars.call_args_list

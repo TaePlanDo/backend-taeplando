@@ -64,6 +64,8 @@ async def save_urls(
     non-seeded moderation versions retain their original contents.
     """
     targets = await load_targets(session, entries, lock=True)
+    exercise_updates: list[dict[str, UUID | str]] = []
+    version_updates: list[dict[str, UUID | str]] = []
     for entry in entries:
         if not entry.source_id:
             continue
@@ -71,14 +73,12 @@ async def save_urls(
             field: settings.public_url(entry.key(filename))
             for field, filename in MEDIA_URL_FILES.items()
         }
-        await session.execute(
-            update(Exercise)
-            .where(Exercise.id == seed_id("exercise", entry.source_id))
-            .values(**values)
+        exercise_updates.append({"id": seed_id("exercise", entry.source_id), **values})
+        version_updates.extend(
+            {"id": version_id, **values} for version_id in targets[entry.source_id]
         )
-        await session.execute(
-            update(ExerciseVersion)
-            .where(ExerciseVersion.id.in_(targets[entry.source_id]))
-            .values(**values)
-        )
+    if exercise_updates:
+        await session.execute(update(Exercise), exercise_updates)
+    if version_updates:
+        await session.execute(update(ExerciseVersion), version_updates)
     return len(targets)
