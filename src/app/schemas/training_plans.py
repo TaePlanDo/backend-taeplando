@@ -37,6 +37,25 @@ class PlanSchemaSnapshotItem(BaseModel):
     percentage: float
 
 
+class PlanExerciseAlternative(BaseModel):
+    """One ranked alternative for replacing a plan exercise slot."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    trainer_exercise_id: UUID
+    exercise_id: UUID
+    name: str
+    image_url: str | None
+    physical_difficulty: int = Field(ge=1, le=5)
+    technical_difficulty: int = Field(ge=1, le=5)
+    upper_body_load: int = Field(ge=1, le=5)
+    lower_body_load: int = Field(ge=1, le=5)
+    core_load: int = Field(ge=1, le=5)
+    equipment: list[CatalogReference]
+    training_types: list[CatalogReference]
+    similarity_score: float = Field(ge=0, le=1)
+
+
 class PlanExerciseReplace(BaseModel):
     """Replace one plan slot with another catalog exercise."""
 

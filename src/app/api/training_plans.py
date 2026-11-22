@@ -13,12 +13,13 @@ from app.models.users import User
 from app.schemas.common import PaginatedResponse
 from app.schemas.training_plans import (
     PlanDetail,
+    PlanExerciseAlternative,
     PlanExerciseReplace,
     PlanExerciseResponse,
     PlanListItem,
     TrainingPlanListFilters,
 )
-from app.services import training_plan_service
+from app.services import plan_exercise_alternatives_service, training_plan_service
 
 router = APIRouter(prefix="/training-plans", tags=["training-plans"])
 
@@ -108,6 +109,30 @@ async def delete_plan_exercise(
     except training_plan_service.PlanResourceNotFoundError as exc:
         raise _not_found(exc.detail) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/{plan_id}/exercises/{plan_exercise_id}/alternatives",
+    response_model=list[PlanExerciseAlternative],
+)
+async def list_plan_exercise_alternatives(
+    plan_id: UUID,
+    plan_exercise_id: UUID,
+    current_trainer: CurrentTrainer,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+) -> list[PlanExerciseAlternative]:
+    """Rank hard-filtered alternatives for one exercise slot in a saved plan."""
+    try:
+        return await plan_exercise_alternatives_service.list_alternatives(
+            session,
+            current_trainer.id,
+            plan_id,
+            plan_exercise_id,
+            limit=limit,
+        )
+    except training_plan_service.PlanResourceNotFoundError as exc:
+        raise _not_found(exc.detail) from exc
 
 
 @router.delete("/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
