@@ -37,7 +37,7 @@ async def prepare_candidates(
     recent_distances = await _recent_usage_distances(session, trainer_id, group.id)
     candidates: list[PlanExerciseCandidate] = []
     for source in sources:
-        candidate = _candidate_for_source(
+        candidate = try_build_candidate(
             source,
             available_equipment_ids,
             group_segment_ids,
@@ -68,18 +68,18 @@ async def _recent_usage_distances(
     return distances
 
 
-def _candidate_for_source(
+def try_build_candidate(
     source: TrainerExercise,
     available_equipment_ids: set[UUID],
-    group_segment_ids: set[int],
+    required_segment_ids: set[int],
     *,
-    recent_usage_distance: int,
+    recent_usage_distance: int = RECENT_USAGE_MAX_DISTANCE,
 ) -> PlanExerciseCandidate | None:
-    """Return one source only when its catalog requirements fit this request."""
+    """Return a candidate when equipment and segment requirements are met."""
     if not _has_required_equipment(source, available_equipment_ids):
         return None
     source_segment_ids = {segment.id for segment in source.segments}
-    if not source_segment_ids & group_segment_ids:
+    if not source_segment_ids & required_segment_ids:
         return None
     return PlanExerciseCandidate(
         trainer_exercise_id=source.id,
