@@ -14,6 +14,8 @@ from app.schemas.common import PaginatedResponse
 from app.schemas.training_plans import (
     PlanDetail,
     PlanExerciseAlternative,
+    PlanExerciseReplace,
+    PlanExerciseResponse,
     PlanListItem,
     TrainingPlanListFilters,
 )
@@ -61,8 +63,52 @@ async def get_plan(
         return await training_plan_service.get_plan(
             session, current_trainer.id, plan_id
         )
-    except training_plan_service.PlanNotFoundError as exc:
-        raise _not_found() from exc
+    except training_plan_service.PlanResourceNotFoundError as exc:
+        raise _not_found(exc.detail) from exc
+
+
+@router.put(
+    "/{plan_id}/exercises/{plan_exercise_id}",
+    response_model=PlanExerciseResponse,
+)
+async def replace_plan_exercise(
+    plan_id: UUID,
+    plan_exercise_id: UUID,
+    body: PlanExerciseReplace,
+    current_trainer: CurrentTrainer,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> PlanExerciseResponse:
+    """Replace one exercise slot in a saved plan owned by the trainer."""
+    try:
+        return await training_plan_service.replace_plan_exercise(
+            session,
+            current_trainer.id,
+            plan_id,
+            plan_exercise_id,
+            body.exercise_id,
+        )
+    except training_plan_service.PlanResourceNotFoundError as exc:
+        raise _not_found(exc.detail) from exc
+
+
+@router.delete(
+    "/{plan_id}/exercises/{plan_exercise_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_plan_exercise(
+    plan_id: UUID,
+    plan_exercise_id: UUID,
+    current_trainer: CurrentTrainer,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> Response:
+    """Delete one exercise slot from a saved plan owned by the trainer."""
+    try:
+        await training_plan_service.delete_plan_exercise(
+            session, current_trainer.id, plan_id, plan_exercise_id
+        )
+    except training_plan_service.PlanResourceNotFoundError as exc:
+        raise _not_found(exc.detail) from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(
@@ -85,10 +131,8 @@ async def list_plan_exercise_alternatives(
             plan_exercise_id,
             limit=limit,
         )
-    except training_plan_service.PlanNotFoundError as exc:
-        raise _not_found() from exc
-    except plan_exercise_alternatives_service.PlanExerciseNotFoundError as exc:
-        raise _not_found("Plan exercise not found") from exc
+    except training_plan_service.PlanResourceNotFoundError as exc:
+        raise _not_found(exc.detail) from exc
 
 
 @router.delete("/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -100,6 +144,6 @@ async def delete_plan(
     """Delete one saved plan owned by the authenticated trainer."""
     try:
         await training_plan_service.delete_plan(session, current_trainer.id, plan_id)
-    except training_plan_service.PlanNotFoundError as exc:
-        raise _not_found() from exc
+    except training_plan_service.PlanResourceNotFoundError as exc:
+        raise _not_found(exc.detail) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)

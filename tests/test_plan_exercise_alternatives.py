@@ -12,8 +12,10 @@ from app.models.training import TrainingPlan, TrainingPlanExercise
 from app.schemas.exercises import CatalogReference
 from app.schemas.training_plans import PlanExerciseAlternative
 from app.services import plan_exercise_alternatives_service
-from app.services.plan_exercise_alternatives_service import PlanExerciseNotFoundError
-from app.services.training_plan_service import PlanNotFoundError
+from app.services.training_plan_service import (
+    PlanExerciseNotFoundError,
+    PlanNotFoundError,
+)
 from constants import TRAINER_ID
 
 GROUP_ID = UUID("0ac590e1-2a46-4cb7-8944-803e364cc46b")

@@ -23,15 +23,14 @@ from app.services.plan_exercise_similarity import (
 )
 from app.services.plan_generation_candidates_service import try_build_candidate
 from app.services.plan_generation_domain import PlanExerciseCandidate
-from app.services.training_plan_service import PlanNotFoundError
+from app.services.training_plan_service import (
+    PlanExerciseNotFoundError,
+    PlanNotFoundError,
+)
 
 _CATALOG_SNAPSHOTS = TypeAdapter(list[CatalogReference])
 _SCHEMA_SNAPSHOTS = TypeAdapter(list[PlanSchemaSnapshotItem])
 _SEGMENT_SNAPSHOTS = TypeAdapter(list[TrainingSegmentResponse])
-
-
-class PlanExerciseNotFoundError(Exception):
-    """Raised when a plan slot is absent on an owned plan."""
 
 
 async def list_alternatives(

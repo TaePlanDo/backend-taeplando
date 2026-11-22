@@ -56,6 +56,14 @@ class PlanExerciseAlternative(BaseModel):
     similarity_score: float = Field(ge=0, le=1)
 
 
+class PlanExerciseReplace(BaseModel):
+    """Replace one plan slot with another catalog exercise."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    exercise_id: UUID
+
+
 class PlanExerciseResponse(BaseModel):
     """One immutable exercise occurrence inside a saved plan."""
 
