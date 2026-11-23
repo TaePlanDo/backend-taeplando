@@ -51,9 +51,12 @@ class PlanExerciseUnavailableError(PlanResourceNotFoundError):
 
 
 class PlanStructureInvalidError(Exception):
-    """Raised when a plan structure update is not an exact slot permutation."""
+    """Raised when a plan structure update is not a valid ordered slot list."""
 
-    detail = "Plan exercise order must list each current plan exercise once"
+    detail = (
+        "Plan exercise order must list each current plan exercise once "
+        "and preserve the plan schema_position sequence"
+    )
 
 
 async def list_plans(
@@ -139,15 +142,30 @@ async def update_plan_structure(
 ) -> PlanDetail:
     """Rename a plan and rewrite exercise display order in one locked update."""
     plan = await _get_owned_or_raise(session, trainer_id, plan_id, for_update=True)
-    by_id = {exercise.id: exercise for exercise in plan.exercises}
-    if len(plan_exercise_ids) != len(by_id) or set(plan_exercise_ids) != set(by_id):
-        raise PlanStructureInvalidError
+    ordered = _ordered_exercises_for_structure_update(plan, plan_exercise_ids)
     plan.name = name
-    await _rewrite_positions(
-        session, [by_id[exercise_id] for exercise_id in plan_exercise_ids]
-    )
+    await _rewrite_positions(session, ordered)
     await session.commit()
     return _to_detail(plan)
+
+
+def _ordered_exercises_for_structure_update(
+    plan: TrainingPlan, plan_exercise_ids: Sequence[UUID]
+) -> list[TrainingPlanExercise]:
+    """Map IDs to slots when the incoming schema_position sequence matches the plan."""
+    current = sorted(plan.exercises, key=lambda item: item.position)
+    by_id = {exercise.id: exercise for exercise in current}
+    if len(set(plan_exercise_ids)) != len(by_id):
+        raise PlanStructureInvalidError
+    try:
+        ordered = [by_id[plan_exercise_id] for plan_exercise_id in plan_exercise_ids]
+    except KeyError as exc:
+        raise PlanStructureInvalidError from exc
+    if [exercise.schema_position for exercise in ordered] != [
+        exercise.schema_position for exercise in current
+    ]:
+        raise PlanStructureInvalidError
+    return ordered
 
 
 async def _rewrite_positions(

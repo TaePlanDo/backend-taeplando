@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import pytest
 
+from app.models.training import TrainingPlanExercise
 from app.services import training_plan_service
 from app.services.training_plan_service import (
     PlanNotFoundError,
@@ -79,7 +80,10 @@ def test_update_plan_structure_returns_invalid_order(
 
     assert response.status_code == 422
     assert response.json() == {
-        "detail": "Plan exercise order must list each current plan exercise once"
+        "detail": (
+            "Plan exercise order must list each current plan exercise once "
+            "and preserve the plan schema_position sequence"
+        )
     }
 
 
@@ -233,6 +237,147 @@ def test_update_plan_structure_service_rejects_unknown_id() -> None:
             )
 
     session.commit.assert_not_called()
+
+
+def test_update_plan_structure_service_rejects_inconsistent_schema_sequence() -> None:
+    """Incoming order must keep the plan's existing schema_position sequence."""
+    session = AsyncMock()
+    plan = _orm_plan(with_exercises=True)
+    first = next(item for item in plan.exercises if item.position == 1)
+    second = next(item for item in plan.exercises if item.position == 2)
+    second.schema_position = 2
+
+    with patch(
+        "app.services.training_plan_service.training_plans_db.get_for_trainer",
+        new=AsyncMock(return_value=plan),
+    ):
+        with pytest.raises(PlanStructureInvalidError):
+            asyncio.run(
+                training_plan_service.update_plan_structure(
+                    session,
+                    TRAINER_ID,
+                    PLAN_ID,
+                    name="Plan",
+                    plan_exercise_ids=[second.id, first.id],
+                )
+            )
+
+    session.commit.assert_not_called()
+    assert first.position == 1
+    assert second.position == 2
+
+
+def _extra_plan_exercise(
+    *,
+    template: TrainingPlanExercise,
+    position: int,
+    schema_position: int,
+    name: str,
+) -> TrainingPlanExercise:
+    return TrainingPlanExercise(
+        id=uuid4(),
+        training_plan_id=PLAN_ID,
+        trainer_exercise_id=template.trainer_exercise_id,
+        exercise_id=template.exercise_id,
+        exercise_version_id=None,
+        position=position,
+        schema_position=schema_position,
+        name_snapshot=name,
+        description_snapshot="",
+        image_url_snapshot=None,
+        animation_url_snapshot=None,
+        image_url_light_snapshot=None,
+        animation_url_light_snapshot=None,
+        min_age_snapshot=7,
+        max_age_snapshot=14,
+        min_participants_snapshot=2,
+        max_participants_snapshot=20,
+        duration_minutes_snapshot=5,
+        physical_difficulty_snapshot=3,
+        technical_difficulty_snapshot=3,
+        upper_body_load_snapshot=2,
+        lower_body_load_snapshot=3,
+        core_load_snapshot=3,
+        equipment_snapshot=[],
+        training_types_snapshot=[],
+        segments_snapshot=[{"id": 3, "code": "MAIN", "name": "Ćwiczenia"}],
+    )
+
+
+def test_update_plan_structure_service_allows_reorder_within_segments() -> None:
+    """Slots may move freely as long as the schema_position sequence stays identical."""
+    session = AsyncMock()
+    plan = _orm_plan(with_exercises=True)
+    first = next(item for item in plan.exercises if item.position == 1)
+    second = next(item for item in plan.exercises if item.position == 2)
+    third = _extra_plan_exercise(
+        template=first,
+        position=3,
+        schema_position=2,
+        name="Segment two",
+    )
+    plan.exercises.append(third)
+
+    with patch(
+        "app.services.training_plan_service.training_plans_db.get_for_trainer",
+        new=AsyncMock(return_value=plan),
+    ):
+        detail = asyncio.run(
+            training_plan_service.update_plan_structure(
+                session,
+                TRAINER_ID,
+                PLAN_ID,
+                name="Plan",
+                plan_exercise_ids=[second.id, first.id, third.id],
+            )
+        )
+
+    assert [exercise.id for exercise in detail.exercises] == [
+        second.id,
+        first.id,
+        third.id,
+    ]
+    assert [exercise.schema_position for exercise in detail.exercises] == [1, 1, 2]
+    session.commit.assert_awaited_once()
+
+
+def test_update_plan_structure_service_allows_any_existing_schema_layout() -> None:
+    """Schema order need not be sorted; only consistency with the plan matters."""
+    session = AsyncMock()
+    plan = _orm_plan(with_exercises=True)
+    first = next(item for item in plan.exercises if item.position == 1)
+    second = next(item for item in plan.exercises if item.position == 2)
+    first.schema_position = 2
+    second.schema_position = 1
+    third = _extra_plan_exercise(
+        template=first,
+        position=3,
+        schema_position=1,
+        name="Same segment as second",
+    )
+    plan.exercises.append(third)
+
+    with patch(
+        "app.services.training_plan_service.training_plans_db.get_for_trainer",
+        new=AsyncMock(return_value=plan),
+    ):
+        detail = asyncio.run(
+            training_plan_service.update_plan_structure(
+                session,
+                TRAINER_ID,
+                PLAN_ID,
+                name="Plan",
+                plan_exercise_ids=[first.id, third.id, second.id],
+            )
+        )
+
+    assert [exercise.id for exercise in detail.exercises] == [
+        first.id,
+        third.id,
+        second.id,
+    ]
+    assert [exercise.schema_position for exercise in detail.exercises] == [2, 1, 1]
+    session.commit.assert_awaited_once()
 
 
 def test_update_plan_structure_service_raises_for_missing_plan() -> None:
