@@ -34,6 +34,9 @@ if TYPE_CHECKING:
     from app.models.users import User
 
 
+TRAINING_PLAN_NAME_MAX_LENGTH = 255
+
+
 class TrainingGroup(Base):
     """A trainer-owned group with one current ordered training schema."""
 
@@ -115,7 +118,7 @@ class TrainingPlan(Base):
     trainer_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
     training_group_id: Mapped[UUID] = mapped_column(ForeignKey("training_groups.id"))
     participant_count: Mapped[int] = mapped_column(Integer)
-    name: Mapped[str] = mapped_column(String(255))
+    name: Mapped[str] = mapped_column(String(TRAINING_PLAN_NAME_MAX_LENGTH))
     group_name_snapshot: Mapped[str] = mapped_column(String(255))
     group_min_age_snapshot: Mapped[int] = mapped_column(Integer)
     group_max_age_snapshot: Mapped[int] = mapped_column(Integer)

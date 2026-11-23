@@ -655,6 +655,57 @@ def test_runner_salvages_a_valid_best_after_timeout() -> None:
     mark_timed_out.assert_not_awaited()
 
 
+@pytest.mark.parametrize(
+    ("group_name", "expected_group_name"),
+    [("Jaworzyna gr. 1", "Jaworzyna gr. 1"), ("Ż" * 255, "Ż" * 215)],
+)
+def test_persist_plan_names_include_the_saved_generation_timestamp(
+    group_name: str, expected_group_name: str
+) -> None:
+    """Names show whole seconds while preserving the precise saved timestamp."""
+    session = AsyncMock()
+    session.add = MagicMock()
+    group = SimpleNamespace(
+        id=PLAN_ID,
+        name=group_name,
+        min_age=7,
+        max_age=14,
+        duration_minutes=60,
+        schema_items=[],
+    )
+    parameters = PlanGenerationParameters(
+        training_group_id=PLAN_ID,
+        participant_count=12,
+        available_equipment_ids=[],
+    )
+    generated_at = datetime(2026, 11, 20, 18, 30, 45, 123456, tzinfo=UTC)
+
+    with (
+        patch("app.services.plan_generation_service.validate_generated_plan"),
+        patch(
+            "app.services.plan_generation_service.exercises_db.list_sources_for_generated_plan",
+            new=AsyncMock(return_value={}),
+        ),
+        patch(
+            "app.services.plan_generation_service.utc_now", return_value=generated_at
+        ),
+    ):
+        plan = asyncio.run(
+            plan_generation_service._persist_plan(
+                session,
+                SimpleNamespace(trainer_id=PLAN_ID),
+                SimpleNamespace(group=group, equipment=[], training_types=[]),
+                parameters,
+                PlanIndividual(selections=()),
+            )
+        )
+
+    assert plan.generated_at == generated_at
+    assert plan.name == f"Plan treningowy – {expected_group_name} – 20.11.2026 18:30:45"
+    assert len(plan.name) <= 255
+    assert plan.group_name_snapshot == group_name
+
+
 def test_persist_plan_rejects_invalid_generated_plan_without_writing() -> None:
     """Hard validation runs before exercise source lookup or plan flush."""
     session = AsyncMock()

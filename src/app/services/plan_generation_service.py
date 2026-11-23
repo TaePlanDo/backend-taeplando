@@ -13,9 +13,15 @@ from app.core.config import get_settings
 from app.db import exercises as exercises_db
 from app.db import plan_generation_jobs as jobs_db
 from app.db.session import get_session_factory
+from app.models.base import utc_now
 from app.models.exercises import TrainerExercise
 from app.models.plan_generation import PlanGenerationJob
-from app.models.training import TrainingGroup, TrainingPlan, TrainingPlanExercise
+from app.models.training import (
+    TRAINING_PLAN_NAME_MAX_LENGTH,
+    TrainingGroup,
+    TrainingPlan,
+    TrainingPlanExercise,
+)
 from app.schemas.plan_generation import (
     PlanGenerationAccepted,
     PlanGenerationParameters,
@@ -437,11 +443,13 @@ async def _persist_plan(
     ):
         raise PlanGenerationError("A selected exercise is no longer available")
 
+    generated_at = utc_now()
     plan = TrainingPlan(
         trainer_id=job.trainer_id,
         training_group_id=group.id,
         participant_count=parameters.participant_count,
-        name=f"Plan treningowy – {group.name}",
+        name=_plan_name(group.name, generated_at),
+        generated_at=generated_at,
         group_name_snapshot=group.name,
         group_min_age_snapshot=group.min_age,
         group_max_age_snapshot=group.max_age,
@@ -462,6 +470,14 @@ async def _persist_plan(
     session.add(plan)
     await session.flush()
     return plan
+
+
+def _plan_name(group_name: str, generated_at: datetime) -> str:
+    """Keep the generation timestamp visible within the plan name's DB limit."""
+    prefix = "Plan treningowy – "
+    suffix = f" – {generated_at:%d.%m.%Y %H:%M:%S}"
+    group_name_limit = TRAINING_PLAN_NAME_MAX_LENGTH - len(prefix) - len(suffix)
+    return f"{prefix}{group_name[:group_name_limit]}{suffix}"
 
 
 def _plan_exercise(
