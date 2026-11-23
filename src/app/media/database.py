@@ -8,8 +8,8 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.seed_identity import seed_id
-from app.media.manifest import MEDIA_URL_FILES, MediaEntry
-from app.media.storage import MediaStorageSettings
+from app.media.manifest import MediaEntry
+from app.media.storage import MediaPublicSettings
 from app.models.enums import ExerciseScope, ExerciseVersionStatus
 from app.models.exercises import Exercise, ExerciseVersion
 
@@ -56,7 +56,7 @@ async def load_targets(
 
 
 async def save_urls(
-    session: AsyncSession, entries: list[MediaEntry], settings: MediaStorageSettings
+    session: AsyncSession, entries: list[MediaEntry], settings: MediaPublicSettings
 ) -> int:
     """Write uploaded media URLs in the caller's transaction.
 
@@ -64,15 +64,12 @@ async def save_urls(
     non-seeded moderation versions retain their original contents.
     """
     targets = await load_targets(session, entries, lock=True)
-    exercise_updates: list[dict[str, UUID | str]] = []
-    version_updates: list[dict[str, UUID | str]] = []
+    exercise_updates: list[dict[str, object]] = []
+    version_updates: list[dict[str, object]] = []
     for entry in entries:
         if not entry.source_id:
             continue
-        values = {
-            field: settings.public_url(entry.key(filename))
-            for field, filename in MEDIA_URL_FILES.items()
-        }
+        values = settings.exercise_urls(entry.source_id)
         exercise_updates.append({"id": seed_id("exercise", entry.source_id), **values})
         version_updates.extend(
             {"id": version_id, **values} for version_id in targets[entry.source_id]
