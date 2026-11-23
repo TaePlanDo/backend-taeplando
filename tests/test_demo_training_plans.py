@@ -102,7 +102,51 @@ def test_builder_is_deterministic_and_uses_current_exercise_versions() -> None:
     )
     assert all(row["image_url_snapshot"] is None for row in rows.plan_exercise_rows)
     assert all(
+        row["animation_url_snapshot"] is None
+        and row["image_url_light_snapshot"] is None
+        and row["animation_url_light_snapshot"] is None
+        for row in rows.plan_exercise_rows
+    )
+    assert all(
         1 <= row["physical_difficulty_snapshot"] <= 5
         and 1 <= row["core_load_snapshot"] <= 5
+        for row in rows.plan_exercise_rows
+    )
+
+
+def test_builder_snapshots_optional_exercise_media() -> None:
+    """Media-enabled demo plans freeze every URL exposed by their exercises."""
+
+    exercises = load_exercise_catalog()
+    context = _context()
+    context = DemoTrainingContext(
+        trainer_id=context.trainer_id,
+        seed_id=context.seed_id,
+        segment_snapshots=context.segment_snapshots,
+        current_version_ids=context.current_version_ids,
+        media_urls={
+            exercise.source_id: {
+                "image_url": f"https://cdn.example.com/{exercise.source_id}/dark.webp",
+                "animation_url": (
+                    f"https://cdn.example.com/{exercise.source_id}/dark-anim.webp"
+                ),
+                "image_url_light": (
+                    f"https://cdn.example.com/{exercise.source_id}/light.webp"
+                ),
+                "animation_url_light": (
+                    f"https://cdn.example.com/{exercise.source_id}/light-anim.webp"
+                ),
+            }
+            for exercise in exercises
+        },
+    )
+
+    rows = build_demo_training_rows(exercises, context)
+
+    assert all(
+        row["image_url_snapshot"]
+        and row["animation_url_snapshot"]
+        and row["image_url_light_snapshot"]
+        and row["animation_url_light_snapshot"]
         for row in rows.plan_exercise_rows
     )

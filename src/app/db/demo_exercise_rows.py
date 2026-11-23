@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from uuid import UUID
 
 from app.db.exercise_catalog import SeedExercise
+from app.media.manifest import ExerciseMediaUrls
 from app.models.enums import (
     ExerciseScope,
     ExerciseVersionStatus,
@@ -24,6 +25,7 @@ class DemoExerciseSeedContext:
     trainer_id: UUID
     seed_id: Callable[[str, str | int], UUID]
     segment_ids: Mapping[str, int]
+    media_urls: Mapping[int, ExerciseMediaUrls] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -96,6 +98,7 @@ def _exercise_version_row(
         "status": ExerciseVersionStatus.APPROVED,
         "name": exercise.name,
         "description": description,
+        **context.media_urls.get(exercise.source_id, {}),
         **_planning_attributes(exercise),
         "approved_at": datetime(2026, 10, version_number, tzinfo=UTC),
     }
@@ -115,6 +118,7 @@ def build_demo_exercise_rows(
             "name": exercise.name,
             "description": exercise.description,
             "latest_approved_version_id": None,
+            **context.media_urls.get(exercise.source_id, {}),
         }
         for exercise in exercises
     ]

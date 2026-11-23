@@ -253,6 +253,15 @@ def test_get_plan_service_orders_exercises_by_position() -> None:
     assert [exercise.position for exercise in detail.exercises] == [1, 2]
     assert detail.exercises[0].name_snapshot == "Ap chagi"
     assert detail.exercises[0].image_url_snapshot == "https://example.com/ap-chagi.png"
+    assert detail.exercises[0].animation_url_snapshot == (
+        "https://example.com/ap-chagi-animation.webp"
+    )
+    assert detail.exercises[0].image_url_light_snapshot == (
+        "https://example.com/ap-chagi-light.png"
+    )
+    assert detail.exercises[0].animation_url_light_snapshot == (
+        "https://example.com/ap-chagi-animation-light.webp"
+    )
     assert detail.exercises[0].physical_difficulty_snapshot == 3
     assert detail.exercises[0].lower_body_load_snapshot == 5
     assert detail.exercises[1].name_snapshot == "Dollyo chagi"

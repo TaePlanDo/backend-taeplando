@@ -157,6 +157,9 @@ def _source(
     details = MagicMock()
     details.name = name
     details.image_url = f"https://example.com/{name}.png"
+    details.animation_url = f"https://example.com/{name}-animation.webp"
+    details.image_url_light = f"https://example.com/{name}-light.png"
+    details.animation_url_light = f"https://example.com/{name}-animation-light.webp"
     source.source_version = details
     source.exercise = details
     return source
@@ -173,6 +176,9 @@ def _alternative(
         exercise_id=exercise_id,
         name=name,
         image_url=f"https://example.com/{name}.png",
+        animation_url=f"https://example.com/{name}-animation.webp",
+        image_url_light=f"https://example.com/{name}-light.png",
+        animation_url_light=f"https://example.com/{name}-animation-light.webp",
         physical_difficulty=3,
         technical_difficulty=4,
         upper_body_load=2,
@@ -330,6 +336,11 @@ def test_list_alternatives_service_ranks_filters_and_limits() -> None:
     assert result[0].exercise_id == THIRD_EXERCISE_ID
     assert result[0].name == "Near"
     assert result[0].image_url == "https://example.com/Near.png"
+    assert result[0].animation_url == "https://example.com/Near-animation.webp"
+    assert result[0].image_url_light == "https://example.com/Near-light.png"
+    assert result[0].animation_url_light == (
+        "https://example.com/Near-animation-light.webp"
+    )
     assert result[0].equipment == [CatalogReference(id=EQUIPMENT_ID, name="Tarcze")]
     assert result[0].similarity_score > 0.5
 

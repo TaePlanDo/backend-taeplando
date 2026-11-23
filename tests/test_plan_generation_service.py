@@ -158,7 +158,14 @@ def test_persisted_selection_uses_its_allocated_duration() -> None:
         id=candidate.trainer_exercise_id,
         exercise_id=candidate.exercise_id,
         source_version_id=None,
-        exercise=SimpleNamespace(name="Ćwiczenie", description="Opis", image_url=None),
+        exercise=SimpleNamespace(
+            name="Ćwiczenie",
+            description="Opis",
+            image_url="https://example.com/exercise.webp",
+            animation_url="https://example.com/exercise-animation.webp",
+            image_url_light="https://example.com/exercise-light.webp",
+            animation_url_light=("https://example.com/exercise-animation-light.webp"),
+        ),
         min_age=7,
         max_age=14,
         min_participants=1,
@@ -178,6 +185,19 @@ def test_persisted_selection_uses_its_allocated_duration() -> None:
     plan_exercise = plan_generation_service._plan_exercise(1, selection, source)
 
     assert plan_exercise.duration_minutes_snapshot == 7
+    assert plan_exercise.image_url_snapshot == "https://example.com/exercise.webp"
+    assert (
+        plan_exercise.animation_url_snapshot
+        == "https://example.com/exercise-animation.webp"
+    )
+    assert (
+        plan_exercise.image_url_light_snapshot
+        == "https://example.com/exercise-light.webp"
+    )
+    assert (
+        plan_exercise.animation_url_light_snapshot
+        == "https://example.com/exercise-animation-light.webp"
+    )
 
 
 def test_generate_plan_runs_one_strategy_call_per_schema_segment() -> None:

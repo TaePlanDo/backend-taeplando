@@ -78,6 +78,13 @@ async def create_exercise(
         name=payload.name,
         description=payload.description,
         image_url=str(payload.image_url) if payload.image_url else None,
+        animation_url=str(payload.animation_url) if payload.animation_url else None,
+        image_url_light=str(payload.image_url_light)
+        if payload.image_url_light
+        else None,
+        animation_url_light=(
+            str(payload.animation_url_light) if payload.animation_url_light else None
+        ),
         min_age=payload.min_age,
         max_age=payload.max_age,
         min_participants=payload.min_participants,
@@ -109,7 +116,15 @@ async def update_exercise(
     configuration = await _resolve_configuration_or_raise(session, trainer_id, payload)
     exercise.name = payload.name
     exercise.description = payload.description
-    exercise.image_url = str(payload.image_url) if payload.image_url else None
+    for field in (
+        "image_url",
+        "animation_url",
+        "image_url_light",
+        "animation_url_light",
+    ):
+        if field in payload.model_fields_set:
+            value = getattr(payload, field)
+            setattr(exercise, field, str(value) if value else None)
     trainer_exercise.min_age = payload.min_age
     trainer_exercise.max_age = payload.max_age
     trainer_exercise.min_participants = payload.min_participants
@@ -191,6 +206,9 @@ def _to_response(
         name=exercise.name,
         description=exercise.description,
         image_url=exercise.image_url,
+        animation_url=exercise.animation_url,
+        image_url_light=exercise.image_url_light,
+        animation_url_light=exercise.animation_url_light,
         min_age=exercise.min_age,
         max_age=exercise.max_age,
         min_participants=exercise.min_participants,
@@ -234,6 +252,9 @@ def _to_response_from_models(
         name=exercise.name,
         description=exercise.description,
         image_url=exercise.image_url,
+        animation_url=exercise.animation_url,
+        image_url_light=exercise.image_url_light,
+        animation_url_light=exercise.animation_url_light,
         min_age=trainer_exercise.min_age,
         max_age=trainer_exercise.max_age,
         min_participants=trainer_exercise.min_participants,

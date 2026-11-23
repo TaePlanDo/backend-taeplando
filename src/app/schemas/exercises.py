@@ -87,7 +87,12 @@ class ExerciseUpdate(ExerciseConfigurationWrite, ExercisePlanningAttributesUpdat
     name: Name
     description: Description
     duration_minutes: int = Field(gt=0)
-    image_url: HttpUrl | None = None
+    image_url: HttpUrl | None = Field(default=None, description="Dark-theme thumbnail")
+    animation_url: HttpUrl | None = Field(
+        default=None, description="Dark-theme animation"
+    )
+    image_url_light: HttpUrl | None = None
+    animation_url_light: HttpUrl | None = None
     min_age: int = Field(gt=0)
     max_age: int = Field(gt=0)
     min_participants: int = Field(gt=0)
@@ -128,7 +133,10 @@ class ExerciseResponse(ExercisePlanningAttributes):
     scope: ExerciseScope
     name: str
     description: str
-    image_url: str | None
+    image_url: str | None = Field(description="Dark-theme thumbnail")
+    animation_url: str | None = Field(description="Dark-theme animation")
+    image_url_light: str | None
+    animation_url_light: str | None
     min_age: int
     max_age: int
     min_participants: int

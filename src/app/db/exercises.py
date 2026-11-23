@@ -63,6 +63,9 @@ class ListedExercise(NamedTuple):
     lower_body_load: int
     core_load: int
     version_id: UUID | None
+    animation_url: str | None
+    image_url_light: str | None
+    animation_url_light: str | None
 
 
 class ExerciseConfiguration(NamedTuple):
@@ -185,6 +188,9 @@ async def list_available_to_trainer(
                 None,
                 type_=Exercise.__table__.c.latest_approved_version_id.type,
             ).label("version_id"),
+            Exercise.animation_url,
+            Exercise.image_url_light,
+            Exercise.animation_url_light,
         )
         .join(TrainerExercise)
         .where(
@@ -218,6 +224,9 @@ async def list_available_to_trainer(
             ExerciseVersion.lower_body_load,
             ExerciseVersion.core_load,
             Exercise.latest_approved_version_id.label("version_id"),
+            ExerciseVersion.animation_url,
+            ExerciseVersion.image_url_light,
+            ExerciseVersion.animation_url_light,
         )
         .join(
             ExerciseVersion, ExerciseVersion.id == Exercise.latest_approved_version_id
@@ -540,6 +549,9 @@ def create_for_trainer(
     upper_body_load: int,
     lower_body_load: int,
     core_load: int,
+    animation_url: str | None = None,
+    image_url_light: str | None = None,
+    animation_url_light: str | None = None,
 ) -> tuple[Exercise, TrainerExercise]:
     """Build a private exercise and its active trainer configuration."""
     exercise = Exercise(
@@ -548,6 +560,9 @@ def create_for_trainer(
         name=name,
         description=description,
         image_url=image_url,
+        animation_url=animation_url,
+        image_url_light=image_url_light,
+        animation_url_light=animation_url_light,
     )
     trainer_exercise = TrainerExercise(
         trainer_id=trainer_id,

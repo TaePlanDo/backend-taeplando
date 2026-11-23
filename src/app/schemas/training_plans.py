@@ -46,6 +46,9 @@ class PlanExerciseAlternative(BaseModel):
     exercise_id: UUID
     name: str
     image_url: str | None
+    animation_url: str | None
+    image_url_light: str | None
+    animation_url_light: str | None
     physical_difficulty: int = Field(ge=1, le=5)
     technical_difficulty: int = Field(ge=1, le=5)
     upper_body_load: int = Field(ge=1, le=5)
@@ -78,6 +81,9 @@ class PlanExerciseResponse(BaseModel):
     name_snapshot: str
     description_snapshot: str
     image_url_snapshot: str | None
+    animation_url_snapshot: str | None
+    image_url_light_snapshot: str | None
+    animation_url_light_snapshot: str | None
     min_age_snapshot: int
     max_age_snapshot: int
     min_participants_snapshot: int
