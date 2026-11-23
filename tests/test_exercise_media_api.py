@@ -51,24 +51,20 @@ def test_create_update_and_legacy_edits(client, authenticated_trainer, db_sessio
             new=AsyncMock(return_value=(exercise, configuration)),
         ):
             db_session.commit.side_effect = None
-            legacy = client.put(
-                f"/exercises/{exercise.id}", json=payload(image_url=MEDIA["image_url"])
-            )
+            legacy = client.put(f"/exercises/{exercise.id}", json=payload())
             assert legacy.status_code == 200
             assert {field: legacy.json()[field] for field in MEDIA} == MEDIA
             cleared = client.put(
                 f"/exercises/{exercise.id}",
                 json=payload(
-                    image_url=MEDIA["image_url"],
+                    image_url=None,
                     animation_url=None,
                     image_url_light=None,
                     animation_url_light=None,
                 ),
             )
             assert cleared.status_code == 200
-            assert all(
-                cleared.json()[field] is None for field in MEDIA if field != "image_url"
-            )
+            assert all(cleared.json()[field] is None for field in MEDIA)
 
 
 @pytest.mark.parametrize("field", MEDIA)

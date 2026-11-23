@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal, TypedDict
 from uuid import UUID
 
@@ -62,6 +62,7 @@ class DemoTrainingContext:
     seed_id: Callable[[str, str | int], UUID]
     segment_snapshots: Mapping[str, SegmentSnapshot]
     current_version_ids: Mapping[int, UUID]
+    media_urls: Mapping[int, Mapping[str, str]] = field(default_factory=dict)
 
 
 _WARMUP = GroupSchemaSeed("WARMUP", 20)
@@ -255,6 +256,7 @@ def build_demo_training_rows(
                 }
             )
             for position, exercise in enumerate(selected, start=1):
+                media = context.media_urls.get(exercise.source_id, {})
                 plan_exercise_rows.append(
                     {
                         "id": context.seed_id(
@@ -273,10 +275,12 @@ def build_demo_training_rows(
                         "schema_position": position,
                         "name_snapshot": exercise.name,
                         "description_snapshot": exercise.description,
-                        "image_url_snapshot": None,
-                        "animation_url_snapshot": None,
-                        "image_url_light_snapshot": None,
-                        "animation_url_light_snapshot": None,
+                        "image_url_snapshot": media.get("image_url"),
+                        "animation_url_snapshot": media.get("animation_url"),
+                        "image_url_light_snapshot": media.get("image_url_light"),
+                        "animation_url_light_snapshot": media.get(
+                            "animation_url_light"
+                        ),
                         "min_age_snapshot": exercise.min_age,
                         "max_age_snapshot": exercise.max_age,
                         "min_participants_snapshot": exercise.min_participants,

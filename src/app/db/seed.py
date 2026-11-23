@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import logging
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import TypedDict, cast
 from uuid import UUID
 
@@ -32,6 +33,8 @@ from app.db.exercise_catalog import (
 from app.db.seed_identity import seed_id as _seed_id
 from app.db.session import dispose_engine, get_session_factory
 from app.db.training_catalog import SYSTEM_TRAINING_SEGMENTS
+from app.media.manifest import MEDIA_URL_FILES
+from app.media.storage import MediaPublicSettings
 from app.models.associations import (
     exercise_version_equipment,
     exercise_version_segments,
@@ -245,6 +248,7 @@ async def upsert_local_user(session: AsyncSession, user: LocalUserSeed) -> None:
 async def seed_exercises(
     session: AsyncSession,
     exercises: tuple[SeedExercise, ...],
+    media_urls: Mapping[int, Mapping[str, str]],
 ) -> dict[int, UUID]:
     """Seed global exercises, their current configurations, and version history."""
 
@@ -252,14 +256,18 @@ async def seed_exercises(
         trainer_id=DEMO_TRAINER_ID,
         seed_id=_seed_id,
         segment_ids={segment.code: segment.id for segment in SYSTEM_TRAINING_SEGMENTS},
+        media_urls=media_urls,
     )
     rows = build_demo_exercise_rows(exercises, context)
 
+    exercise_update_columns = ["owner_user_id", "scope", "name", "description"]
+    if media_urls:
+        exercise_update_columns.extend(MEDIA_URL_FILES)
     await _upsert_by_id(
         session,
         Exercise.__table__,
         rows.exercise_rows,
-        ("owner_user_id", "scope", "name", "description"),
+        tuple(exercise_update_columns),
     )
     await _upsert_by_id(
         session,
@@ -340,6 +348,7 @@ async def seed_training_groups_and_plans(
     session: AsyncSession,
     exercises: tuple[SeedExercise, ...],
     current_version_ids: dict[int, UUID],
+    media_urls: Mapping[int, Mapping[str, str]],
 ) -> None:
     """Persist the deterministic presentation groups and their plan snapshots."""
 
@@ -356,6 +365,7 @@ async def seed_training_groups_and_plans(
         seed_id=_seed_id,
         segment_snapshots=segment_snapshots,
         current_version_ids=current_version_ids,
+        media_urls=media_urls,
     )
     rows = build_demo_training_rows(exercises, context)
     await _upsert_by_id(
@@ -390,7 +400,9 @@ async def seed_training_groups_and_plans(
 
 
 async def seed_demo_data(
-    session: AsyncSession, exercises: tuple[SeedExercise, ...]
+    session: AsyncSession,
+    exercises: tuple[SeedExercise, ...],
+    media_urls: Mapping[int, Mapping[str, str]],
 ) -> None:
     """Insert the demo trainer, global catalog exercises, groups, and plans."""
 
@@ -398,28 +410,37 @@ async def seed_demo_data(
     for user in DEMO_LOCAL_USERS:
         await upsert_local_user(session, user)
     await seed_equipment(session, exercises)
-    current_version_ids = await seed_exercises(session, exercises)
-    await seed_training_groups_and_plans(session, exercises, current_version_ids)
+    current_version_ids = await seed_exercises(session, exercises, media_urls)
+    await seed_training_groups_and_plans(
+        session, exercises, current_version_ids, media_urls
+    )
 
 
-async def seed_system_data() -> None:
+async def seed_system_data(*, include_animations: bool = False) -> None:
     """Apply all system seed data in one transaction."""
 
     logger.info("Starting system-data seed transaction")
     exercises = load_exercise_catalog()
+    media_urls: Mapping[int, Mapping[str, str]] = {}
+    if include_animations:
+        public_media = MediaPublicSettings()
+        media_urls = {
+            exercise.source_id: public_media.exercise_urls(exercise.source_id)
+            for exercise in exercises
+        }
     async with get_session_factory()() as session:
         async with session.begin():
             await seed_training_segments(session)
             await seed_training_types(session, exercises)
-            await seed_demo_data(session, exercises)
+            await seed_demo_data(session, exercises, media_urls)
     logger.info("System-data seed transaction completed")
 
 
-async def run_seed_command() -> None:
+async def run_seed_command(*, include_animations: bool = False) -> None:
     """Run the seed and close its database resources on the same event loop."""
 
     try:
-        await seed_system_data()
+        await seed_system_data(include_animations=include_animations)
     except Exception:
         logger.exception("System-data seed failed")
         raise
@@ -430,11 +451,14 @@ async def run_seed_command() -> None:
 def main() -> None:
     """Run the seed and configure command-line logging."""
 
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--include", choices=("animations",))
+    args = parser.parse_args()
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
-    asyncio.run(run_seed_command())
+    asyncio.run(run_seed_command(include_animations=args.include == "animations"))
 
 
 if __name__ == "__main__":

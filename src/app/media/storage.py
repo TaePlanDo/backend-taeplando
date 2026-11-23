@@ -14,7 +14,7 @@ from botocore.exceptions import ClientError
 from pydantic import Field, HttpUrl, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.media.manifest import MediaEntry, asset_path
+from app.media.manifest import MEDIA_URL_FILES, MediaEntry, asset_path
 
 if TYPE_CHECKING:
     from mypy_boto3_s3 import S3Client
@@ -23,18 +23,13 @@ UPLOAD_WORKERS = 8
 CACHE_CONTROL = "public, max-age=3600"
 
 
-class MediaStorageSettings(BaseSettings):
-    """Import-only credentials; application startup does not require storage."""
+class MediaPublicSettings(BaseSettings):
+    """Public catalogue-media location without upload credentials."""
 
     model_config = SettingsConfigDict(
         env_prefix="EXERCISE_MEDIA_", env_file=".env", extra="ignore"
     )
 
-    s3_endpoint: HttpUrl
-    s3_region: str = "auto"
-    s3_bucket: str = Field(min_length=1)
-    s3_access_key_id: SecretStr
-    s3_secret_access_key: SecretStr
     public_base_url: HttpUrl
 
     @field_validator("public_base_url")
@@ -49,6 +44,23 @@ class MediaStorageSettings(BaseSettings):
 
     def public_url(self, key: str) -> str:
         return f"{str(self.public_base_url).rstrip('/')}/{quote(key, safe='/')}"
+
+    def exercise_urls(self, source_id: int) -> dict[str, str]:
+        """Build the canonical API fields for one stable catalogue object prefix."""
+        return {
+            field: self.public_url(f"exercises/{source_id}/{filename}")
+            for field, filename in MEDIA_URL_FILES.items()
+        }
+
+
+class MediaStorageSettings(MediaPublicSettings):
+    """Import-only credentials; application startup does not require storage."""
+
+    s3_endpoint: HttpUrl
+    s3_region: str = "auto"
+    s3_bucket: str = Field(min_length=1)
+    s3_access_key_id: SecretStr
+    s3_secret_access_key: SecretStr
 
 
 def create_client(settings: MediaStorageSettings) -> S3Client:

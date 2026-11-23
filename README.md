@@ -218,6 +218,9 @@ uv run seed-system-data
 # Use the final directory containing 1-bieg-miedzy-liniami, etc.
 uv run seed-exercise-media import --media-root "C:/path/to/final" --dry-run
 uv run seed-exercise-media import --media-root "C:/path/to/final"
+
+# Rebuild seeded exercises and demo-plan snapshots with the uploaded media URLs:
+uv run seed-system-data --include=animations
 ```
 
 The preflight checks every local file and the seeded exercise/version identities
@@ -246,6 +249,9 @@ The importer updates the catalogue exercise and its deterministic approved seed
 versions, including archived seed versions still used by trainer configurations.
 It leaves custom moderation versions and historical plan snapshots unchanged.
 Ordinary catalogue seeding preserves imported media URLs on existing rows.
+`--include=animations` requires only `EXERCISE_MEDIA_PUBLIC_BASE_URL`; it writes
+all four stable media URLs into seeded exercises, versions and demo-plan snapshots
+but does not upload files.
 SVG variants are uploaded too, under the manifest's stable keys. Displaying media
 and theme selection in the frontend belong to SCRUM-285.
 

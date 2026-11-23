@@ -116,8 +116,12 @@ async def update_exercise(
     configuration = await _resolve_configuration_or_raise(session, trainer_id, payload)
     exercise.name = payload.name
     exercise.description = payload.description
-    exercise.image_url = str(payload.image_url) if payload.image_url else None
-    for field in ("animation_url", "image_url_light", "animation_url_light"):
+    for field in (
+        "image_url",
+        "animation_url",
+        "image_url_light",
+        "animation_url_light",
+    ):
         if field in payload.model_fields_set:
             value = getattr(payload, field)
             setattr(exercise, field, str(value) if value else None)

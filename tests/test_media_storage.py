@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from app.media.manifest import MediaEntry
 from app.media.storage import (
     CACHE_CONTROL,
+    MediaPublicSettings,
     MediaStorageSettings,
     create_client,
     upload_file,
@@ -128,3 +129,21 @@ def test_public_url_and_credentials_are_safe(storage_settings):
                 "public_base_url": "https://cdn.example.com/?token=secret",
             }
         )
+
+
+def test_public_settings_build_all_exercise_media_without_upload_credentials():
+    settings = MediaPublicSettings(
+        _env_file=None,
+        public_base_url="https://cdn.example.com/assets",
+    )
+
+    assert settings.exercise_urls(7) == {
+        "image_url": "https://cdn.example.com/assets/exercises/7/thumb-dark.webp",
+        "image_url_light": (
+            "https://cdn.example.com/assets/exercises/7/thumb-light.webp"
+        ),
+        "animation_url": "https://cdn.example.com/assets/exercises/7/anim-dark.webp",
+        "animation_url_light": (
+            "https://cdn.example.com/assets/exercises/7/anim-light.webp"
+        ),
+    }
