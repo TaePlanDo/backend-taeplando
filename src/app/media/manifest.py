@@ -6,6 +6,7 @@ import csv
 import hashlib
 from dataclasses import dataclass, replace
 from pathlib import Path
+from typing import TypedDict
 
 from app.db.exercise_catalog import load_exercise_catalog
 
@@ -23,6 +24,15 @@ MEDIA_FILES = (
 FALLBACK_FILES = ("thumb-dark.svg", "thumb-light.svg")
 MANIFEST_PATH = Path(__file__).with_name("exercise_media.csv")
 _COLUMNS = ("source_id", "name", "directory", *MEDIA_FILES)
+
+
+class ExerciseMediaUrls(TypedDict):
+    """Complete public media contract stored for one exercise."""
+
+    image_url: str
+    animation_url: str
+    image_url_light: str
+    animation_url_light: str
 
 
 @dataclass(frozen=True)

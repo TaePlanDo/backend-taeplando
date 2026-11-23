@@ -8,6 +8,7 @@ from typing import Literal, TypedDict
 from uuid import UUID
 
 from app.db.exercise_catalog import SeedExercise
+from app.media.manifest import ExerciseMediaUrls
 
 
 @dataclass(frozen=True)
@@ -62,7 +63,7 @@ class DemoTrainingContext:
     seed_id: Callable[[str, str | int], UUID]
     segment_snapshots: Mapping[str, SegmentSnapshot]
     current_version_ids: Mapping[int, UUID]
-    media_urls: Mapping[int, Mapping[str, str]] = field(default_factory=dict)
+    media_urls: Mapping[int, ExerciseMediaUrls] = field(default_factory=dict)
 
 
 _WARMUP = GroupSchemaSeed("WARMUP", 20)
@@ -161,6 +162,24 @@ def _catalog_snapshot(
     return [{"id": str(seed_id(kind, name)), "name": name} for name in names]
 
 
+def _media_snapshot(media: ExerciseMediaUrls | None) -> dict[str, str | None]:
+    """Map the complete media contract to immutable plan column names."""
+
+    if media is None:
+        return {
+            "image_url_snapshot": None,
+            "animation_url_snapshot": None,
+            "image_url_light_snapshot": None,
+            "animation_url_light_snapshot": None,
+        }
+    return {
+        "image_url_snapshot": media["image_url"],
+        "animation_url_snapshot": media["animation_url"],
+        "image_url_light_snapshot": media["image_url_light"],
+        "animation_url_light_snapshot": media["animation_url_light"],
+    }
+
+
 def build_demo_training_rows(
     exercises: tuple[SeedExercise, ...],
     context: DemoTrainingContext,
@@ -256,7 +275,6 @@ def build_demo_training_rows(
                 }
             )
             for position, exercise in enumerate(selected, start=1):
-                media = context.media_urls.get(exercise.source_id, {})
                 plan_exercise_rows.append(
                     {
                         "id": context.seed_id(
@@ -275,12 +293,7 @@ def build_demo_training_rows(
                         "schema_position": position,
                         "name_snapshot": exercise.name,
                         "description_snapshot": exercise.description,
-                        "image_url_snapshot": media.get("image_url"),
-                        "animation_url_snapshot": media.get("animation_url"),
-                        "image_url_light_snapshot": media.get("image_url_light"),
-                        "animation_url_light_snapshot": media.get(
-                            "animation_url_light"
-                        ),
+                        **_media_snapshot(context.media_urls.get(exercise.source_id)),
                         "min_age_snapshot": exercise.min_age,
                         "max_age_snapshot": exercise.max_age,
                         "min_participants_snapshot": exercise.min_participants,

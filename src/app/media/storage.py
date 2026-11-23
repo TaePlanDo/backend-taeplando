@@ -14,7 +14,12 @@ from botocore.exceptions import ClientError
 from pydantic import Field, HttpUrl, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.media.manifest import MEDIA_URL_FILES, MediaEntry, asset_path
+from app.media.manifest import (
+    MEDIA_URL_FILES,
+    ExerciseMediaUrls,
+    MediaEntry,
+    asset_path,
+)
 
 if TYPE_CHECKING:
     from mypy_boto3_s3 import S3Client
@@ -45,11 +50,20 @@ class MediaPublicSettings(BaseSettings):
     def public_url(self, key: str) -> str:
         return f"{str(self.public_base_url).rstrip('/')}/{quote(key, safe='/')}"
 
-    def exercise_urls(self, source_id: int) -> dict[str, str]:
+    def exercise_urls(self, source_id: int) -> ExerciseMediaUrls:
         """Build the canonical API fields for one stable catalogue object prefix."""
+        prefix = f"exercises/{source_id}"
         return {
-            field: self.public_url(f"exercises/{source_id}/{filename}")
-            for field, filename in MEDIA_URL_FILES.items()
+            "image_url": self.public_url(f"{prefix}/{MEDIA_URL_FILES['image_url']}"),
+            "animation_url": self.public_url(
+                f"{prefix}/{MEDIA_URL_FILES['animation_url']}"
+            ),
+            "image_url_light": self.public_url(
+                f"{prefix}/{MEDIA_URL_FILES['image_url_light']}"
+            ),
+            "animation_url_light": self.public_url(
+                f"{prefix}/{MEDIA_URL_FILES['animation_url_light']}"
+            ),
         }
 
 

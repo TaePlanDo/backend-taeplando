@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from app.db.exercise_catalog import SeedExercise
+from app.media.manifest import ExerciseMediaUrls
 from app.models.enums import (
     ExerciseScope,
     ExerciseVersionStatus,
@@ -24,7 +25,7 @@ class DemoExerciseSeedContext:
     trainer_id: UUID
     seed_id: Callable[[str, str | int], UUID]
     segment_ids: Mapping[str, int]
-    media_urls: Mapping[int, Mapping[str, str]] = field(default_factory=dict)
+    media_urls: Mapping[int, ExerciseMediaUrls] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

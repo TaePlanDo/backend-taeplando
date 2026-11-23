@@ -33,7 +33,7 @@ from app.db.exercise_catalog import (
 from app.db.seed_identity import seed_id as _seed_id
 from app.db.session import dispose_engine, get_session_factory
 from app.db.training_catalog import SYSTEM_TRAINING_SEGMENTS
-from app.media.manifest import MEDIA_URL_FILES
+from app.media.manifest import MEDIA_URL_FILES, ExerciseMediaUrls
 from app.media.storage import MediaPublicSettings
 from app.models.associations import (
     exercise_version_equipment,
@@ -248,7 +248,7 @@ async def upsert_local_user(session: AsyncSession, user: LocalUserSeed) -> None:
 async def seed_exercises(
     session: AsyncSession,
     exercises: tuple[SeedExercise, ...],
-    media_urls: Mapping[int, Mapping[str, str]],
+    media_urls: Mapping[int, ExerciseMediaUrls],
 ) -> dict[int, UUID]:
     """Seed global exercises, their current configurations, and version history."""
 
@@ -348,7 +348,7 @@ async def seed_training_groups_and_plans(
     session: AsyncSession,
     exercises: tuple[SeedExercise, ...],
     current_version_ids: dict[int, UUID],
-    media_urls: Mapping[int, Mapping[str, str]],
+    media_urls: Mapping[int, ExerciseMediaUrls],
 ) -> None:
     """Persist the deterministic presentation groups and their plan snapshots."""
 
@@ -402,7 +402,7 @@ async def seed_training_groups_and_plans(
 async def seed_demo_data(
     session: AsyncSession,
     exercises: tuple[SeedExercise, ...],
-    media_urls: Mapping[int, Mapping[str, str]],
+    media_urls: Mapping[int, ExerciseMediaUrls],
 ) -> None:
     """Insert the demo trainer, global catalog exercises, groups, and plans."""
 
@@ -421,7 +421,7 @@ async def seed_system_data(*, include_animations: bool = False) -> None:
 
     logger.info("Starting system-data seed transaction")
     exercises = load_exercise_catalog()
-    media_urls: Mapping[int, Mapping[str, str]] = {}
+    media_urls: Mapping[int, ExerciseMediaUrls] = {}
     if include_animations:
         public_media = MediaPublicSettings()
         media_urls = {
