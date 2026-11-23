@@ -50,6 +50,12 @@ class PlanExerciseUnavailableError(PlanResourceNotFoundError):
     detail = "Exercise not found"
 
 
+class PlanStructureInvalidError(Exception):
+    """Raised when a plan structure update is not an exact slot permutation."""
+
+    detail = "Plan exercise order must list each current plan exercise once"
+
+
 async def list_plans(
     session: AsyncSession,
     trainer_id: UUID,
@@ -119,14 +125,43 @@ async def delete_plan_exercise(
     plan.exercises.remove(_slot_or_raise(plan, plan_exercise_id))
     await session.flush()
     remaining = sorted(plan.exercises, key=lambda item: item.position)
-    # Unique (plan_id, position) is checked per UPDATE, so park rows first.
-    temporary_base = len(remaining)
-    for offset, exercise in enumerate(remaining, start=1):
+    await _rewrite_positions(session, remaining)
+    await session.commit()
+
+
+async def update_plan_structure(
+    session: AsyncSession,
+    trainer_id: UUID,
+    plan_id: UUID,
+    *,
+    name: str,
+    plan_exercise_ids: Sequence[UUID],
+) -> PlanDetail:
+    """Rename a plan and rewrite exercise display order in one locked update."""
+    plan = await _get_owned_or_raise(session, trainer_id, plan_id, for_update=True)
+    by_id = {exercise.id: exercise for exercise in plan.exercises}
+    if len(plan_exercise_ids) != len(by_id) or set(plan_exercise_ids) != set(by_id):
+        raise PlanStructureInvalidError
+    plan.name = name
+    await _rewrite_positions(
+        session, [by_id[exercise_id] for exercise_id in plan_exercise_ids]
+    )
+    await session.commit()
+    return _to_detail(plan)
+
+
+async def _rewrite_positions(
+    session: AsyncSession, ordered_exercises: Sequence[TrainingPlanExercise]
+) -> None:
+    """Park then assign 1..n so unique (plan_id, position) never collides mid-update."""
+    if not ordered_exercises:
+        return
+    temporary_base = max(exercise.position for exercise in ordered_exercises)
+    for offset, exercise in enumerate(ordered_exercises, start=1):
         exercise.position = temporary_base + offset
     await session.flush()
-    for position, exercise in enumerate(remaining, start=1):
+    for position, exercise in enumerate(ordered_exercises, start=1):
         exercise.position = position
-    await session.commit()
 
 
 async def _get_owned_or_raise(

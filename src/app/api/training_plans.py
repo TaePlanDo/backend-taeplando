@@ -17,6 +17,7 @@ from app.schemas.training_plans import (
     PlanExerciseReplace,
     PlanExerciseResponse,
     PlanListItem,
+    PlanStructureUpdate,
     TrainingPlanListFilters,
 )
 from app.services import plan_exercise_alternatives_service, training_plan_service
@@ -65,6 +66,30 @@ async def get_plan(
         )
     except training_plan_service.PlanResourceNotFoundError as exc:
         raise _not_found(exc.detail) from exc
+
+
+@router.patch("/{plan_id}", response_model=PlanDetail)
+async def update_plan_structure(
+    plan_id: UUID,
+    body: PlanStructureUpdate,
+    current_trainer: CurrentTrainer,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> PlanDetail:
+    """Rename a plan and reorder its existing exercise slots."""
+    try:
+        return await training_plan_service.update_plan_structure(
+            session,
+            current_trainer.id,
+            plan_id,
+            name=body.name,
+            plan_exercise_ids=body.plan_exercise_ids,
+        )
+    except training_plan_service.PlanResourceNotFoundError as exc:
+        raise _not_found(exc.detail) from exc
+    except training_plan_service.PlanStructureInvalidError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=exc.detail
+        ) from exc
 
 
 @router.put(

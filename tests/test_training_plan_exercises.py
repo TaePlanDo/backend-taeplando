@@ -191,23 +191,21 @@ def test_replace_plan_exercise_service_raises_for_missing_slot() -> None:
     session.commit.assert_not_called()
 
 
-def test_delete_plan_exercise_service_renumbers_remaining_positions() -> None:
-    """Deleting a middle slot rewrites positions to 1..n without changing times."""
-    session = AsyncMock()
-    plan = _orm_plan(with_exercises=True)
-    first = next(item for item in plan.exercises if item.position == 1)
-    middle_id = PLAN_EXERCISE_ID
-    last = TrainingPlanExercise(
+def _third_slot(*, position: int = 3) -> TrainingPlanExercise:
+    return TrainingPlanExercise(
         id=uuid4(),
         training_plan_id=PLAN_ID,
         trainer_exercise_id=TRAINER_EXERCISE_ID,
         exercise_id=EXERCISE_ID,
         exercise_version_id=None,
-        position=3,
+        position=position,
         schema_position=2,
         name_snapshot="Yop chagi",
         description_snapshot="Kopnięcie boczne.",
         image_url_snapshot=None,
+        animation_url_snapshot=None,
+        image_url_light_snapshot=None,
+        animation_url_light_snapshot=None,
         min_age_snapshot=7,
         max_age_snapshot=14,
         min_participants_snapshot=2,
@@ -222,6 +220,15 @@ def test_delete_plan_exercise_service_renumbers_remaining_positions() -> None:
         training_types_snapshot=[],
         segments_snapshot=[{"id": 3, "code": "MAIN", "name": "Ćwiczenia"}],
     )
+
+
+def test_delete_plan_exercise_service_renumbers_remaining_positions() -> None:
+    """Deleting a middle slot rewrites positions to 1..n without changing times."""
+    session = AsyncMock()
+    plan = _orm_plan(with_exercises=True)
+    first = next(item for item in plan.exercises if item.position == 1)
+    middle_id = PLAN_EXERCISE_ID
+    last = _third_slot()
     plan.exercises.append(last)
     middle = next(item for item in plan.exercises if item.id == middle_id)
     first_duration = first.duration_minutes_snapshot
@@ -249,6 +256,43 @@ def test_delete_plan_exercise_service_renumbers_remaining_positions() -> None:
     assert first.duration_minutes_snapshot == first_duration
     assert last.duration_minutes_snapshot == last_duration
     assert session.flush.await_count == 2
+    session.commit.assert_awaited_once()
+
+
+def test_delete_first_position_parks_above_remaining_max() -> None:
+    """Deleting position 1 parks above the still-held high positions."""
+    session = AsyncMock()
+    plan = _orm_plan(with_exercises=True)
+    last = _third_slot()
+    plan.exercises.append(last)
+    first = next(item for item in plan.exercises if item.position == 1)
+    remaining_max_after_delete = max(
+        item.position for item in plan.exercises if item.id != first.id
+    )
+    flush_snapshots: list[list[int]] = []
+
+    async def track_flush() -> None:
+        flush_snapshots.append(sorted(exercise.position for exercise in plan.exercises))
+
+    session.flush = AsyncMock(side_effect=track_flush)
+
+    with patch(
+        "app.services.training_plan_service.training_plans_db.get_for_trainer",
+        new=AsyncMock(return_value=plan),
+    ):
+        asyncio.run(
+            training_plan_service.delete_plan_exercise(
+                session, TRAINER_ID, PLAN_ID, first.id
+            )
+        )
+
+    assert len(flush_snapshots) == 2
+    assert flush_snapshots[0] == [2, 3]
+    assert all(position > remaining_max_after_delete for position in flush_snapshots[1])
+    assert [
+        exercise.position
+        for exercise in sorted(plan.exercises, key=lambda item: item.position)
+    ] == [1, 2]
     session.commit.assert_awaited_once()
 
 
