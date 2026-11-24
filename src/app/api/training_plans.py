@@ -17,6 +17,7 @@ from app.schemas.training_plans import (
     PlanExerciseReplace,
     PlanExerciseResponse,
     PlanListItem,
+    PlanNameUpdate,
     PlanStructureUpdate,
     TrainingPlanListFilters,
 )
@@ -69,19 +70,37 @@ async def get_plan(
 
 
 @router.patch("/{plan_id}", response_model=PlanDetail)
+async def update_plan_name(
+    plan_id: UUID,
+    body: PlanNameUpdate,
+    current_trainer: CurrentTrainer,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> PlanDetail:
+    """Rename a saved plan owned by the authenticated trainer."""
+    try:
+        return await training_plan_service.update_plan_name(
+            session,
+            current_trainer.id,
+            plan_id,
+            name=body.name,
+        )
+    except training_plan_service.PlanResourceNotFoundError as exc:
+        raise _not_found(exc.detail) from exc
+
+
+@router.patch("/{plan_id}/structure", response_model=PlanDetail)
 async def update_plan_structure(
     plan_id: UUID,
     body: PlanStructureUpdate,
     current_trainer: CurrentTrainer,
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> PlanDetail:
-    """Rename a plan and reorder its existing exercise slots."""
+    """Reorder the existing exercise slots of a saved plan."""
     try:
         return await training_plan_service.update_plan_structure(
             session,
             current_trainer.id,
             plan_id,
-            name=body.name,
             plan_exercise_ids=body.plan_exercise_ids,
         )
     except training_plan_service.PlanResourceNotFoundError as exc:

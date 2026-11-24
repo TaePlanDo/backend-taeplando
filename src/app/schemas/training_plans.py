@@ -68,12 +68,19 @@ class PlanExerciseReplace(BaseModel):
     exercise_id: UUID
 
 
-class PlanStructureUpdate(BaseModel):
-    """Rename a plan and set the display order of its existing exercise slots."""
+class PlanNameUpdate(BaseModel):
+    """Rename a saved training plan."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     name: str = Field(min_length=1, max_length=TRAINING_PLAN_NAME_MAX_LENGTH)
+
+
+class PlanStructureUpdate(BaseModel):
+    """Set the display order of a plan's existing exercise slots."""
+
+    model_config = ConfigDict(extra="forbid")
+
     plan_exercise_ids: list[UUID]
 
 

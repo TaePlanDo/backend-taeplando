@@ -22,21 +22,142 @@ from training_plan_builders import (
 )
 
 
+def test_update_plan_name_returns_updated_detail(client, authenticated_trainer) -> None:
+    """PATCH renames the plan and returns the updated detail payload."""
+    detail = _plan_detail()
+    with patch(
+        "app.api.training_plans.training_plan_service.update_plan_name",
+        new=AsyncMock(return_value=detail),
+    ) as update_plan_name:
+        response = client.patch(
+            f"/training-plans/{PLAN_ID}",
+            json={"name": "Nowy plan"},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == detail.model_dump(mode="json")
+    update_plan_name.assert_awaited_once_with(
+        ANY,
+        TRAINER_ID,
+        PLAN_ID,
+        name="Nowy plan",
+    )
+
+
+def test_update_plan_name_returns_not_found(client, authenticated_trainer) -> None:
+    """Missing or foreign plans map to 404."""
+    with patch(
+        "app.api.training_plans.training_plan_service.update_plan_name",
+        new=AsyncMock(side_effect=PlanNotFoundError),
+    ):
+        response = client.patch(
+            f"/training-plans/{PLAN_ID}",
+            json={"name": "Nowy plan"},
+        )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Plan not found"}
+
+
+def test_update_plan_name_rejects_blank_name(client, authenticated_trainer) -> None:
+    """Whitespace-only names fail request validation before the service runs."""
+    with patch(
+        "app.api.training_plans.training_plan_service.update_plan_name",
+        new=AsyncMock(),
+    ) as update_plan_name:
+        response = client.patch(
+            f"/training-plans/{PLAN_ID}",
+            json={"name": "   "},
+        )
+
+    assert response.status_code == 422
+    update_plan_name.assert_not_awaited()
+
+
+def test_update_plan_name_strips_name(client, authenticated_trainer) -> None:
+    """Leading and trailing whitespace are stripped before the service call."""
+    detail = _plan_detail()
+    with patch(
+        "app.api.training_plans.training_plan_service.update_plan_name",
+        new=AsyncMock(return_value=detail),
+    ) as update_plan_name:
+        response = client.patch(
+            f"/training-plans/{PLAN_ID}",
+            json={"name": "  Nowy plan  "},
+        )
+
+    assert response.status_code == 200
+    update_plan_name.assert_awaited_once_with(
+        ANY,
+        TRAINER_ID,
+        PLAN_ID,
+        name="Nowy plan",
+    )
+
+
+def test_update_plan_name_service_renames() -> None:
+    """Service rewrites the plan name without touching exercise positions."""
+    session = AsyncMock()
+    plan = _orm_plan(with_exercises=True)
+    first = next(item for item in plan.exercises if item.position == 1)
+    second = next(item for item in plan.exercises if item.position == 2)
+
+    with patch(
+        "app.services.training_plan_service.training_plans_db.get_for_trainer",
+        new=AsyncMock(return_value=plan),
+    ) as get_for_trainer:
+        detail = asyncio.run(
+            training_plan_service.update_plan_name(
+                session,
+                TRAINER_ID,
+                PLAN_ID,
+                name="Plan po edycji",
+            )
+        )
+
+    get_for_trainer.assert_awaited_once_with(
+        session, TRAINER_ID, PLAN_ID, for_update=True
+    )
+    assert plan.name == "Plan po edycji"
+    assert first.position == 1
+    assert second.position == 2
+    assert detail.name == "Plan po edycji"
+    session.flush.assert_not_awaited()
+    session.commit.assert_awaited_once()
+
+
+def test_update_plan_name_service_raises_for_missing_plan() -> None:
+    """Name updates refuse missing or foreign plans without writing."""
+    session = AsyncMock()
+    with patch(
+        "app.services.training_plan_service.training_plans_db.get_for_trainer",
+        new=AsyncMock(return_value=None),
+    ):
+        with pytest.raises(PlanNotFoundError):
+            asyncio.run(
+                training_plan_service.update_plan_name(
+                    session,
+                    TRAINER_ID,
+                    PLAN_ID,
+                    name="Plan",
+                )
+            )
+
+    session.commit.assert_not_called()
+
+
 def test_update_plan_structure_returns_updated_detail(
     client, authenticated_trainer
 ) -> None:
-    """PATCH renames the plan and returns the updated detail payload."""
+    """PATCH structure reorders slots and returns the updated detail payload."""
     detail = _plan_detail()
     with patch(
         "app.api.training_plans.training_plan_service.update_plan_structure",
         new=AsyncMock(return_value=detail),
     ) as update_plan_structure:
         response = client.patch(
-            f"/training-plans/{PLAN_ID}",
-            json={
-                "name": "Nowy plan",
-                "plan_exercise_ids": [str(detail.exercises[0].id)],
-            },
+            f"/training-plans/{PLAN_ID}/structure",
+            json={"plan_exercise_ids": [str(detail.exercises[0].id)]},
         )
 
     assert response.status_code == 200
@@ -45,20 +166,19 @@ def test_update_plan_structure_returns_updated_detail(
         ANY,
         TRAINER_ID,
         PLAN_ID,
-        name="Nowy plan",
         plan_exercise_ids=[detail.exercises[0].id],
     )
 
 
 def test_update_plan_structure_returns_not_found(client, authenticated_trainer) -> None:
-    """Missing or foreign plans map to 404."""
+    """Missing or foreign plans map to 404 for structure updates."""
     with patch(
         "app.api.training_plans.training_plan_service.update_plan_structure",
         new=AsyncMock(side_effect=PlanNotFoundError),
     ):
         response = client.patch(
-            f"/training-plans/{PLAN_ID}",
-            json={"name": "Nowy plan", "plan_exercise_ids": []},
+            f"/training-plans/{PLAN_ID}/structure",
+            json={"plan_exercise_ids": []},
         )
 
     assert response.status_code == 404
@@ -74,8 +194,8 @@ def test_update_plan_structure_returns_invalid_order(
         new=AsyncMock(side_effect=PlanStructureInvalidError),
     ):
         response = client.patch(
-            f"/training-plans/{PLAN_ID}",
-            json={"name": "Nowy plan", "plan_exercise_ids": [str(uuid4())]},
+            f"/training-plans/{PLAN_ID}/structure",
+            json={"plan_exercise_ids": [str(uuid4())]},
         )
 
     assert response.status_code == 422
@@ -87,52 +207,11 @@ def test_update_plan_structure_returns_invalid_order(
     }
 
 
-def test_update_plan_structure_rejects_blank_name(
-    client, authenticated_trainer
-) -> None:
-    """Whitespace-only names fail request validation before the service runs."""
-    with patch(
-        "app.api.training_plans.training_plan_service.update_plan_structure",
-        new=AsyncMock(),
-    ) as update_plan_structure:
-        response = client.patch(
-            f"/training-plans/{PLAN_ID}",
-            json={"name": "   ", "plan_exercise_ids": []},
-        )
-
-    assert response.status_code == 422
-    update_plan_structure.assert_not_awaited()
-
-
-def test_update_plan_structure_strips_name(client, authenticated_trainer) -> None:
-    """Leading and trailing whitespace are stripped before the service call."""
-    detail = _plan_detail()
-    with patch(
-        "app.api.training_plans.training_plan_service.update_plan_structure",
-        new=AsyncMock(return_value=detail),
-    ) as update_plan_structure:
-        response = client.patch(
-            f"/training-plans/{PLAN_ID}",
-            json={
-                "name": "  Nowy plan  ",
-                "plan_exercise_ids": [str(detail.exercises[0].id)],
-            },
-        )
-
-    assert response.status_code == 200
-    update_plan_structure.assert_awaited_once_with(
-        ANY,
-        TRAINER_ID,
-        PLAN_ID,
-        name="Nowy plan",
-        plan_exercise_ids=[detail.exercises[0].id],
-    )
-
-
-def test_update_plan_structure_service_renames_and_reorders() -> None:
-    """Service rewrites name and positions while keeping schema_position."""
+def test_update_plan_structure_service_reorders() -> None:
+    """Service rewrites positions while keeping schema_position and name."""
     session = AsyncMock()
     plan = _orm_plan(with_exercises=True)
+    original_name = plan.name
     first = next(item for item in plan.exercises if item.position == 1)
     second = next(item for item in plan.exercises if item.position == 2)
     first_schema = first.schema_position
@@ -148,7 +227,6 @@ def test_update_plan_structure_service_renames_and_reorders() -> None:
                 session,
                 TRAINER_ID,
                 PLAN_ID,
-                name="Plan po edycji",
                 plan_exercise_ids=[second.id, first.id],
             )
         )
@@ -156,14 +234,14 @@ def test_update_plan_structure_service_renames_and_reorders() -> None:
     get_for_trainer.assert_awaited_once_with(
         session, TRAINER_ID, PLAN_ID, for_update=True
     )
-    assert plan.name == "Plan po edycji"
+    assert plan.name == original_name
     assert second.position == 1
     assert first.position == 2
     assert first.schema_position == first_schema
     assert second.schema_position == second_schema
     assert first.duration_minutes_snapshot == first_duration
     assert [exercise.id for exercise in detail.exercises] == [second.id, first.id]
-    assert detail.name == "Plan po edycji"
+    assert detail.name == original_name
     assert session.flush.await_count == 1
     session.commit.assert_awaited_once()
 
@@ -183,7 +261,6 @@ def test_update_plan_structure_service_rejects_empty_list() -> None:
                     session,
                     TRAINER_ID,
                     PLAN_ID,
-                    name="Plan",
                     plan_exercise_ids=[],
                 )
             )
@@ -207,7 +284,6 @@ def test_update_plan_structure_service_rejects_duplicate_ids() -> None:
                     session,
                     TRAINER_ID,
                     PLAN_ID,
-                    name="Plan",
                     plan_exercise_ids=[first.id, first.id],
                 )
             )
@@ -231,7 +307,6 @@ def test_update_plan_structure_service_rejects_unknown_id() -> None:
                     session,
                     TRAINER_ID,
                     PLAN_ID,
-                    name="Plan",
                     plan_exercise_ids=[first.id, uuid4()],
                 )
             )
@@ -257,7 +332,6 @@ def test_update_plan_structure_service_rejects_inconsistent_schema_sequence() ->
                     session,
                     TRAINER_ID,
                     PLAN_ID,
-                    name="Plan",
                     plan_exercise_ids=[second.id, first.id],
                 )
             )
@@ -327,7 +401,6 @@ def test_update_plan_structure_service_allows_reorder_within_segments() -> None:
                 session,
                 TRAINER_ID,
                 PLAN_ID,
-                name="Plan",
                 plan_exercise_ids=[second.id, first.id, third.id],
             )
         )
@@ -366,7 +439,6 @@ def test_update_plan_structure_service_allows_any_existing_schema_layout() -> No
                 session,
                 TRAINER_ID,
                 PLAN_ID,
-                name="Plan",
                 plan_exercise_ids=[first.id, third.id, second.id],
             )
         )
@@ -393,7 +465,6 @@ def test_update_plan_structure_service_raises_for_missing_plan() -> None:
                     session,
                     TRAINER_ID,
                     PLAN_ID,
-                    name="Plan",
                     plan_exercise_ids=[],
                 )
             )

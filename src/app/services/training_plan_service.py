@@ -132,18 +132,30 @@ async def delete_plan_exercise(
     await session.commit()
 
 
-async def update_plan_structure(
+async def update_plan_name(
     session: AsyncSession,
     trainer_id: UUID,
     plan_id: UUID,
     *,
     name: str,
+) -> PlanDetail:
+    """Rename an owned plan in one locked update."""
+    plan = await _get_owned_or_raise(session, trainer_id, plan_id, for_update=True)
+    plan.name = name
+    await session.commit()
+    return _to_detail(plan)
+
+
+async def update_plan_structure(
+    session: AsyncSession,
+    trainer_id: UUID,
+    plan_id: UUID,
+    *,
     plan_exercise_ids: Sequence[UUID],
 ) -> PlanDetail:
-    """Rename a plan and rewrite exercise display order in one locked update."""
+    """Rewrite exercise display order for an owned plan in one locked update."""
     plan = await _get_owned_or_raise(session, trainer_id, plan_id, for_update=True)
     ordered = _ordered_exercises_for_structure_update(plan, plan_exercise_ids)
-    plan.name = name
     await _rewrite_positions(session, ordered)
     await session.commit()
     return _to_detail(plan)
