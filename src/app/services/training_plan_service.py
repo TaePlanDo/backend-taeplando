@@ -50,6 +50,15 @@ class PlanExerciseUnavailableError(PlanResourceNotFoundError):
     detail = "Exercise not found"
 
 
+class PlanStructureInvalidError(Exception):
+    """Raised when a plan structure update is not a valid ordered slot list."""
+
+    detail = (
+        "Plan exercise order must list each current plan exercise once "
+        "and preserve the plan schema_position sequence"
+    )
+
+
 async def list_plans(
     session: AsyncSession,
     trainer_id: UUID,
@@ -119,14 +128,70 @@ async def delete_plan_exercise(
     plan.exercises.remove(_slot_or_raise(plan, plan_exercise_id))
     await session.flush()
     remaining = sorted(plan.exercises, key=lambda item: item.position)
-    # Unique (plan_id, position) is checked per UPDATE, so park rows first.
-    temporary_base = len(remaining)
-    for offset, exercise in enumerate(remaining, start=1):
+    await _rewrite_positions(session, remaining)
+    await session.commit()
+
+
+async def update_plan_name(
+    session: AsyncSession,
+    trainer_id: UUID,
+    plan_id: UUID,
+    *,
+    name: str,
+) -> PlanDetail:
+    """Rename an owned plan in one locked update."""
+    plan = await _get_owned_or_raise(session, trainer_id, plan_id, for_update=True)
+    plan.name = name
+    await session.commit()
+    return _to_detail(plan)
+
+
+async def update_plan_structure(
+    session: AsyncSession,
+    trainer_id: UUID,
+    plan_id: UUID,
+    *,
+    plan_exercise_ids: Sequence[UUID],
+) -> PlanDetail:
+    """Rewrite exercise display order for an owned plan in one locked update."""
+    plan = await _get_owned_or_raise(session, trainer_id, plan_id, for_update=True)
+    ordered = _ordered_exercises_for_structure_update(plan, plan_exercise_ids)
+    await _rewrite_positions(session, ordered)
+    await session.commit()
+    return _to_detail(plan)
+
+
+def _ordered_exercises_for_structure_update(
+    plan: TrainingPlan, plan_exercise_ids: Sequence[UUID]
+) -> list[TrainingPlanExercise]:
+    """Map IDs to slots when the incoming schema_position sequence matches the plan."""
+    current = sorted(plan.exercises, key=lambda item: item.position)
+    by_id = {exercise.id: exercise for exercise in current}
+    if len(set(plan_exercise_ids)) != len(by_id):
+        raise PlanStructureInvalidError
+    try:
+        ordered = [by_id[plan_exercise_id] for plan_exercise_id in plan_exercise_ids]
+    except KeyError as exc:
+        raise PlanStructureInvalidError from exc
+    if [exercise.schema_position for exercise in ordered] != [
+        exercise.schema_position for exercise in current
+    ]:
+        raise PlanStructureInvalidError
+    return ordered
+
+
+async def _rewrite_positions(
+    session: AsyncSession, ordered_exercises: Sequence[TrainingPlanExercise]
+) -> None:
+    """Park then assign 1..n so unique (plan_id, position) never collides mid-update."""
+    if not ordered_exercises:
+        return
+    temporary_base = max(exercise.position for exercise in ordered_exercises)
+    for offset, exercise in enumerate(ordered_exercises, start=1):
         exercise.position = temporary_base + offset
     await session.flush()
-    for position, exercise in enumerate(remaining, start=1):
+    for position, exercise in enumerate(ordered_exercises, start=1):
         exercise.position = position
-    await session.commit()
 
 
 async def _get_owned_or_raise(

@@ -6,6 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.models.training import TRAINING_PLAN_NAME_MAX_LENGTH
 from app.schemas.exercises import CatalogReference, TrainingSegmentResponse
 
 
@@ -65,6 +66,22 @@ class PlanExerciseReplace(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     exercise_id: UUID
+
+
+class PlanNameUpdate(BaseModel):
+    """Rename a saved training plan."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    name: str = Field(min_length=1, max_length=TRAINING_PLAN_NAME_MAX_LENGTH)
+
+
+class PlanStructureUpdate(BaseModel):
+    """Set the display order of a plan's existing exercise slots."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    plan_exercise_ids: list[UUID]
 
 
 class PlanExerciseResponse(BaseModel):
